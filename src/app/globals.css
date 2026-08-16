@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Font */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Brand colors */
+  --color-brand-primary: #322B5F;
+  --color-brand-secondary-400: #7b2af8;
+  --color-brand-secondary-500: #5d07e2;
+  --color-brand-secondary-600: #4b06b7;
+  --color-secondary-50: #F0E6FE;
+
+  /* Surface colors */
+  --color-surface-app: #f6f6fa;
+  --color-navy: #250359;
+  --color-deep-purple: #370486;
+  --color-lavender: #DDC9FD;
+
+  /* Teal / mint */
+  --color-mint-100: #E2FDF8;
+  --color-mint-200: #C5FBF0;
+  --color-mint-400: #91F8E3;
+  --color-teal: #73F6DB;
+
+  /* Semantic */
+  --color-positive: #0DC9A2;
+  --color-positive-strong: #09866C;
+  --color-negative: #F87171;
+  --color-negative-strong: #DC2626;
+
+  /* Border radius */
+  --radius-pill: 999px;
+  --radius-lg: 20px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(50,43,95,.06), 0 1px 3px rgba(50,43,95,.08);
+  --shadow-md: 0 4px 12px rgba(50,43,95,.10);
+  --shadow-lg: 0 12px 32px rgba(50,43,95,.14);
+  --shadow-cta: 0 8px 20px rgba(93,7,226,.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: #322B5F;
+  background: #f6f6fa;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #F0E6FE;
+}

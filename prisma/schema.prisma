@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Insight {
+  id          String    @id @default(cuid())
+  productArea String
+  theme       String
+  persona     String?
+  oneLiner    String
+  content     String
+  client      String?
+  sourceName  String?
+  sourceUrl   String?
+  sourceType  String    @default("SHEET")
+  date        DateTime?
+  wtp         String?
+  tags        String    @default("[]")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([productArea])
+  @@index([client])
+  @@index([theme])
+}
+
+model DiscoveryQuestion {
+  id          String    @id @default(cuid())
+  productArea String
+  theme       String
+  persona     String?
+  question    String
+  notesIntent String?
+  source      String?
+  createdAt   DateTime  @default(now())
+
+  @@index([productArea])
+  @@index([theme])
+}
+
+model SourceDocument {
+  id          String    @id @default(cuid())
+  name        String
+  productArea String
+  date        DateTime?
+  format      String?
+  topics      String?
+  link        String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+}

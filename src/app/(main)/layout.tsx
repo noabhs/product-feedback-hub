@@ -1,0 +1,48 @@
+import Link from "next/link";
+import { Home, Search, BookOpen, Upload, Settings } from "lucide-react";
+
+const NAV = [
+  { href: "/home", label: "Home", icon: Home },
+  { href: "/insights", label: "Feedback", icon: Search },
+  { href: "/discovery", label: "Discovery", icon: BookOpen },
+  { href: "/upload", label: "AI extract", icon: Upload },
+  { href: "/admin", label: "Admin", icon: Settings },
+];
+
+export default function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-screen bg-surface-app overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-56 shrink-0 flex flex-col" style={{ background: "#250359" }}>
+        <div className="px-5 py-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <Link href="/home" className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-sm flex items-center justify-center shrink-0 bg-brand-secondary-500">
+              <span className="text-white font-extrabold text-xs">N</span>
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm leading-none">navina</p>
+              <p className="text-teal text-[10px] font-medium leading-none mt-0.5">Insights Hub</p>
+            </div>
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {NAV.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
+    </div>
+  );
+}
