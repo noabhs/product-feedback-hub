@@ -131,7 +131,8 @@ export async function POST(req: NextRequest) {
 
     if (type === "feedback") {
       for (const row of rows) {
-        const [productAreaRaw, themeRaw, persona, oneLiner, content, date, wtp, source, client] = row;
+        // Columns 10 and 11 are optional, so older exports still import fine.
+        const [productAreaRaw, themeRaw, persona, oneLiner, content, date, wtp, source, client, sourceUrl, reporter] = row;
         if (!oneLiner?.trim()) continue;
         const id = hashId("ins", `${client}${oneLiner}`);
         try {
@@ -146,10 +147,14 @@ export async function POST(req: NextRequest) {
               content: content?.trim() || oneLiner.trim(),
               client: client?.trim() || null,
               sourceName: source?.trim() || null,
+              sourceUrl: sourceUrl?.trim() || null,
               sourceType: "SHEET",
               date: parseDate(date ?? ""),
               wtp: wtp?.trim() || null,
               tags: "[]",
+              // Whoever raised it upstream (a Jira reporter, say) rather than
+              // whoever ran the import — that's the useful attribution here.
+              createdBy: reporter?.trim() || null,
             },
             update: {},
           });
