@@ -1,31 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
+import { ComboField } from "@/components/ui/ComboField";
+import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel, normalizeKey } from "@/lib/labels";
 import type { InsightItem } from "./InsightCard";
 
-const AREAS = [
-  { value: "POP_HEALTH", label: "Pop health" },
-  { value: "QUALITY", label: "Quality" },
-  { value: "ANALYTICS", label: "Analytics" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "RISK_DX", label: "Risk / Dx" },
-  { value: "AMBIENT", label: "Ambient" },
-  { value: "GENERAL", label: "General" },
-  { value: "COMPETITIVE", label: "Competitive" },
-];
-
-const THEMES = [
-  { value: "WORKFLOW", label: "Workflow" },
-  { value: "DATA_INTEGRATION", label: "Data & integration" },
-  { value: "TRUST", label: "Trust" },
-  { value: "PAIN_POINTS", label: "Pain points" },
-  { value: "GOALS", label: "Goals" },
-  { value: "PRICING_WTP", label: "Pricing / WTP" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "OTHER", label: "Other" },
-];
+const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
+const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
 
 interface EditFeedbackModalProps {
   item?: InsightItem | null;
@@ -72,20 +55,54 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Areas/themes/clients already in use, so custom values someone else added
+  // are pickable here rather than retyped into a near-duplicate.
+  const [facets, setFacets] = useState<{ areas: string[]; themes: string[]; clients: string[] }>({
+    areas: [], themes: [], clients: [],
+  });
+
+  useEffect(() => {
+    fetch("/api/insights/facets")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setFacets(d))
+      .catch(() => {}); // non-fatal: built-in options still work
+  }, []);
+
+  const areaOptions = useMemo(
+    () => [...new Set([...BUILT_IN_AREAS, ...facets.areas])]
+      .map((v) => ({ value: v, label: areaLabel(v) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [facets.areas]
+  );
+
+  const themeOptions = useMemo(
+    () => [...new Set([...BUILT_IN_THEMES, ...facets.themes])]
+      .map((v) => ({ value: v, label: themeLabel(v) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [facets.themes]
+  );
+
   const set = (key: keyof typeof form) => (val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
   async function handleSave() {
     if (!form.oneLiner.trim()) { setError("One-liner is required"); return; }
     if (!form.date) { setError("Date is required — when did this feedback happen?"); return; }
+    // Checked post-normalisation: a value like "!!!" normalises to empty and
+    // would otherwise silently fall back to General on the server.
+    if (!normalizeKey(form.productArea)) { setError("Product area needs at least one letter or number"); return; }
+    if (!normalizeKey(form.theme)) { setError("Theme needs at least one letter or number"); return; }
     setSaving(true);
     setError("");
     try {
       const payload = {
         ...form,
+        // Normalise so a typed "Billing" and "billing" don't become two groups.
+        productArea: normalizeKey(form.productArea),
+        theme: normalizeKey(form.theme),
+        client: form.client.trim() || null,
         content: form.content || form.oneLiner,
         persona: form.persona || null,
-        client: form.client || null,
         sourceName: form.sourceName || null,
         sourceUrl: form.sourceUrl || null,
         date: form.date,
@@ -145,17 +162,40 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Product area">
-              <Select value={form.productArea} onChange={set("productArea")} options={AREAS} className="w-full" />
+            <Field label="Product area *">
+              <ComboField
+                value={form.productArea}
+                onChange={set("productArea")}
+                options={areaOptions}
+                placeholder="e.g. Billing"
+                className="w-full"
+              />
             </Field>
-            <Field label="Theme">
-              <Select value={form.theme} onChange={set("theme")} options={THEMES} className="w-full" />
+            <Field label="Theme *">
+              <ComboField
+                value={form.theme}
+                onChange={set("theme")}
+                options={themeOptions}
+                placeholder="e.g. Onboarding"
+                className="w-full"
+              />
             </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Client">
-              <Input value={form.client} onChange={(e) => set("client")(e.target.value)} placeholder="Client name" className="w-full" />
+              {/* Free text with suggestions — picking an existing spelling avoids
+                  near-duplicates like "Aegis" vs "Aegis providers". */}
+              <Input
+                value={form.client}
+                onChange={(e) => set("client")(e.target.value)}
+                placeholder="Client name"
+                list="client-suggestions"
+                className="w-full"
+              />
+              <datalist id="client-suggestions">
+                {facets.clients.map((c) => <option key={c} value={c} />)}
+              </datalist>
             </Field>
             <Field label="Persona / POC">
               <Input value={form.persona} onChange={(e) => set("persona")(e.target.value)} placeholder="e.g. Quality Manager" className="w-full" />

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { normalizeKey } from "@/lib/labels";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -56,10 +57,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Date is required" }, { status: 400 });
   }
 
+  // Normalised here as well as in the form, so a direct API call can't
+  // introduce a "Billing"/"billing" split in the charts.
+  const productArea = normalizeKey(body.productArea ?? "") || "GENERAL";
+  const theme = normalizeKey(body.theme ?? "") || "OTHER";
+
   const insight = await prisma.insight.create({
     data: {
-      productArea: body.productArea,
-      theme: body.theme,
+      productArea,
+      theme,
       persona: body.persona ?? null,
       oneLiner: body.oneLiner,
       content: body.content,

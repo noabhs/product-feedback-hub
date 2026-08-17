@@ -8,27 +8,10 @@ import { EditFeedbackModal } from "@/components/insights/EditFeedbackModal";
 import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
 import type { InsightItem } from "@/components/insights/InsightCard";
+import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
 
-const AREAS = [
-  { value: "POP_HEALTH", label: "Pop health" },
-  { value: "QUALITY", label: "Quality" },
-  { value: "ANALYTICS", label: "Analytics" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "RISK_DX", label: "Risk / Dx" },
-  { value: "AMBIENT", label: "Ambient" },
-  { value: "GENERAL", label: "General" },
-  { value: "COMPETITIVE", label: "Competitive" },
-];
-
-const THEMES = [
-  { value: "WORKFLOW", label: "Workflow" },
-  { value: "DATA_INTEGRATION", label: "Data & integration" },
-  { value: "TRUST", label: "Trust" },
-  { value: "PAIN_POINTS", label: "Pain points" },
-  { value: "GOALS", label: "Goals" },
-  { value: "PRICING_WTP", label: "Pricing / WTP" },
-  { value: "AGENTIC", label: "Agentic" },
-];
+const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
+const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
 
 type ViewMode = "cards" | "table";
 
@@ -44,11 +27,33 @@ export default function FeedbackPage() {
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const [facets, setFacets] = useState<{ areas: string[]; themes: string[] }>({ areas: [], themes: [] });
+
   useEffect(() => {
-    fetch("/api/insights/clients")
+    fetch("/api/insights/facets")
       .then((r) => r.json())
-      .then((list: string[]) => setClients(list.map((c) => ({ value: c, label: c }))));
+      .then((d) => {
+        setClients((d.clients ?? []).map((c: string) => ({ value: c, label: c })));
+        setFacets({ areas: d.areas ?? [], themes: d.themes ?? [] });
+      })
+      .catch(() => {});
   }, []);
+
+  // Built-in options plus any custom values already in use, so a custom area
+  // someone added is filterable rather than invisible.
+  const areaOptions = useMemo(
+    () => [...new Set([...BUILT_IN_AREAS, ...facets.areas])]
+      .map((v) => ({ value: v, label: areaLabel(v) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [facets.areas]
+  );
+
+  const themeOptions = useMemo(
+    () => [...new Set([...BUILT_IN_THEMES, ...facets.themes])]
+      .map((v) => ({ value: v, label: themeLabel(v) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [facets.themes]
+  );
 
   // Load all items whenever the DB-side filters change (not search — that's client-side)
   const fetchItems = useCallback(async () => {
@@ -166,8 +171,8 @@ export default function FeedbackPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-60"
           />
-          <Select value={productArea} onChange={setProductArea} options={AREAS} placeholder="All product areas" className="w-44" />
-          <Select value={theme} onChange={setTheme} options={THEMES} placeholder="All themes" className="w-40" />
+          <Select value={productArea} onChange={setProductArea} options={areaOptions} placeholder="All product areas" className="w-44" />
+          <Select value={theme} onChange={setTheme} options={themeOptions} placeholder="All themes" className="w-40" />
           <Select value={client} onChange={setClient} options={clients} placeholder="All clients" className="w-44" />
           {hasFilters && (
             <Button

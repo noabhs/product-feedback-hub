@@ -3,39 +3,8 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { ArrowRight, MessageSquare, Users, FileQuestion, Layers } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
 
-const AREA_LABELS: Record<string, string> = {
-  POP_HEALTH: "Pop health",
-  QUALITY: "Quality",
-  ANALYTICS: "Analytics",
-  AGENTIC: "Agentic",
-  RISK_DX: "Risk / Dx",
-  AMBIENT: "Ambient",
-  GENERAL: "General",
-  COMPETITIVE: "Competitive",
-};
-
-const THEME_LABELS: Record<string, string> = {
-  WORKFLOW: "Workflow",
-  DATA_INTEGRATION: "Data & integration",
-  TRUST: "Trust",
-  PAIN_POINTS: "Pain points",
-  GOALS: "Goals",
-  PRICING_WTP: "Pricing / WTP",
-  AGENTIC: "Agentic",
-  OTHER: "Other",
-};
-
-const AREA_COLORS: Record<string, string> = {
-  POP_HEALTH: "#5d07e2",
-  QUALITY: "#322B5F",
-  ANALYTICS: "#0F6E56",
-  AGENTIC: "#9333ea",
-  RISK_DX: "#dc2626",
-  AMBIENT: "#0891b2",
-  GENERAL: "#78716c",
-  COMPETITIVE: "#d97706",
-};
 
 function fmtDate(d: Date) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(d);
@@ -116,10 +85,10 @@ export default async function HomePage() {
             {byAreaRaw.map((r) => (
               <BarRow
                 key={r.productArea}
-                label={AREA_LABELS[r.productArea] ?? r.productArea}
+                label={areaLabel(r.productArea)}
                 count={r._count.id}
                 pct={r._count.id / maxArea}
-                color={AREA_COLORS[r.productArea] ?? "#322B5F"}
+                color={areaColor(r.productArea)}
               />
             ))}
           </ChartCard>
@@ -158,7 +127,7 @@ export default async function HomePage() {
                 >
                   <div
                     className="w-1.5 h-1.5 rounded-full mt-[5px] shrink-0"
-                    style={{ background: AREA_COLORS[r.productArea] ?? "#322B5F" }}
+                    style={{ background: areaColor(r.productArea) }}
                   />
                   <div className="flex-1 min-w-0">
                     <Link href={`/insights/${r.id}`}>
@@ -167,7 +136,7 @@ export default async function HomePage() {
                       </p>
                     </Link>
                     <p className="text-[11px] text-brand-primary opacity-40 mt-0.5">
-                      {AREA_LABELS[r.productArea] ?? r.productArea}
+                      {areaLabel(r.productArea)}
                       {r.client ? ` · ${r.client}` : ""}
                       {" · "}{fmtDate(r.createdAt)}
                     </p>
@@ -182,7 +151,7 @@ export default async function HomePage() {
             {byThemeRaw.map((r) => (
               <BarRow
                 key={r.theme}
-                label={THEME_LABELS[r.theme] ?? r.theme}
+                label={themeLabel(r.theme)}
                 count={r._count.id}
                 pct={r._count.id / maxTheme}
                 color="#73F6DB"
