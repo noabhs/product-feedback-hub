@@ -10,7 +10,7 @@ import { useApiKey } from "@/hooks/useApiKey";
  * so it's reachable from anywhere; the key itself is per-browser localStorage.
  */
 export function ApiKeyControl() {
-  const { apiKey, saveKey } = useApiKey();
+  const { apiKey, saveKey, hasServerKey, canUseAi } = useApiKey();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -24,13 +24,19 @@ export function ApiKeyControl() {
       <button
         onClick={openModal}
         className="w-full flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
-        title={apiKey ? "Anthropic API key is set" : "No Anthropic API key set"}
+        title={
+          apiKey
+            ? "Using your personal Anthropic key"
+            : hasServerKey
+              ? "Using the shared team key — a personal one is optional"
+              : "No Anthropic key configured"
+        }
       >
         <KeyRound className="w-4 h-4 shrink-0" />
         <span className="flex-1 text-left">API key</span>
         <span
-          className={`w-1.5 h-1.5 rounded-full shrink-0 ${apiKey ? "bg-teal" : "bg-white/25"}`}
-          aria-label={apiKey ? "set" : "not set"}
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${canUseAi ? "bg-teal" : "bg-white/25"}`}
+          aria-label={canUseAi ? "available" : "not configured"}
         />
       </button>
 
@@ -54,8 +60,16 @@ export function ApiKeyControl() {
             <div className="px-6 py-5 space-y-3">
               <p className="text-[13px] text-brand-primary opacity-60 leading-relaxed">
                 Used by AI extract, the Q&amp;A bar, and the discovery doc generator. Stored in this
-                browser only — it is never saved to the database, and teammates set their own.
+                browser only — never saved to the database.
               </p>
+              {hasServerKey && (
+                <div className="rounded-md border border-[rgba(15,110,86,0.2)] bg-mint-100 px-3 py-2.5">
+                  <p className="text-[13px] text-brand-primary">
+                    A shared team key is already configured, so you don&apos;t need to set one.
+                    Add a personal key only if you want your usage billed separately.
+                  </p>
+                </div>
+              )}
               <Input
                 type="password"
                 value={draft}
@@ -64,7 +78,9 @@ export function ApiKeyControl() {
                 className="w-full font-mono"
               />
               <p className="text-[12px] text-brand-primary opacity-40">
-                Leave blank to fall back to the server&apos;s key, if one is configured.
+                {hasServerKey
+                  ? "Leave blank to keep using the shared team key."
+                  : "No shared key is configured, so AI features need a personal key."}
               </p>
             </div>
 
