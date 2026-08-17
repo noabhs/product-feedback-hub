@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Upload, Check, AlertCircle, KeyRound } from "lucide-react";
+import Link from "next/link";
+import { Upload, Check, AlertCircle, KeyRound, FileText, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useApiKey } from "@/hooks/useApiKey";
+import { AddSourceModal } from "@/components/discovery/AddSourceModal";
 
 interface ImportResult {
   imported: number;
@@ -150,16 +152,72 @@ function ApiKeyPanel() {
   );
 }
 
+function DiscoveryDocsPanel() {
+  const [showAdd, setShowAdd] = useState(false);
+  const [added, setAdded] = useState<string | null>(null);
+
+  return (
+    <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <FileText className="w-4 h-4 text-brand-primary opacity-40" />
+        <h2 className="text-[16px] font-semibold text-brand-primary">Discovery documents</h2>
+      </div>
+      <p className="text-[13px] text-brand-primary opacity-50 mb-4 leading-relaxed">
+        Register a discovery doc by link so it&apos;s findable in the sources library, then
+        optionally have Claude pull candidate questions out of it for review.
+      </p>
+
+      {added && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-[rgba(15,110,86,0.2)] bg-mint-100 px-3 py-2.5">
+          <Check className="w-4 h-4 text-teal-strong shrink-0" />
+          <p className="text-[13px] text-brand-primary">
+            Added <span className="font-semibold">{added}</span> to the sources library.
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={() => setShowAdd(true)}>
+          <Plus className="w-4 h-4" />
+          Add document
+        </Button>
+        <Link href="/discovery/extract">
+          <Button variant="ghost" size="sm">
+            <Sparkles className="w-4 h-4" />
+            Extract questions from a doc
+          </Button>
+        </Link>
+        <Link href="/discovery">
+          <Button variant="text" size="sm">View sources library</Button>
+        </Link>
+      </div>
+
+      <p className="text-[12px] text-brand-primary opacity-35 mt-3">
+        Documents are stored as links, not uploaded copies — so permissions stay with Drive,
+        Notion, or wherever the file already lives.
+      </p>
+
+      {showAdd && (
+        <AddSourceModal
+          onSave={(s) => { setAdded(s.name); setShowAdd(false); }}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Admin</h1>
       <p className="text-[14px] text-brand-primary opacity-50 mb-8">
-        Import data from the Navina feedback spreadsheet. Export each tab as CSV from Google Sheets, then upload here.
+        Register discovery documents and bulk-import data. CSV imports expect each tab exported from Google Sheets.
       </p>
 
       <div className="space-y-4">
         <ApiKeyPanel />
+        <DiscoveryDocsPanel />
         <ImportPanel
           type="questions"
           label="Import discovery questions"

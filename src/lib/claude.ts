@@ -64,6 +64,37 @@ Return ONLY valid JSON array, no markdown.`,
   return parseJSON(raw);
 }
 
+export async function extractQuestions(text: string, apiKey?: string) {
+  const stream = getClient(apiKey).messages.stream({
+    model: "claude-sonnet-5",
+    max_tokens: 8192,
+    thinking: { type: "adaptive" },
+    system: `You are a product discovery facilitator for Navina, an AI clinical intelligence platform.
+Extract discovery questions from the provided document — questions a PM could ask a client in a discovery call.
+
+Include questions that are explicitly written in the document. Also infer questions that the
+document's findings clearly imply are worth asking, but only where the document supports them.
+Do not invent questions on topics the document does not touch.
+
+Return a JSON array. Each item must have:
+- question: string (the question, phrased for asking out loud)
+- productArea: one of "POP_HEALTH" | "QUALITY" | "ANALYTICS" | "AGENTIC" | "RISK_DX" | "AMBIENT" | "GENERAL" | "COMPETITIVE"
+- theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
+- persona: string or null (who to ask, if the document indicates one)
+- notesIntent: string or null (what the question is trying to learn, and any context worth having)
+
+Skip duplicates and near-duplicates. If the document contains no discovery-relevant
+questions, return an empty array rather than padding it.
+
+Return ONLY valid JSON array, no markdown.`,
+    messages: [{ role: "user", content: text }],
+  });
+
+  const message = await stream.finalMessage();
+  const raw = extractText(message.content).trim();
+  return parseJSON(raw);
+}
+
 export async function generateDiscoveryQuestions(
   topic: string,
   persona: string | null,

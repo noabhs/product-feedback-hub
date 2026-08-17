@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, FileText, Plus, Download, ChevronRight, ExternalLink, Trash2 } from "lucide-react";
+import { Search, FileText, Plus, Download, ChevronRight, ExternalLink, Trash2, Sparkles } from "lucide-react";
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -347,12 +347,23 @@ export default function DiscoveryPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4">
+                          <div className="flex items-center justify-end gap-1">
+                            {s.link && (
+                              <Link
+                                href={`/discovery/extract?url=${encodeURIComponent(s.link)}&name=${encodeURIComponent(s.name)}`}
+                                title="Extract discovery questions from this document"
+                                className="opacity-0 group-hover:opacity-100 text-brand-primary opacity-30 hover:text-brand-secondary-500 hover:opacity-100 transition-all"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                              </Link>
+                            )}
                           <button
                             onClick={() => deleteSource(s.id)}
                             className="opacity-0 group-hover:opacity-100 text-brand-primary opacity-30 hover:text-negative-strong hover:opacity-100 transition-all"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
