@@ -357,7 +357,7 @@ export default function DiscoveryPage() {
                           <div className="flex items-center justify-end gap-1">
                             {s.link && (
                               <Link
-                                href={`/discovery/extract?url=${encodeURIComponent(s.link)}&name=${encodeURIComponent(s.name)}`}
+                                href={`/upload?mode=questions&url=${encodeURIComponent(s.link)}&name=${encodeURIComponent(s.name)}`}
                                 title="Extract discovery questions from this document"
                                 className="opacity-0 group-hover:opacity-100 text-brand-primary opacity-30 hover:text-brand-secondary-500 hover:opacity-100 transition-all"
                               >
