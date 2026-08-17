@@ -8,6 +8,7 @@ import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
 import type { InsightItem } from "@/lib/types";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
+import { SOURCE_CATEGORIES, sourceCategory } from "@/lib/sources";
 
 const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
 const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
@@ -32,6 +33,7 @@ export default function FeedbackPage() {
   const [productArea, setProductArea] = useState("");
   const [theme, setTheme] = useState("");
   const [client, setClient] = useState("");
+  const [source, setSource] = useState("");
   const [clients, setClients] = useState<{ value: string; label: string }[]>([]);
   const [items, setItems] = useState<InsightItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,11 @@ export default function FeedbackPage() {
       })
       .catch(() => {});
   }, []);
+
+  const sourceOptions = useMemo(() => {
+    const present = new Set(items.map((i) => sourceCategory(i.sourceName, i.sourceType)));
+    return SOURCE_CATEGORIES.filter((c) => present.has(c)).map((c) => ({ value: c, label: c }));
+  }, [items]);
 
   // Built-in options plus any custom values already in use, so a custom area
   // someone added is filterable rather than invisible.
@@ -89,13 +96,15 @@ export default function FeedbackPage() {
   // Search filtered client-side — instant, no API call
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (item) =>
+    return items.filter((item) => {
+      if (source && sourceCategory(item.sourceName, item.sourceType) !== source) return false;
+      if (!q) return true;
+      return (
         item.oneLiner.toLowerCase().includes(q) ||
         (item.content && item.content.toLowerCase().includes(q))
-    );
-  }, [items, search]);
+      );
+    });
+  }, [items, search, source]);
 
   // Sorted client-side too — everything is already loaded, so this is instant.
   const displayed = useMemo(() => {
@@ -172,12 +181,13 @@ export default function FeedbackPage() {
     window.location.href = `/api/insights/export?${params}`;
   };
 
-  const hasFilters = !!(search || productArea || theme || client);
+  const hasFilters = !!(search || productArea || theme || client || source);
   const editingItem = modal !== "new" ? modal : null;
 
-  const countLabel = search.trim()
-    ? `${displayed.length} of ${items.length} entries`
-    : `${items.length} entries`;
+  const countLabel =
+    displayed.length === items.length
+      ? `${items.length} entries`
+      : `${displayed.length} of ${items.length} entries`;
 
   return (
     <div className="p-8">
@@ -228,11 +238,12 @@ export default function FeedbackPage() {
           <Select value={productArea} onChange={setProductArea} options={areaOptions} placeholder="All product areas" className="w-44" />
           <Select value={theme} onChange={setTheme} options={themeOptions} placeholder="All themes" className="w-40" />
           <Select value={client} onChange={setClient} options={clients} placeholder="All clients" className="w-44" />
+          <Select value={source} onChange={setSource} options={sourceOptions} placeholder="All sources" className="w-40" />
           {hasFilters && (
             <Button
               variant="text"
               size="sm"
-              onClick={() => { setSearch(""); setProductArea(""); setTheme(""); setClient(""); }}
+              onClick={() => { setSearch(""); setProductArea(""); setTheme(""); setClient(""); setSource(""); }}
             >
               Clear filters
             </Button>

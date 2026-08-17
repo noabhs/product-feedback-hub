@@ -14,6 +14,7 @@ export interface InsightItem {
   client?: string | null;
   sourceName?: string | null;
   sourceUrl?: string | null;
+  sourceType?: string | null;
   date?: string | null;
   wtp?: string | null;
   createdBy?: string | null;

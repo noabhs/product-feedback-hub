@@ -23,7 +23,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             </div>
             <div>
               <p className="text-white font-semibold text-sm leading-none">navina</p>
-              <p className="text-teal text-[10px] font-medium leading-none mt-0.5">Insights Hub</p>
+              <p className="text-teal text-[10px] font-medium leading-none mt-0.5">Product Insights Hub</p>
             </div>
           </Link>
         </div>

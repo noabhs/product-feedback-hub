@@ -111,7 +111,7 @@ export default function ExtractPage() {
             tags: JSON.stringify(i.tags),
             sourceUrl: sourceUrl || null,
             sourceName: hostname || "AI extract",
-            sourceType: "MANUAL",
+            sourceType: "AI_EXTRACT",
           }),
         })
       )

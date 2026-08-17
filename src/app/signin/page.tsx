@@ -21,7 +21,7 @@ export default async function SignInPage({
     <div className="min-h-screen flex items-center justify-center bg-surface-app p-6">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] shadow-sm p-8">
-          <h1 className="text-[22px] font-extrabold text-brand-primary mb-1">Navina Insights Hub</h1>
+          <h1 className="text-[22px] font-extrabold text-brand-primary mb-1">Navina Product Insights Hub</h1>
           <p className="text-[14px] text-brand-primary mb-6" style={{ opacity: 0.6 }}>
             Sign in with your Navina Google account to continue.
           </p>
