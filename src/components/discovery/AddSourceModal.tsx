@@ -26,16 +26,8 @@ const FORMATS = [
   { value: "Other", label: "Other" },
 ];
 
-interface Source {
-  id: string;
-  name: string;
-  productArea: string;
-  format: string | null;
-  date: string | null;
-  topics: string | null;
-  link: string | null;
-  notes: string | null;
-}
+
+import type { Source } from "@/lib/types";
 
 interface Props {
   onSave: (s: Source) => void;

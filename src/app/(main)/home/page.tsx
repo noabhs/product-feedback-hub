@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, MessageSquare, Users, FileQuestion, Layers } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
+import { shortName } from "@/lib/people";
 
 
 function fmtDate(d: Date) {
@@ -42,7 +43,7 @@ export default async function HomePage() {
     prisma.insight.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
-      select: { id: true, oneLiner: true, productArea: true, client: true, createdAt: true },
+      select: { id: true, oneLiner: true, productArea: true, client: true, createdAt: true, createdBy: true },
     }),
     prisma.insight.findMany({
       where: { client: { not: null } },
@@ -139,6 +140,7 @@ export default async function HomePage() {
                       {areaLabel(r.productArea)}
                       {r.client ? ` · ${r.client}` : ""}
                       {" · "}{fmtDate(r.createdAt)}
+                      {" · "}{shortName(r.createdBy)}
                     </p>
                   </div>
                 </div>

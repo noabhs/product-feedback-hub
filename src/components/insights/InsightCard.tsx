@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { ExternalLink, Trash2, Pencil, MessageSquare } from "lucide-react";
+import { byline } from "@/lib/people";
 
 export interface InsightItem {
   id: string;
@@ -116,6 +117,13 @@ export function InsightCard({ insight, onDelete, onEdit }: InsightCardProps) {
           )
         )}
       </div>
+
+      <p
+        className="text-[11px] text-brand-primary opacity-35 mt-3 pt-2.5 border-t border-[rgba(50,43,95,0.06)]"
+        title={insight.createdBy ?? "Imported before author tracking"}
+      >
+        {byline(insight.createdBy)}
+      </p>
     </Link>
   );
 }

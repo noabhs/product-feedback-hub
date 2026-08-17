@@ -61,6 +61,8 @@ model DiscoveryQuestion {
   question    String
   notesIntent String?
   source      String?
+  // Email of the signed-in user who added this. Nullable: seeded rows predate auth.
+  createdBy   String?
   createdAt   DateTime  @default(now())
 
   @@index([productArea])
@@ -76,5 +78,7 @@ model SourceDocument {
   topics      String?
   link        String?
   notes       String?
+  // Email of the signed-in user who added this. Nullable: seeded rows predate auth.
+  createdBy   String?
   createdAt   DateTime  @default(now())
 }

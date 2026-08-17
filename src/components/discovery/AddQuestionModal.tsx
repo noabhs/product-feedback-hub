@@ -26,15 +26,8 @@ const THEMES = [
   { value: "OTHER", label: "Other" },
 ];
 
-interface Question {
-  id: string;
-  productArea: string;
-  theme: string;
-  persona: string | null;
-  question: string;
-  notesIntent: string | null;
-  source: string | null;
-}
+
+import type { Question } from "@/lib/types";
 
 interface Props {
   onSave: (q: Question) => void;

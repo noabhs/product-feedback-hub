@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
   const body = await req.json();
   if (!body.question?.trim()) return NextResponse.json({ error: "Question is required" }, { status: 400 });
   const q = await prisma.discoveryQuestion.create({
@@ -38,6 +40,7 @@ export async function POST(req: NextRequest) {
       question: body.question.trim(),
       notesIntent: body.notesIntent || null,
       source: body.source || null,
+      createdBy: session?.user?.email ?? null,
     },
   });
   return NextResponse.json(q, { status: 201 });

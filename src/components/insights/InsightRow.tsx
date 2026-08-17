@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { ExternalLink, Trash2, Pencil } from "lucide-react";
 import type { InsightItem } from "./InsightCard";
+import { byline } from "@/lib/people";
 
 interface InsightRowProps {
   insight: InsightItem;
@@ -47,9 +48,12 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
         >
           {insight.oneLiner}
         </Link>
-        {insight.persona && (
-          <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">{insight.persona}</p>
-        )}
+        <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
+          {insight.persona && <span>{insight.persona} · </span>}
+          <span title={insight.createdBy ?? "Imported before author tracking"}>
+            {byline(insight.createdBy)}
+          </span>
+        </p>
       </td>
       <td className="py-3 px-4 align-top whitespace-nowrap">
         {insight.sourceName && (

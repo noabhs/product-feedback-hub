@@ -5,6 +5,8 @@ import { Search, FileText, Plus, Download, ChevronRight, ExternalLink, Trash2 } 
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { byline, shortName } from "@/lib/people";
+import type { Question, Source } from "@/lib/types";
 import { AddQuestionModal } from "@/components/discovery/AddQuestionModal";
 import { AddSourceModal } from "@/components/discovery/AddSourceModal";
 
@@ -34,26 +36,6 @@ const AREA_LABELS: Record<string, string> = {
   GENERAL: "General", COMPETITIVE: "Competitive",
 };
 
-interface Question {
-  id: string;
-  productArea: string;
-  theme: string;
-  persona: string | null;
-  question: string;
-  notesIntent: string | null;
-  source: string | null;
-}
-
-interface Source {
-  id: string;
-  name: string;
-  productArea: string;
-  format: string | null;
-  date: string | null;
-  topics: string | null;
-  link: string | null;
-  notes: string | null;
-}
 
 type Tab = "questions" | "sources";
 
@@ -248,6 +230,12 @@ export default function DiscoveryPage() {
                           <Badge type="area" value={q.productArea} />
                           <Badge type="theme" value={q.theme} />
                           {q.persona && <span className="text-[11px] text-brand-primary opacity-40">{q.persona}</span>}
+                          <span
+                            className="text-[11px] text-brand-primary opacity-30"
+                            title={q.createdBy ?? "Imported before author tracking"}
+                          >
+                            {byline(q.createdBy)}
+                          </span>
                         </div>
                       </div>
                     </button>
@@ -302,6 +290,7 @@ export default function DiscoveryPage() {
                       <th className="text-left py-3 px-4 text-[11px] font-semibold text-brand-primary opacity-50 uppercase tracking-wide w-24">Format</th>
                       <th className="text-left py-3 px-4 text-[11px] font-semibold text-brand-primary opacity-50 uppercase tracking-wide w-28">Date</th>
                       <th className="text-left py-3 px-4 text-[11px] font-semibold text-brand-primary opacity-50 uppercase tracking-wide">Topics</th>
+                      <th className="text-left py-3 px-4 text-[11px] font-semibold text-brand-primary opacity-50 uppercase tracking-wide w-28">Added by</th>
                       <th className="w-10 py-3 px-4" />
                     </tr>
                   </thead>
@@ -348,6 +337,14 @@ export default function DiscoveryPage() {
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-[12px] text-brand-primary opacity-60 line-clamp-1">{s.topics}</span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span
+                            className="text-[12px] text-brand-primary opacity-45"
+                            title={s.createdBy ?? "Imported before author tracking"}
+                          >
+                            {shortName(s.createdBy)}
+                          </span>
                         </td>
                         <td className="py-3 px-4">
                           <button
