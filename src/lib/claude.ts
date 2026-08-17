@@ -21,7 +21,7 @@ export async function answerQuestion(question: string, insights: { oneLiner: str
     .join("\n\n---\n\n");
 
   const stream = getClient(apiKey).messages.stream({
-    model: "claude-opus-5",
+    model: "claude-sonnet-5",
     max_tokens: 4096,
     thinking: { type: "adaptive" },
     system: `You are an expert product researcher for Navina, an AI-powered clinical intelligence platform.
@@ -42,7 +42,7 @@ If the context doesn't contain enough information, say so clearly.`,
 
 export async function extractInsights(text: string, apiKey?: string) {
   const stream = getClient(apiKey).messages.stream({
-    model: "claude-opus-5",
+    model: "claude-sonnet-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
     system: `You are a product research analyst for Navina. Extract discrete client insights from the provided text.
@@ -76,7 +76,7 @@ export async function generateDiscoveryQuestions(
   const iList = insights.slice(0, 20).map((i) => `- ${i.oneLiner} [${i.client ?? "unknown client"}]`).join("\n");
 
   const stream = getClient(apiKey).messages.stream({
-    model: "claude-opus-5",
+    model: "claude-sonnet-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
     system: `You are an expert product discovery facilitator for Navina.
