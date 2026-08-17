@@ -42,6 +42,7 @@ export default function FeedbackPage() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<ViewMode>("cards");
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/insights/clients")
@@ -78,9 +79,19 @@ export default function FeedbackPage() {
     );
   }, [items, search]);
 
+  // Optimistic, but rolled back if the request fails — otherwise a failed
+  // delete looks successful until the next refresh.
   const handleDelete = async (id: string) => {
-    await fetch(`/api/insights/${id}`, { method: "DELETE" });
+    const snapshot = items;
+    setDeleteError(null);
     setItems((prev) => prev.filter((i) => i.id !== id));
+    try {
+      const res = await fetch(`/api/insights/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    } catch (e) {
+      setItems(snapshot);
+      setDeleteError(`Couldn't delete that entry — ${(e as Error).message}. It's still saved.`);
+    }
   };
 
   const handleSaved = (saved: InsightItem) => {
@@ -133,6 +144,18 @@ export default function FeedbackPage() {
         </div>
 
         <AIQABar />
+
+        {deleteError && (
+          <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-[13px] text-red-700">{deleteError}</p>
+            <button
+              onClick={() => setDeleteError(null)}
+              className="text-[13px] text-red-700 opacity-60 hover:opacity-100 shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Filters + view toggle */}
         <div className="flex flex-wrap items-center gap-3 mb-6">

@@ -89,6 +89,7 @@ export default function DiscoveryPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [sLoading, setSLoading] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Fetch questions
   useEffect(() => {
@@ -127,9 +128,19 @@ export default function DiscoveryPage() {
     window.location.href = `/api/questions/export?${params}`;
   }
 
+  // Optimistic, but rolled back if the request fails — otherwise a failed
+  // delete looks successful until the next refresh.
   async function deleteSource(id: string) {
-    await fetch(`/api/sources/${id}`, { method: "DELETE" });
+    const snapshot = sources;
+    setDeleteError(null);
     setSources((prev) => prev.filter((s) => s.id !== id));
+    try {
+      const res = await fetch(`/api/sources/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    } catch (e) {
+      setSources(snapshot);
+      setDeleteError(`Couldn't delete that source — ${(e as Error).message}. It's still saved.`);
+    }
   }
 
   return (
@@ -177,6 +188,18 @@ export default function DiscoveryPage() {
             </button>
           ))}
         </div>
+
+        {deleteError && (
+          <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-[13px] text-red-700">{deleteError}</p>
+            <button
+              onClick={() => setDeleteError(null)}
+              className="text-[13px] text-red-700 opacity-60 hover:opacity-100 shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* ── Questions tab ────────────────────────────────── */}
         {tab === "questions" && (
