@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Sparkles, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
+import { useApiKey } from "@/hooks/useApiKey";
+import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 
 interface Source {
   id: string;
@@ -15,6 +17,7 @@ export function AIQABar() {
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
+  const { aiHeaders } = useApiKey();
 
   async function ask() {
     if (!question.trim() || loading) return;
@@ -24,7 +27,7 @@ export function AIQABar() {
     try {
       const res = await fetch("/api/ai/qa", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...aiHeaders },
         body: JSON.stringify({ question }),
       });
       const data = await res.json();
@@ -42,7 +45,8 @@ export function AIQABar() {
         <span className="text-[13px] font-semibold text-teal uppercase tracking-wide">Ask the feedback</span>
       </div>
 
-      <div className="flex gap-2">
+      <NoKeyBanner />
+      <div className="flex gap-2 mt-3">
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}

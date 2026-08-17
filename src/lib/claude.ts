@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-export const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getClient(apiKey?: string) {
+  return new Anthropic({ apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY });
+}
 
 function parseJSON(raw: string): unknown {
   const stripped = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
@@ -13,12 +15,12 @@ function extractText(content: Anthropic.ContentBlock[]): string {
   return block.text;
 }
 
-export async function answerQuestion(question: string, insights: { oneLiner: string; content: string; client?: string | null; productArea: string; id: string }[]) {
+export async function answerQuestion(question: string, insights: { oneLiner: string; content: string; client?: string | null; productArea: string; id: string }[], apiKey?: string) {
   const context = insights
     .map((i, idx) => `[${idx + 1}] Client: ${i.client ?? "Unknown"} | Area: ${i.productArea}\n${i.oneLiner}\n${i.content}`)
     .join("\n\n---\n\n");
 
-  const stream = anthropic.messages.stream({
+  const stream = getClient(apiKey).messages.stream({
     model: "claude-opus-5",
     max_tokens: 4096,
     thinking: { type: "adaptive" },
@@ -38,8 +40,8 @@ If the context doesn't contain enough information, say so clearly.`,
   return extractText(message.content);
 }
 
-export async function extractInsights(text: string) {
-  const stream = anthropic.messages.stream({
+export async function extractInsights(text: string, apiKey?: string) {
+  const stream = getClient(apiKey).messages.stream({
     model: "claude-opus-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
@@ -67,12 +69,13 @@ export async function generateDiscoveryQuestions(
   persona: string | null,
   clientContext: string | null,
   questions: { question: string; theme: string; notesIntent?: string | null }[],
-  insights: { oneLiner: string; content: string; client?: string | null }[]
+  insights: { oneLiner: string; content: string; client?: string | null }[],
+  apiKey?: string
 ) {
   const qList = questions.map((q) => `- ${q.question}${q.notesIntent ? ` (Intent: ${q.notesIntent})` : ""}`).join("\n");
   const iList = insights.slice(0, 20).map((i) => `- ${i.oneLiner} [${i.client ?? "unknown client"}]`).join("\n");
 
-  const stream = anthropic.messages.stream({
+  const stream = getClient(apiKey).messages.stream({
     model: "claude-opus-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },

@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ answer: "No relevant insights found for this question.", sources: [] });
   }
 
-  const answer = await answerQuestion(question, insights);
+  const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
+  const answer = await answerQuestion(question, insights, apiKey);
   return NextResponse.json({
     answer,
     sources: insights.map((i) => ({ id: i.id, oneLiner: i.oneLiner, client: i.client })),

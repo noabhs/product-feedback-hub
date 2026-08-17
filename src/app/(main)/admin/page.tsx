@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Upload, Check, AlertCircle } from "lucide-react";
+import { Upload, Check, AlertCircle, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useApiKey } from "@/hooks/useApiKey";
 
 interface ImportResult {
   imported: number;
@@ -95,6 +96,60 @@ function ImportPanel({ type, label, columns }: { type: "questions" | "feedback";
   );
 }
 
+function ApiKeyPanel() {
+  const { apiKey, saveKey } = useApiKey();
+  const [draft, setDraft] = useState(apiKey);
+  const [saved, setSaved] = useState(false);
+
+  // Sync draft when apiKey loads from localStorage
+  useState(() => { setDraft(apiKey); });
+
+  function handleSave() {
+    saveKey(draft);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  const isSet = apiKey.startsWith("sk-ant-");
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <KeyRound className="w-4 h-4 text-brand-primary opacity-60" />
+        <h2 className="text-[16px] font-semibold text-brand-primary">Anthropic API key</h2>
+      </div>
+      <p className="text-[12px] text-brand-primary opacity-50 mb-4">
+        Stored in your browser only — never sent to any server except Anthropic. Get your key at{" "}
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="underline">console.anthropic.com</a>.
+      </p>
+
+      <div className="flex gap-2">
+        <input
+          type="password"
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); setSaved(false); }}
+          placeholder="sk-ant-api03-…"
+          className="flex-1 h-9 rounded-sm border border-[rgba(50,43,95,0.2)] px-3 text-[13px] text-brand-primary placeholder:text-brand-primary/30 focus:outline-none focus:border-brand-secondary-500 font-mono"
+        />
+        <Button size="sm" onClick={handleSave} disabled={draft === apiKey}>
+          {saved ? <><Check className="w-3.5 h-3.5" /> Saved</> : "Save"}
+        </Button>
+        {apiKey && (
+          <Button size="sm" variant="ghost" onClick={() => { saveKey(""); setDraft(""); }}>
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {isSet && (
+        <p className="mt-2 text-[12px] text-positive-strong flex items-center gap-1">
+          <Check className="w-3 h-3" /> Key set — AI features will use your personal credits
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   return (
     <div className="p-8 max-w-2xl mx-auto">
@@ -104,6 +159,7 @@ export default function AdminPage() {
       </p>
 
       <div className="space-y-4">
+        <ApiKeyPanel />
         <ImportPanel
           type="questions"
           label="Import discovery questions"

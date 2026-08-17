@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
 
     if (!content) return NextResponse.json({ error: "No content provided" }, { status: 400 });
 
-    const insights = await extractInsights(content);
+    const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
+    const insights = await extractInsights(content, apiKey);
     return NextResponse.json({ insights });
   } catch (e) {
     console.error("[ai/extract]", e);

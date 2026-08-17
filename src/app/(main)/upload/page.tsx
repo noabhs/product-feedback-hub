@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { Link2, Sparkles, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
+import { useApiKey } from "@/hooks/useApiKey";
+import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 
 const AREAS = [
   { value: "POP_HEALTH", label: "Pop health" },
@@ -41,6 +43,7 @@ interface Item {
 type Stage = "input" | "review" | "saved";
 
 export default function ExtractPage() {
+  const { aiHeaders } = useApiKey();
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [extracting, setExtracting] = useState(false);
@@ -60,7 +63,7 @@ export default function ExtractPage() {
     try {
       const res = await fetch("/api/ai/extract", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...aiHeaders },
         body: JSON.stringify({ url: url.trim() || null, text: text.trim() || null }),
       });
       const data = await res.json();
@@ -390,6 +393,8 @@ export default function ExtractPage() {
             className="w-full rounded-sm bg-white border border-[rgba(50,43,95,0.18)] px-3 py-2.5 text-[14px] text-brand-primary placeholder:text-brand-primary placeholder:opacity-40 focus:outline-none focus:border-brand-secondary-500 focus:ring-1 focus:ring-brand-secondary-500 resize-none"
           />
         </div>
+
+        <NoKeyBanner />
 
         {error && <p className="text-[13px] text-negative-strong">{error}</p>}
 

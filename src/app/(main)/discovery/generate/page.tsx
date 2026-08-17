@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft, Copy, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useApiKey } from "@/hooks/useApiKey";
+import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 
 const AREAS = [
   { value: "POP_HEALTH", label: "Pop health" },
@@ -16,6 +18,7 @@ const AREAS = [
 ];
 
 export default function GenerateDocPage() {
+  const { aiHeaders } = useApiKey();
   const [topic, setTopic] = useState("");
   const [productAreas, setProductAreas] = useState<string[]>([]);
   const [persona, setPersona] = useState("");
@@ -37,7 +40,7 @@ export default function GenerateDocPage() {
     try {
       const res = await fetch("/api/generate-doc", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...aiHeaders },
         body: JSON.stringify({ topic, productAreas, persona: persona || null, clientContext: clientContext || null }),
       });
       const data = await res.json();
@@ -97,6 +100,8 @@ export default function GenerateDocPage() {
           <label className="block text-[13px] font-semibold text-brand-primary mb-1.5">Client context (optional)</label>
           <Input placeholder="e.g. ACO with downside risk, ~100K members" value={clientContext} onChange={(e) => setClientContext(e.target.value)} className="w-full" />
         </div>
+
+        <NoKeyBanner />
 
         {error && <p className="text-[13px] text-negative-strong">{error}</p>}
 

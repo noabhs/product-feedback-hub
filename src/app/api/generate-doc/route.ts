@@ -14,12 +14,14 @@ export async function POST(req: NextRequest) {
       prisma.insight.findMany({ where, take: 30, orderBy: { createdAt: "desc" } }),
     ]);
 
+    const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
     const generated = await generateDiscoveryQuestions(
       topic,
       persona ?? null,
       clientContext ?? null,
       questions,
-      insights.map((i) => ({ oneLiner: i.oneLiner, content: i.content, client: i.client }))
+      insights.map((i) => ({ oneLiner: i.oneLiner, content: i.content, client: i.client })),
+      apiKey
     ) as { sessionContext: string; sections: { title: string; questions: string[] }[] };
 
     const lines: string[] = [];
