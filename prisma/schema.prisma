@@ -4,7 +4,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Vercel's Neon integration created these under a NEON_ prefix because a
+  // stale DATABASE_URL (Prisma Postgres) already occupied that name.
+  // url must be the pooled host for serverless; migrations need a direct
+  // connection, which is what directUrl provides.
+  url       = env("NEON_DATABASE_URL")
+  directUrl = env("NEON_DATABASE_URL_UNPOOLED")
 }
 
 model Insight {
