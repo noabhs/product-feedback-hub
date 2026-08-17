@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  const [rows, total] = await Promise.all([
+  const [rows, total, grandTotal] = await Promise.all([
     prisma.insight.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       include: { _count: { select: { comments: true } } },
     }),
     prisma.insight.count({ where }),
+    prisma.insight.count(),
   ]);
 
   // Flatten Prisma's _count into a plain commentCount for the client.
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
     commentCount: _count.comments,
   }));
 
-  return NextResponse.json({ insights, total, page, limit });
+  return NextResponse.json({ insights, total, grandTotal, page, limit });
 }
 
 export async function POST(req: NextRequest) {

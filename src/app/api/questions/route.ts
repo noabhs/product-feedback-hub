@@ -19,13 +19,16 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  const questions = await prisma.discoveryQuestion.findMany({
-    where,
-    orderBy: [{ productArea: "asc" }, { theme: "asc" }],
-    take: 200,
-  });
+  const [questions, grandTotal] = await Promise.all([
+    prisma.discoveryQuestion.findMany({
+      where,
+      orderBy: [{ productArea: "asc" }, { theme: "asc" }],
+      take: 200,
+    }),
+    prisma.discoveryQuestion.count(),
+  ]);
 
-  return NextResponse.json({ questions });
+  return NextResponse.json({ questions, grandTotal });
 }
 
 export async function POST(req: NextRequest) {

@@ -5,6 +5,7 @@ import { Search, FileText, Plus, Download, Upload, ChevronRight, ExternalLink, T
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { RowCount } from "@/components/ui/RowCount";
 import { byline, shortName } from "@/lib/people";
 import type { Question, Source } from "@/lib/types";
 import { AddQuestionModal } from "@/components/discovery/AddQuestionModal";
@@ -65,6 +66,7 @@ export default function DiscoveryPage() {
   const [theme, setTheme] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [qLoading, setQLoading] = useState(false);
+  const [qGrandTotal, setQGrandTotal] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
 
@@ -87,6 +89,7 @@ export default function DiscoveryPage() {
       const res = await fetch(`/api/questions?${params}`);
       const data = await res.json();
       setQuestions(data.questions ?? []);
+      setQGrandTotal(data.grandTotal ?? (data.questions?.length ?? 0));
       setQLoading(false);
     };
     load();
@@ -210,6 +213,10 @@ export default function DiscoveryPage() {
               )}
             </div>
 
+            {!qLoading && questions.length > 0 && (
+              <RowCount shown={questions.length} total={qGrandTotal} noun="questions" className="mb-3" />
+            )}
+
             {qLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 8 }).map((_, i) => (
@@ -275,6 +282,10 @@ export default function DiscoveryPage() {
                 Add source
               </Button>
             </div>
+
+            {!sLoading && sources.length > 0 && (
+              <RowCount shown={sources.length} total={sources.length} noun="sources" className="mb-3" />
+            )}
 
             {sLoading ? (
               <div className="space-y-2">

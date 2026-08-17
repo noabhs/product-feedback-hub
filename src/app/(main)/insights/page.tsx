@@ -7,6 +7,7 @@ import { EditFeedbackModal } from "@/components/insights/EditFeedbackModal";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
 import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
+import { RowCount } from "@/components/ui/RowCount";
 import type { InsightItem } from "@/lib/types";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
 import { SOURCE_CATEGORIES, sourceCategory } from "@/lib/sources";
@@ -43,6 +44,8 @@ export default function FeedbackPage() {
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  // Count of every entry, ignoring filters — the denominator in "23/245".
+  const [grandTotal, setGrandTotal] = useState(0);
 
   const [facets, setFacets] = useState<{ areas: string[]; themes: string[] }>({ areas: [], themes: [] });
 
@@ -84,10 +87,13 @@ export default function FeedbackPage() {
     if (productArea) params.set("productArea", productArea);
     if (theme) params.set("theme", theme);
     if (client) params.set("client", client);
-    params.set("limit", "500");
+    // Sorting and search are client-side, so every row is loaded up front.
+    // Kept well above the current row count; revisit if this grows past ~2k.
+    params.set("limit", "2000");
     const res = await fetch(`/api/insights?${params}`);
     const data = await res.json();
     setItems(data.insights ?? []);
+    setGrandTotal(data.grandTotal ?? (data.insights?.length ?? 0));
     setLoading(false);
   }, [productArea, theme, client]);
 
@@ -155,11 +161,13 @@ export default function FeedbackPage() {
     const snapshot = items;
     setDeleteError(null);
     setItems((prev) => prev.filter((i) => i.id !== id));
+    setGrandTotal((n) => Math.max(0, n - 1));
     try {
       const res = await fetch(`/api/insights/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
     } catch (e) {
       setItems(snapshot);
+      setGrandTotal((n) => n + 1);
       setDeleteError(`Couldn't delete that entry — ${(e as Error).message}. It's still saved.`);
     }
   };
@@ -168,6 +176,7 @@ export default function FeedbackPage() {
     const isNew = !items.find((i) => i.id === saved.id);
     if (isNew) {
       setItems((prev) => [saved, ...prev]);
+      setGrandTotal((n) => n + 1);
     } else {
       setItems((prev) => prev.map((i) => (i.id === saved.id ? saved : i)));
     }
@@ -186,11 +195,6 @@ export default function FeedbackPage() {
   const hasFilters = !!(search || productArea || theme || client || source);
   const editingItem = modal !== "new" ? modal : null;
 
-  const countLabel =
-    displayed.length === items.length
-      ? `${items.length} entries`
-      : `${displayed.length} of ${items.length} entries`;
-
   return (
     <div className="p-8">
       <div className="max-w-6xl mx-auto">
@@ -199,7 +203,7 @@ export default function FeedbackPage() {
           <div>
             <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Client feedback</h1>
             <p className="text-[14px] text-brand-primary opacity-50">
-              {items.length > 0 ? countLabel : "No entries yet"} from client sessions, onsites, and feedback
+              From client sessions, onsites, Jira, and feedback threads
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -255,6 +259,10 @@ export default function FeedbackPage() {
             </Button>
           )}
         </div>
+
+        {!loading && displayed.length > 0 && (
+          <RowCount shown={displayed.length} total={grandTotal} noun="entries" className="mb-3" />
+        )}
 
         {/* Content */}
         {loading ? (
