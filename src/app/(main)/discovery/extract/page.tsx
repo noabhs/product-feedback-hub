@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Link2, Sparkles, ArrowLeft, Check, X, CheckCheck } from "lucide-react";
+import { Link2, Sparkles, ArrowLeft, Check, X, CheckCheck, FilePlus } from "lucide-react";
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useApiKey } from "@/hooks/useApiKey";
+import { AddSourceModal } from "@/components/discovery/AddSourceModal";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
 
 const AREA_OPTIONS = Object.keys(AREA_LABELS).map((v) => ({ value: v, label: areaLabel(v) }));
@@ -33,6 +34,8 @@ export default function ExtractQuestionsPage() {
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [showAddSource, setShowAddSource] = useState(false);
+  const [registered, setRegistered] = useState<string | null>(null);
 
   // Deep-linked from a source in the library: prefill its URL and name.
   useEffect(() => {
@@ -344,12 +347,40 @@ export default function ExtractQuestionsPage() {
             </div>
           )}
 
-          <Button loading={extracting} onClick={extract} className="w-full justify-center">
-            <Sparkles className="w-4 h-4" />
-            Extract questions
-          </Button>
+          {registered && (
+            <div className="flex items-center gap-2 rounded-md border border-[rgba(15,110,86,0.2)] bg-mint-100 px-3 py-2.5">
+              <Check className="w-4 h-4 text-teal-strong shrink-0" />
+              <p className="text-[13px] text-brand-primary">
+                Added <span className="font-semibold">{registered}</span> to the sources library.
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <Button loading={extracting} onClick={extract} className="flex-1 justify-center">
+              <Sparkles className="w-4 h-4" />
+              Extract questions
+            </Button>
+            <Button variant="ghost" onClick={() => setShowAddSource(true)}>
+              <FilePlus className="w-4 h-4" />
+              Add to sources library
+            </Button>
+          </div>
+          <p className="text-[12px] text-brand-primary opacity-40 text-center">
+            Registering the doc keeps it findable later. Documents are stored as links, not uploaded
+            copies, so permissions stay with Drive or Notion.
+          </p>
         </div>
       </div>
+
+      {showAddSource && (
+        <AddSourceModal
+          initialName={sourceName || undefined}
+          initialLink={url || undefined}
+          onSave={(saved) => { setRegistered(saved.name); setShowAddSource(false); }}
+          onClose={() => setShowAddSource(false)}
+        />
+      )}
     </div>
   );
 }

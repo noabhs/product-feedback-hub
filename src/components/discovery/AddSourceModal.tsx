@@ -32,6 +32,9 @@ import type { Source } from "@/lib/types";
 interface Props {
   onSave: (s: Source) => void;
   onClose: () => void;
+  /** Prefill when opened from the extract page, where the user already typed these. */
+  initialName?: string;
+  initialLink?: string;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -45,14 +48,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function AddSourceModal({ onSave, onClose }: Props) {
+export function AddSourceModal({ onSave, onClose, initialName, initialLink }: Props) {
   const [form, setForm] = useState({
-    name: "",
+    name: initialName ?? "",
     productArea: "GENERAL",
     format: "",
     date: "",
     topics: "",
-    link: "",
+    link: initialLink ?? "",
     notes: "",
   });
   const [saving, setSaving] = useState(false);

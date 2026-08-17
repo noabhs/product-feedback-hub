@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Plus, Download, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Plus, Download, Upload, ArrowUp, ArrowDown } from "lucide-react";
 import { Input, Select } from "@/components/ui/Input";
 import { InsightRow } from "@/components/insights/InsightRow";
 import { EditFeedbackModal } from "@/components/insights/EditFeedbackModal";
+import { ImportCsvModal } from "@/components/ImportCsvModal";
 import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
 import type { InsightItem } from "@/lib/types";
@@ -41,6 +42,7 @@ export default function FeedbackPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const [facets, setFacets] = useState<{ areas: string[]; themes: string[] }>({ areas: [], themes: [] });
 
@@ -201,6 +203,10 @@ export default function FeedbackPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowImport(true)}>
+              <Upload className="w-4 h-4" />
+              Import CSV
+            </Button>
             <Button variant="ghost" size="sm" onClick={exportCsv}>
               <Download className="w-4 h-4" />
               Export CSV
@@ -307,6 +313,16 @@ export default function FeedbackPage() {
           </div>
         )}
       </div>
+
+      {showImport && (
+        <ImportCsvModal
+          type="feedback"
+          title="Import client feedback"
+          columns="Product Area, Theme, Persona / POC, One-liner, Feedback, Date, WTP, Source, Client"
+          onClose={() => setShowImport(false)}
+          onImported={() => fetchItems()}
+        />
+      )}
 
       {modal !== null && (
         <EditFeedbackModal

@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, Settings, LogOut } from "lucide-react";
+import { Home, Search, BookOpen, Upload, LogOut } from "lucide-react";
 import { auth, signOut } from "@/auth";
+import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/insights", label: "Feedback", icon: Search },
   { href: "/discovery", label: "Discovery", icon: BookOpen },
   { href: "/upload", label: "AI extract", icon: Upload },
-  { href: "/admin", label: "Admin", icon: Settings },
 ];
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +40,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             </Link>
           ))}
         </nav>
+
+        <div className="px-3 pb-2">
+          <ApiKeyControl />
+        </div>
 
         {session?.user && (
           <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>

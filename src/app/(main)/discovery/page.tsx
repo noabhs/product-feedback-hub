@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, FileText, Plus, Download, ChevronRight, ExternalLink, Trash2, Sparkles } from "lucide-react";
+import { Search, FileText, Plus, Download, Upload, ChevronRight, ExternalLink, Trash2, Sparkles } from "lucide-react";
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -9,6 +9,7 @@ import { byline, shortName } from "@/lib/people";
 import type { Question, Source } from "@/lib/types";
 import { AddQuestionModal } from "@/components/discovery/AddQuestionModal";
 import { AddSourceModal } from "@/components/discovery/AddSourceModal";
+import { ImportCsvModal } from "@/components/ImportCsvModal";
 
 const AREAS = [
   { value: "POP_HEALTH", label: "Pop health" },
@@ -72,6 +73,8 @@ export default function DiscoveryPage() {
   const [sLoading, setSLoading] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Fetch questions
   useEffect(() => {
@@ -87,7 +90,7 @@ export default function DiscoveryPage() {
       setQLoading(false);
     };
     load();
-  }, [search, productArea, theme]);
+  }, [search, productArea, theme, reloadKey]);
 
   // Fetch sources when tab opens
   useEffect(() => {
@@ -137,6 +140,10 @@ export default function DiscoveryPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-4">
+            <Button variant="ghost" size="sm" onClick={() => setShowImport(true)}>
+              <Upload className="w-4 h-4" />
+              Import CSV
+            </Button>
             <Button variant="ghost" size="sm" onClick={exportQuestions}>
               <Download className="w-4 h-4" />
               Export CSV
@@ -374,6 +381,16 @@ export default function DiscoveryPage() {
           </>
         )}
       </div>
+
+      {showImport && (
+        <ImportCsvModal
+          type="questions"
+          title="Import discovery questions"
+          columns="Product Area, Theme, Persona, Question, Notes / Intent, Source"
+          onClose={() => setShowImport(false)}
+          onImported={() => setReloadKey((k) => k + 1)}
+        />
+      )}
 
       {showAddQuestion && (
         <AddQuestionModal
