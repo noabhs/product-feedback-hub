@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -46,5 +47,6 @@ export async function POST(req: NextRequest) {
       createdBy: session?.user?.email ?? null,
     },
   });
+  void logEvent(ACTIONS.questionCreated, { target: q.id, label: q.question });
   return NextResponse.json(q, { status: 201 });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateDiscoveryQuestions } from "@/lib/claude";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
     }
     lines.push("Navina • Confidential");
 
+    void logEvent(ACTIONS.aiGenerateDoc, { label: topic });
     return NextResponse.json({
       text: lines.join("\n"),
       sections: generated.sections,

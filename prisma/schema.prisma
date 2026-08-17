@@ -82,3 +82,20 @@ model SourceDocument {
   createdBy   String?
   createdAt   DateTime  @default(now())
 }
+
+model Event {
+  id        String   @id @default(cuid())
+  /// Email of the signed-in user, or "anonymous" if a request slips past auth.
+  actor     String
+  /// Dotted action name, e.g. "feedback.created", "ai.extract", "page.view".
+  action    String
+  /// Entity id for record actions, or the path for page views.
+  target    String?
+  /// Human-readable context so the log is readable without joining.
+  label     String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actor])
+  @@index([action])
+}

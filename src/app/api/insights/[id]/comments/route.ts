@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,5 +28,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const comment = await prisma.comment.create({
     data: { insightId: id, author, body: body.trim() },
   });
+  void logEvent(ACTIONS.commentCreated, { target: id, label: comment.body, actor: author });
   return NextResponse.json(comment, { status: 201 });
 }

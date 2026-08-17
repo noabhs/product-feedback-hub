@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function GET() {
   const sources = await prisma.sourceDocument.findMany({
@@ -25,5 +26,6 @@ export async function POST(req: NextRequest) {
       createdBy: session?.user?.email ?? null,
     },
   });
+  void logEvent(ACTIONS.sourceCreated, { target: source.id, label: source.name });
   return NextResponse.json(source, { status: 201 });
 }

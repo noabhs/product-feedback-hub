@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { answerQuestion } from "@/lib/claude";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function POST(req: NextRequest) {
   const { question } = await req.json();
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
   const answer = await answerQuestion(question, insights, apiKey);
+  void logEvent(ACTIONS.aiAsk, { label: question });
   return NextResponse.json({
     answer,
     sources: insights.map((i) => ({ id: i.id, oneLiner: i.oneLiner, client: i.client })),

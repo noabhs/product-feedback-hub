@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 // Kept deliberately in sync with prisma/seed.ts so that importing via this
 // route and running `npm run seed` produce identical ids and categories.
@@ -188,6 +189,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    void logEvent(ACTIONS.csvImported, { label: `${imported} ${type} rows` });
     return NextResponse.json({ imported, errors });
   } catch (e) {
     console.error("[import]", e);

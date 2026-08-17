@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractQuestions } from "@/lib/claude";
 import { fetchUrlText } from "@/lib/fetch-url";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,6 +23,10 @@ export async function POST(req: NextRequest) {
 
     const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
     const questions = await extractQuestions(content, apiKey);
+    void logEvent(ACTIONS.aiExtractQuestions, {
+      target: url?.trim() || null,
+      label: `${Array.isArray(questions) ? questions.length : 0} questions proposed`,
+    });
     return NextResponse.json({ questions });
   } catch (e) {
     console.error("[ai/extract-questions]", e);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeKey } from "@/lib/labels";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,11 +28,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       wtp: body.wtp ?? null,
     },
   });
+  void logEvent(ACTIONS.feedbackUpdated, { target: id, label: updated.oneLiner });
   return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const doomed = await prisma.insight.findUnique({ where: { id }, select: { oneLiner: true } });
   await prisma.insight.delete({ where: { id } });
+  void logEvent(ACTIONS.feedbackDeleted, { target: id, label: doomed?.oneLiner });
   return NextResponse.json({ ok: true });
 }

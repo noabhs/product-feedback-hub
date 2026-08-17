@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { normalizeKey } from "@/lib/labels";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -81,5 +82,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  void logEvent(ACTIONS.feedbackCreated, { target: insight.id, label: insight.oneLiner });
   return NextResponse.json(insight, { status: 201 });
 }

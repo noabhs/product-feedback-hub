@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 /** Only the comment's author may modify it — checked server-side, not just in the UI. */
 async function authorize(id: string) {
@@ -28,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     data: { body: body.trim() },
   });
+  void logEvent(ACTIONS.commentUpdated, { target: id, label: updated.body });
   return NextResponse.json(updated);
 }
 
@@ -37,5 +39,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (error) return error;
 
   await prisma.comment.delete({ where: { id } });
+  void logEvent(ACTIONS.commentDeleted, { target: id });
   return NextResponse.json({ ok: true });
 }

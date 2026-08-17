@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, LogOut } from "lucide-react";
+import { Home, Search, BookOpen, Upload, BarChart3, LogOut } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
+import { PageViewTracker } from "@/components/PageViewTracker";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/insights", label: "Feedback", icon: Search },
   { href: "/discovery", label: "Discovery", icon: BookOpen },
   { href: "/upload", label: "AI extract", icon: Upload },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
@@ -67,6 +69,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           </div>
         )}
       </aside>
+
+      <PageViewTracker />
 
       <main className="flex-1 overflow-y-auto">
         {children}

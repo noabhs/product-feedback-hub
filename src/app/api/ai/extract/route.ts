@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractInsights } from "@/lib/claude";
 import { fetchUrlText } from "@/lib/fetch-url";
+import { logEvent, ACTIONS } from "@/lib/events";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +21,10 @@ export async function POST(req: NextRequest) {
 
     const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
     const insights = await extractInsights(content, apiKey);
+    void logEvent(ACTIONS.aiExtract, {
+      target: url?.trim() || null,
+      label: `${Array.isArray(insights) ? insights.length : 0} insights proposed`,
+    });
     return NextResponse.json({ insights });
   } catch (e) {
     console.error("[ai/extract]", e);
