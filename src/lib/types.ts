@@ -4,6 +4,22 @@
  * others structurally incompatible.
  */
 
+export interface InsightItem {
+  id: string;
+  productArea: string;
+  theme: string;
+  persona?: string | null;
+  oneLiner: string;
+  content?: string | null;
+  client?: string | null;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
+  date?: string | null;
+  wtp?: string | null;
+  createdBy?: string | null;
+  commentCount?: number;
+}
+
 export interface Question {
   id: string;
   productArea: string;

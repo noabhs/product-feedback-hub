@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { ExternalLink, Trash2, Pencil } from "lucide-react";
-import type { InsightItem } from "./InsightCard";
-import { byline } from "@/lib/people";
+import { ExternalLink, Trash2, Pencil, MessageSquare } from "lucide-react";
+import { shortName } from "@/lib/people";
+import type { InsightItem } from "@/lib/types";
 
 interface InsightRowProps {
   insight: InsightItem;
@@ -48,12 +48,9 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
         >
           {insight.oneLiner}
         </Link>
-        <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
-          {insight.persona && <span>{insight.persona} · </span>}
-          <span title={insight.createdBy ?? "Imported before author tracking"}>
-            {byline(insight.createdBy)}
-          </span>
-        </p>
+        {insight.persona && (
+          <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">{insight.persona}</p>
+        )}
       </td>
       <td className="py-3 px-4 align-top whitespace-nowrap">
         {insight.sourceName && (
@@ -76,6 +73,32 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
       </td>
       <td className="py-3 px-4 align-top whitespace-nowrap text-[12px] text-brand-primary opacity-40">
         {dateStr}
+      </td>
+      <td className="py-3 px-4 align-top whitespace-nowrap">
+        <span
+          className="text-[12px] text-brand-primary opacity-50"
+          title={insight.createdBy ?? "Imported before author tracking"}
+        >
+          {shortName(insight.createdBy)}
+        </span>
+      </td>
+      <td className="py-3 px-4 align-top whitespace-nowrap">
+        <Link
+          href={`/insights/${insight.id}`}
+          className={`inline-flex items-center gap-1 text-[12px] transition-opacity ${
+            insight.commentCount
+              ? "text-brand-secondary-600 opacity-80 hover:opacity-100"
+              : "text-brand-primary opacity-25 hover:opacity-50"
+          }`}
+          title={
+            insight.commentCount
+              ? `${insight.commentCount} comment${insight.commentCount === 1 ? "" : "s"}`
+              : "No comments yet — click to add one"
+          }
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          {insight.commentCount ?? 0}
+        </Link>
       </td>
       <td className="py-3 px-4 align-top">
         <div className="flex items-center justify-end gap-1">

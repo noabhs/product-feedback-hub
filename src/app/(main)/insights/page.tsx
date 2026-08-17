@@ -1,19 +1,31 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, LayoutGrid, List, Plus, Download } from "lucide-react";
+import { Search, Plus, Download, ArrowUp, ArrowDown } from "lucide-react";
 import { Input, Select } from "@/components/ui/Input";
-import { InsightCard } from "@/components/insights/InsightCard";
 import { InsightRow } from "@/components/insights/InsightRow";
 import { EditFeedbackModal } from "@/components/insights/EditFeedbackModal";
 import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
-import type { InsightItem } from "@/components/insights/InsightCard";
+import type { InsightItem } from "@/lib/types";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
 
 const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
 const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
 
-type ViewMode = "cards" | "table";
+type SortKey =
+  | "productArea" | "theme" | "client" | "oneLiner"
+  | "sourceName" | "date" | "createdBy" | "commentCount";
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "productArea", label: "Area" },
+  { key: "theme", label: "Theme" },
+  { key: "client", label: "Client" },
+  { key: "oneLiner", label: "Feedback" },
+  { key: "sourceName", label: "Source" },
+  { key: "date", label: "Date" },
+  { key: "createdBy", label: "Reporter" },
+  { key: "commentCount", label: "Comments" },
+];
 
 export default function FeedbackPage() {
   const [search, setSearch] = useState("");
@@ -23,7 +35,8 @@ export default function FeedbackPage() {
   const [clients, setClients] = useState<{ value: string; label: string }[]>([]);
   const [items, setItems] = useState<InsightItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<ViewMode>("cards");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -74,7 +87,7 @@ export default function FeedbackPage() {
   }, [fetchItems]);
 
   // Search filtered client-side — instant, no API call
-  const displayed = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return items;
     return items.filter(
@@ -83,6 +96,47 @@ export default function FeedbackPage() {
         (item.content && item.content.toLowerCase().includes(q))
     );
   }, [items, search]);
+
+  // Sorted client-side too — everything is already loaded, so this is instant.
+  const displayed = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+
+    // Empty values always sort last regardless of direction, so a column of
+    // mostly-blank cells doesn't bury the rows that actually have data.
+    const rank = (item: InsightItem): string | number | null => {
+      switch (sortKey) {
+        case "productArea": return areaLabel(item.productArea);
+        case "theme": return themeLabel(item.theme);
+        case "client": return item.client?.toLowerCase() || null;
+        case "oneLiner": return item.oneLiner.toLowerCase();
+        case "sourceName": return item.sourceName?.toLowerCase() || null;
+        case "date": return item.date ? new Date(item.date).getTime() : null;
+        case "createdBy": return item.createdBy?.toLowerCase() || null;
+        case "commentCount": return item.commentCount ?? 0;
+      }
+    };
+
+    return [...filtered].sort((a, b) => {
+      const av = rank(a);
+      const bv = rank(b);
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }, [filtered, sortKey, sortDir]);
+
+  // Same column toggles direction; a new column starts descending for dates
+  // and counts (newest / most first) and ascending for text.
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "date" || key === "commentCount" ? "desc" : "asc");
+    }
+  };
 
   // Optimistic, but rolled back if the request fails — otherwise a failed
   // delete looks successful until the next refresh.
@@ -162,7 +216,7 @@ export default function FeedbackPage() {
           </div>
         )}
 
-        {/* Filters + view toggle */}
+        {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <Input
             icon={<Search className="w-4 h-4" />}
@@ -183,29 +237,13 @@ export default function FeedbackPage() {
               Clear filters
             </Button>
           )}
-          <div className="ml-auto flex items-center gap-1 bg-white border border-[rgba(50,43,95,0.15)] rounded-sm p-0.5">
-            <button
-              onClick={() => setView("cards")}
-              title="Card view"
-              className={`p-1.5 rounded-[8px] transition-colors ${view === "cards" ? "bg-brand-secondary-500 text-white" : "text-brand-primary opacity-40 hover:opacity-70"}`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setView("table")}
-              title="Table view"
-              className={`p-1.5 rounded-[8px] transition-colors ${view === "table" ? "bg-brand-secondary-500 text-white" : "text-brand-primary opacity-40 hover:opacity-70"}`}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
         </div>
 
         {/* Content */}
         {loading ? (
-          <div className={view === "cards" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-16 bg-white rounded-md animate-pulse border border-[rgba(50,43,95,0.08)]" />
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-14 bg-white rounded-md animate-pulse border border-[rgba(50,43,95,0.08)]" />
             ))}
           </div>
         ) : displayed.length === 0 ? (
@@ -217,23 +255,35 @@ export default function FeedbackPage() {
               Try adjusting your filters or adding new feedback
             </p>
           </div>
-        ) : view === "cards" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {displayed.map((item) => (
-              <InsightCard key={item.id} insight={item} onDelete={handleDelete} onEdit={(i) => setModal(i)} />
-            ))}
-          </div>
         ) : (
-          <div className="bg-white rounded-md border border-[rgba(50,43,95,0.08)] overflow-hidden">
+          <div className="bg-white rounded-md border border-[rgba(50,43,95,0.08)] overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[rgba(50,43,95,0.1)] bg-[rgba(50,43,95,0.03)]">
-                  <th className="text-left py-3 px-4 text-[12px] font-semibold text-brand-primary opacity-60 uppercase tracking-wide">Area</th>
-                  <th className="text-left py-3 px-4 text-[12px] font-semibold text-brand-primary opacity-60 uppercase tracking-wide">Theme</th>
-                  <th className="text-left py-3 px-4 text-[12px] font-semibold text-brand-primary opacity-60 uppercase tracking-wide">Client</th>
-                  <th className="text-left py-3 px-4 text-[12px] font-semibold text-brand-primary opacity-60 uppercase tracking-wide">Feedback</th>
-                  <th className="text-left py-3 px-4 text-[12px] font-semibold text-brand-primary opacity-60 uppercase tracking-wide">Source</th>
-                  <th className="text-left py-3 px-4 text-[12px] font-semibold text-brand-primary opacity-60 uppercase tracking-wide">Date</th>
+                  {COLUMNS.map((col) => {
+                    const active = sortKey === col.key;
+                    return (
+                      <th key={col.key} className="text-left py-0 px-0">
+                        <button
+                          onClick={() => toggleSort(col.key)}
+                          aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                          className={`w-full flex items-center gap-1 py-3 px-4 text-[12px] font-semibold uppercase tracking-wide transition-colors ${
+                            active
+                              ? "text-brand-secondary-600 opacity-100"
+                              : "text-brand-primary opacity-60 hover:opacity-90"
+                          }`}
+                          title={`Sort by ${col.label}`}
+                        >
+                          {col.label}
+                          {active ? (
+                            sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          ) : (
+                            <ArrowDown className="w-3 h-3 opacity-20" />
+                          )}
+                        </button>
+                      </th>
+                    );
+                  })}
                   <th className="w-16" />
                 </tr>
               </thead>

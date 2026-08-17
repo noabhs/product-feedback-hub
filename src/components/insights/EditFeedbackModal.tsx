@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ComboField } from "@/components/ui/ComboField";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel, normalizeKey } from "@/lib/labels";
-import type { InsightItem } from "./InsightCard";
+import type { InsightItem } from "@/lib/types";
 
 const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
 const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
