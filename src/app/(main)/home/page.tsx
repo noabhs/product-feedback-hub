@@ -64,8 +64,8 @@ export default async function HomePage() {
         <div className="mb-8">
           <h1 className="text-[28px] font-extrabold text-brand-primary mb-2">Navina Product Insights Hub</h1>
           <p className="text-[15px] text-brand-primary leading-relaxed max-w-2xl" style={{ opacity: 0.65 }}>
-            A single source of truth for all product feedback — aggregated from Drive, Notion, Jira, call notes, onsites, and more.
-            Use it to surface patterns across clients, prepare for discovery calls, and get the most out of every feedback session.
+            Connect feedback across every source to uncover the insights that matter — spot patterns
+            across clients, sharpen discovery, and turn scattered signals into product decisions.
           </p>
           <p className="text-[13px] text-brand-primary opacity-35 mt-2">
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
