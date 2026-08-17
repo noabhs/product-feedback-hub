@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -22,21 +23,39 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  const [insights, total] = await Promise.all([
+  const [rows, total] = await Promise.all([
     prisma.insight.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
+      include: { _count: { select: { comments: true } } },
     }),
     prisma.insight.count({ where }),
   ]);
+
+  // Flatten Prisma's _count into a plain commentCount for the client.
+  const insights = rows.map(({ _count, ...rest }) => ({
+    ...rest,
+    commentCount: _count.comments,
+  }));
 
   return NextResponse.json({ insights, total, page, limit });
 }
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
   const body = await req.json();
+
+  if (!body.oneLiner?.trim()) {
+    return NextResponse.json({ error: "One-liner is required" }, { status: 400 });
+  }
+  // Date is required on new entries so every item is placeable on a timeline.
+  // Rejected server-side too, not just in the form.
+  if (!body.date) {
+    return NextResponse.json({ error: "Date is required" }, { status: 400 });
+  }
+
   const insight = await prisma.insight.create({
     data: {
       productArea: body.productArea,
@@ -48,9 +67,10 @@ export async function POST(req: NextRequest) {
       sourceName: body.sourceName ?? null,
       sourceUrl: body.sourceUrl ?? null,
       sourceType: body.sourceType ?? "MANUAL",
-      date: body.date ? new Date(body.date) : null,
+      date: new Date(body.date),
       wtp: body.wtp ?? null,
       tags: body.tags ? JSON.stringify(body.tags) : "[]",
+      createdBy: session?.user?.email ?? null,
     },
   });
 

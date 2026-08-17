@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { ExternalLink, Trash2, Pencil } from "lucide-react";
+import { ExternalLink, Trash2, Pencil, MessageSquare } from "lucide-react";
 
 export interface InsightItem {
   id: string;
@@ -15,6 +15,8 @@ export interface InsightItem {
   sourceUrl?: string | null;
   date?: string | null;
   wtp?: string | null;
+  createdBy?: string | null;
+  commentCount?: number;
 }
 
 interface InsightCardProps {
@@ -51,6 +53,15 @@ export function InsightCard({ insight, onDelete, onEdit }: InsightCardProps) {
           <Badge type="theme" value={insight.theme} />
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {!!insight.commentCount && (
+            <span
+              className="flex items-center gap-1 text-[12px] text-brand-primary opacity-45 mr-1"
+              title={`${insight.commentCount} comment${insight.commentCount === 1 ? "" : "s"}`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              {insight.commentCount}
+            </span>
+          )}
           {dateStr && <span className="text-[12px] text-brand-primary opacity-40 mr-1">{dateStr}</span>}
           {onEdit && (
             <button

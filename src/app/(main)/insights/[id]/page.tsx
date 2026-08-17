@@ -3,17 +3,25 @@ export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { Badge } from "@/components/ui/Badge";
+import { Comments } from "@/components/insights/Comments";
 import { ExternalLink, ArrowLeft } from "lucide-react";
 
 export default async function InsightDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const insight = await prisma.insight.findUnique({ where: { id } });
+  const [insight, session] = await Promise.all([
+    prisma.insight.findUnique({ where: { id } }),
+    auth(),
+  ]);
   if (!insight) notFound();
 
   const dateStr = insight.date
     ? new Date(insight.date).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     : null;
+  const addedStr = insight.createdAt.toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+  });
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
@@ -71,7 +79,16 @@ export default async function InsightDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
         </div>
+
+        {/* Provenance — who logged this and when it landed in the hub */}
+        <div className="border-t border-[rgba(50,43,95,0.08)] mt-5 pt-4">
+          <p className="text-[12px] text-brand-primary opacity-40">
+            {insight.createdBy ? `Added by ${insight.createdBy}` : "Imported"} · {addedStr}
+          </p>
+        </div>
       </div>
+
+      <Comments insightId={insight.id} currentUser={session?.user?.email ?? null} />
     </div>
   );
 }

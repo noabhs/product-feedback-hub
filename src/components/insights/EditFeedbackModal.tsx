@@ -44,9 +44,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/** Local calendar date as yyyy-mm-dd — toISOString() would shift back a day west of UTC. */
+function today(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const EMPTY = {
   oneLiner: "", content: "", productArea: "GENERAL", theme: "WORKFLOW",
-  client: "", persona: "", sourceName: "", sourceUrl: "", date: "", wtp: "",
+  client: "", persona: "", sourceName: "", sourceUrl: "", date: today(), wtp: "",
 };
 
 export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalProps) {
@@ -71,6 +77,7 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
 
   async function handleSave() {
     if (!form.oneLiner.trim()) { setError("One-liner is required"); return; }
+    if (!form.date) { setError("Date is required — when did this feedback happen?"); return; }
     setSaving(true);
     setError("");
     try {
@@ -81,7 +88,7 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
         client: form.client || null,
         sourceName: form.sourceName || null,
         sourceUrl: form.sourceUrl || null,
-        date: form.date || null,
+        date: form.date,
         wtp: form.wtp || null,
         sourceType: "MANUAL",
         tags: "[]",
@@ -165,7 +172,7 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Date">
+            <Field label="Date *">
               <Input type="date" value={form.date} onChange={(e) => set("date")(e.target.value)} className="w-full" />
             </Field>
             <Field label="WTP">
