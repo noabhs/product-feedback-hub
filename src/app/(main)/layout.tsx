@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, Settings } from "lucide-react";
+import { Home, Search, BookOpen, Upload, Settings, LogOut } from "lucide-react";
+import { auth, signOut } from "@/auth";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
@@ -9,7 +10,8 @@ const NAV = [
   { href: "/admin", label: "Admin", icon: Settings },
 ];
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
+export default async function MainLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
   return (
     <div className="flex h-screen bg-surface-app overflow-hidden">
       {/* Sidebar */}
@@ -38,6 +40,28 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </Link>
           ))}
         </nav>
+
+        {session?.user && (
+          <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <p className="px-3 text-[11px] text-white/40 truncate" title={session.user.email ?? ""}>
+              {session.user.email}
+            </p>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/signin" });
+              }}
+            >
+              <button
+                type="submit"
+                className="mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                Sign out
+              </button>
+            </form>
+          </div>
+        )}
       </aside>
 
       <main className="flex-1 overflow-y-auto">
