@@ -89,7 +89,7 @@ export async function extractInsights(text: string, apiKey?: string) {
     thinking: { type: "adaptive" },
     output_config: { format: jsonFormat(INSIGHTS_SCHEMA) },
     system: `You are a product research analyst for Navina. Extract discrete client insights from the provided text.
-Return an object with an `insights` array. Each insight has:
+Return an object with an "insights" array. Each insight has:
 - oneLiner: string (max 100 chars, sentence case)
 - content: string (full detail)
 - productArea: one of "POP_HEALTH" | "QUALITY" | "ANALYTICS" | "AGENTIC" | "RISK_DX" | "AMBIENT" | "GENERAL" | "COMPETITIVE"
@@ -142,7 +142,7 @@ Include questions that are explicitly written in the document. Also infer questi
 document's findings clearly imply are worth asking, but only where the document supports them.
 Do not invent questions on topics the document does not touch.
 
-Return an object with a `questions` array. Each item has:
+Return an object with a "questions" array. Each item has:
 - question: string (the question, phrased for asking out loud)
 - productArea: one of "POP_HEALTH" | "QUALITY" | "ANALYTICS" | "AGENTIC" | "RISK_DX" | "AMBIENT" | "GENERAL" | "COMPETITIVE"
 - theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
