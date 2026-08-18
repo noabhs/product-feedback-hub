@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import {
   ArrowRight, MessageSquare, Users, FileQuestion, Sparkles,
-  Plus, Upload, HeartPulse, Building2,
+  Plus, Upload, Building2,
 } from "lucide-react";
 import {
   SectionHeading, QuickAction, KpiCard, MeterCard, ChartCard, BarRow,
@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
 import { shortName } from "@/lib/people";
 import { ADVISORS, HEALTH_ORDER, REPORT_AS_OF } from "@/lib/accounts";
-import { money, moneyExact, fmtDay } from "@/lib/format";
+import { fmtDay } from "@/lib/format";
 
 /** Health is a traffic light, so it gets traffic-light colours rather than brand ones. */
 const HEALTH_COLORS: Record<string, string> = {
@@ -70,13 +70,9 @@ export default async function HomePage() {
   const clients = accounts.filter((a) => a.name !== ADVISORS);
   const heardFrom = clients.filter((a) => (entriesByClient.get(a.name) ?? 0) > 0);
 
-  // ARR exists only for the accounts the Salesforce report covered, so both
-  // sides of this ratio are drawn from that subset rather than all accounts.
-  const withArr = clients.filter((a) => a.arr !== null);
-  const arrTotal = withArr.reduce((n, a) => n + (a.arr ?? 0), 0);
-  const arrHeard = withArr
-    .filter((a) => (entriesByClient.get(a.name) ?? 0) > 0)
-    .reduce((n, a) => n + (a.arr ?? 0), 0);
+  // ARR is deliberately never shown on this page — it only picks out which
+  // accounts are paying, and orders them, without any figure reaching the UI.
+  const paying = clients.filter((a) => a.arr !== null);
 
   const rated = clients.filter((a) => a.health);
   const healthMix = HEALTH_ORDER.map((health) => ({
@@ -85,7 +81,7 @@ export default async function HomePage() {
   }));
 
   // The gap worth acting on: paying accounts nobody has captured feedback from.
-  const silent = withArr
+  const silent = paying
     .filter((a) => !entriesByClient.get(a.name))
     .sort((a, b) => (b.arr ?? 0) - (a.arr ?? 0))
     .slice(0, 6);
@@ -135,7 +131,7 @@ export default async function HomePage() {
           href="/clients"
           linkLabel="All clients"
         />
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <MeterCard
             Icon={Building2}
             value={`${heardFrom.length}/${clients.length}`}
@@ -143,15 +139,6 @@ export default async function HomePage() {
             sub={`${clients.length - heardFrom.length} have none yet`}
             pct={clients.length ? heardFrom.length / clients.length : 0}
             color="#5d07e2"
-          />
-          <MeterCard
-            Icon={HeartPulse}
-            value={money(arrHeard) ?? "$0"}
-            label="ARR we've heard from"
-            sub={`of ${money(arrTotal) ?? "$0"} across ${withArr.length} accounts`}
-            title={`${moneyExact(arrHeard)} of ${moneyExact(arrTotal)}`}
-            pct={arrTotal ? arrHeard / arrTotal : 0}
-            color="#0F6E56"
           />
           <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-5">
             <h3 className="text-[13px] font-semibold text-brand-primary mb-1">Account health</h3>
@@ -182,27 +169,19 @@ export default async function HomePage() {
               </Link>
             </div>
             <p className="text-[11px] text-brand-primary opacity-40 mb-4">
-              Paying accounts with nothing on file — the largest first
+              Paying accounts with nothing on file, largest first
             </p>
             <div className="grid grid-cols-3 gap-x-5 gap-y-2">
               {silent.map((a) => (
-                <div key={a.name} className="flex items-center justify-between gap-2 min-w-0">
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    {a.health && (
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ background: HEALTH_COLORS[a.health] }}
-                        title={`${a.health} health`}
-                      />
-                    )}
-                    <span className="text-[13px] text-brand-primary truncate" title={a.name}>{a.name}</span>
-                  </span>
-                  <span
-                    className="text-[12px] text-brand-primary opacity-45 shrink-0 tabular-nums"
-                    title={moneyExact(a.arr) ?? undefined}
-                  >
-                    {money(a.arr)}
-                  </span>
+                <div key={a.name} className="flex items-center gap-1.5 min-w-0">
+                  {a.health && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: HEALTH_COLORS[a.health] }}
+                      title={`${a.health} health`}
+                    />
+                  )}
+                  <span className="text-[13px] text-brand-primary truncate" title={a.name}>{a.name}</span>
                 </div>
               ))}
             </div>
