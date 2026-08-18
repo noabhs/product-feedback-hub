@@ -3,27 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { normalizeKey } from "@/lib/labels";
 import { logEvent, ACTIONS } from "@/lib/events";
+import { insightWhere } from "@/lib/insight-filters";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const productArea = searchParams.get("productArea");
-  const theme = searchParams.get("theme");
-  const client = searchParams.get("client");
-  const search = searchParams.get("search");
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "20");
 
-  const where: Record<string, unknown> = {};
-  if (productArea) where.productArea = productArea;
-  if (theme) where.theme = theme;
-  if (client) where.client = client;
-  if (search) {
-    where.OR = [
-      { oneLiner: { contains: search, mode: "insensitive" } },
-      { content: { contains: search, mode: "insensitive" } },
-      { client: { contains: search, mode: "insensitive" } },
-    ];
-  }
+  const where = insightWhere(searchParams);
 
   const [rows, total, grandTotal] = await Promise.all([
     prisma.insight.findMany({

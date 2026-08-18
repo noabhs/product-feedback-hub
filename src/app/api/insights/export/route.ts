@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { insightWhere } from "@/lib/insight-filters";
 
 function esc(val: string | null | undefined): string {
   if (!val) return "";
@@ -8,23 +9,7 @@ function esc(val: string | null | undefined): string {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const productArea = searchParams.get("productArea");
-  const theme = searchParams.get("theme");
-  const client = searchParams.get("client");
-  const search = searchParams.get("search");
-
-  const where: Record<string, unknown> = {};
-  if (productArea) where.productArea = productArea;
-  if (theme) where.theme = theme;
-  if (client) where.client = client;
-  if (search) {
-    where.OR = [
-      { oneLiner: { contains: search, mode: "insensitive" } },
-      { content: { contains: search, mode: "insensitive" } },
-      { client: { contains: search, mode: "insensitive" } },
-    ];
-  }
+  const where = insightWhere(req.nextUrl.searchParams);
 
   const rows = await prisma.insight.findMany({ where, orderBy: { date: "desc" } });
 

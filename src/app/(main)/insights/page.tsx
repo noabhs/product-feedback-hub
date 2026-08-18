@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Plus, Download, Upload, ArrowUp, ArrowDown } from "lucide-react";
-import { Input, Select } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { InsightRow } from "@/components/insights/InsightRow";
 import { EditFeedbackModal } from "@/components/insights/EditFeedbackModal";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
@@ -32,10 +33,11 @@ const COLUMNS: { key: SortKey; label: string }[] = [
 
 export default function FeedbackPage() {
   const [search, setSearch] = useState("");
-  const [productArea, setProductArea] = useState("");
-  const [theme, setTheme] = useState("");
-  const [client, setClient] = useState("");
-  const [source, setSource] = useState("");
+  // Each filter holds every picked value; empty means "all".
+  const [productArea, setProductArea] = useState<string[]>([]);
+  const [theme, setTheme] = useState<string[]>([]);
+  const [client, setClient] = useState<string[]>([]);
+  const [source, setSource] = useState<string[]>([]);
   const [clients, setClients] = useState<{ value: string; label: string }[]>([]);
   const [items, setItems] = useState<InsightItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,10 +61,15 @@ export default function FeedbackPage() {
       .catch(() => {});
   }, []);
 
+  // Only categories actually present are worth offering — plus any already
+  // picked, which the area/theme/client filters may have narrowed out of view.
+  // Dropping a picked one would leave it filtering with no way to untick it.
   const sourceOptions = useMemo(() => {
     const present = new Set(items.map((i) => sourceCategory(i.sourceName, i.sourceType)));
-    return SOURCE_CATEGORIES.filter((c) => present.has(c)).map((c) => ({ value: c, label: c }));
-  }, [items]);
+    return SOURCE_CATEGORIES
+      .filter((c) => present.has(c) || source.includes(c))
+      .map((c) => ({ value: c, label: c }));
+  }, [items, source]);
 
   // Built-in options plus any custom values already in use, so a custom area
   // someone added is filterable rather than invisible.
@@ -84,9 +91,10 @@ export default function FeedbackPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (productArea) params.set("productArea", productArea);
-    if (theme) params.set("theme", theme);
-    if (client) params.set("client", client);
+    // Repeated rather than comma-joined: a client name may contain a comma.
+    for (const v of productArea) params.append("productArea", v);
+    for (const v of theme) params.append("theme", v);
+    for (const v of client) params.append("client", v);
     // Sorting and search are client-side, so every row is loaded up front.
     // Kept well above the current row count; revisit if this grows past ~2k.
     params.set("limit", "2000");
@@ -105,7 +113,7 @@ export default function FeedbackPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((item) => {
-      if (source && sourceCategory(item.sourceName, item.sourceType) !== source) return false;
+      if (source.length && !source.includes(sourceCategory(item.sourceName, item.sourceType))) return false;
       if (!q) return true;
       return (
         item.oneLiner.toLowerCase().includes(q) ||
@@ -186,13 +194,13 @@ export default function FeedbackPage() {
   const exportCsv = () => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
-    if (productArea) params.set("productArea", productArea);
-    if (theme) params.set("theme", theme);
-    if (client) params.set("client", client);
+    for (const v of productArea) params.append("productArea", v);
+    for (const v of theme) params.append("theme", v);
+    for (const v of client) params.append("client", v);
     window.location.href = `/api/insights/export?${params}`;
   };
 
-  const hasFilters = !!(search || productArea || theme || client || source);
+  const hasFilters = !!search || !!productArea.length || !!theme.length || !!client.length || !!source.length;
   const editingItem = modal !== "new" ? modal : null;
 
   return (
@@ -245,15 +253,15 @@ export default function FeedbackPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-60"
           />
-          <Select value={productArea} onChange={setProductArea} options={areaOptions} placeholder="All product areas" className="w-44" />
-          <Select value={theme} onChange={setTheme} options={themeOptions} placeholder="All themes" className="w-40" />
-          <Select value={client} onChange={setClient} options={clients} placeholder="All clients" className="w-44" />
-          <Select value={source} onChange={setSource} options={sourceOptions} placeholder="All sources" className="w-40" />
+          <MultiSelect value={productArea} onChange={setProductArea} options={areaOptions} placeholder="All product areas" className="w-44" />
+          <MultiSelect value={theme} onChange={setTheme} options={themeOptions} placeholder="All themes" className="w-40" />
+          <MultiSelect value={client} onChange={setClient} options={clients} placeholder="All clients" className="w-44" />
+          <MultiSelect value={source} onChange={setSource} options={sourceOptions} placeholder="All sources" className="w-40" />
           {hasFilters && (
             <Button
               variant="text"
               size="sm"
-              onClick={() => { setSearch(""); setProductArea(""); setTheme(""); setClient(""); setSource(""); }}
+              onClick={() => { setSearch(""); setProductArea([]); setTheme([]); setClient([]); setSource([]); }}
             >
               Clear filters
             </Button>
