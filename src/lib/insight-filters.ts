@@ -29,6 +29,7 @@ export function insightWhere(searchParams: URLSearchParams): Record<string, unkn
       { oneLiner: { contains: search, mode: "insensitive" } },
       { content: { contains: search, mode: "insensitive" } },
       { client: { contains: search, mode: "insensitive" } },
+      { persona: { contains: search, mode: "insensitive" } },
     ];
   }
 

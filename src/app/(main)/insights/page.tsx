@@ -14,6 +14,7 @@ import { RowCount } from "@/components/ui/RowCount";
 import type { InsightItem } from "@/lib/types";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
 import { SOURCE_CATEGORIES, sourceCategory } from "@/lib/sources";
+import { PERSONA_ROLES, personaRoles } from "@/lib/personas";
 
 const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
 const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
@@ -49,6 +50,7 @@ function Feedback() {
   // Each filter holds every picked value; empty means "all".
   const [productArea, setProductArea] = useState<string[]>([]);
   const [theme, setTheme] = useState<string[]>([]);
+  const [persona, setPersona] = useState<string[]>([]);
   const [client, setClient] = useState<string[]>([]);
   const [source, setSource] = useState<string[]>([]);
   const [clients, setClients] = useState<{ value: string; label: string }[]>([]);
@@ -78,6 +80,15 @@ function Feedback() {
       })
       .catch(() => {});
   }, []);
+
+  // Roles are derived, so the options are whichever ones the loaded rows
+  // actually produce — same handling of picked-but-absent as sources below.
+  const personaOptions = useMemo(() => {
+    const present = new Set(items.flatMap((i) => personaRoles(i.persona)));
+    return PERSONA_ROLES
+      .filter((r) => present.has(r) || persona.includes(r))
+      .map((r) => ({ value: r, label: r }));
+  }, [items, persona]);
 
   // Only categories actually present are worth offering — plus any already
   // picked, which the area/theme/client filters may have narrowed out of view.
@@ -146,13 +157,17 @@ function Feedback() {
     const q = search.trim().toLowerCase();
     return items.filter((item) => {
       if (source.length && !source.includes(sourceCategory(item.sourceName, item.sourceType))) return false;
+      // A persona naming several roles matches a filter on any of them.
+      if (persona.length && !personaRoles(item.persona).some((r) => persona.includes(r))) return false;
       if (!q) return true;
       return (
         item.oneLiner.toLowerCase().includes(q) ||
-        (item.content && item.content.toLowerCase().includes(q))
+        (item.content && item.content.toLowerCase().includes(q)) ||
+        // Personas are mostly names, so this is the only way to find "Joe Hefner".
+        (item.persona && item.persona.toLowerCase().includes(q))
       );
     });
-  }, [items, search, source]);
+  }, [items, search, source, persona]);
 
   // Sorted client-side too — everything is already loaded, so this is instant.
   const displayed = useMemo(() => {
@@ -237,7 +252,8 @@ function Feedback() {
   // in the panel behind it instead of showing the pre-edit copy.
   const panelItem = panelId ? items.find((i) => i.id === panelId) ?? null : null;
 
-  const hasFilters = !!search || !!productArea.length || !!theme.length || !!client.length || !!source.length;
+  const hasFilters =
+    !!search || !!productArea.length || !!theme.length || !!persona.length || !!client.length || !!source.length;
   const editingItem = modal !== "new" ? modal : null;
 
   return (
@@ -292,13 +308,14 @@ function Feedback() {
           />
           <MultiSelect value={productArea} onChange={setProductArea} options={areaOptions} placeholder="All product areas" className="w-44" />
           <MultiSelect value={theme} onChange={setTheme} options={themeOptions} placeholder="All themes" className="w-40" />
+          <MultiSelect value={persona} onChange={setPersona} options={personaOptions} placeholder="All personas" className="w-40" />
           <MultiSelect value={client} onChange={setClient} options={clients} placeholder="All clients" className="w-44" />
           <MultiSelect value={source} onChange={setSource} options={sourceOptions} placeholder="All sources" className="w-40" />
           {hasFilters && (
             <Button
               variant="text"
               size="sm"
-              onClick={() => { setSearch(""); setProductArea([]); setTheme([]); setClient([]); setSource([]); }}
+              onClick={() => { setSearch(""); setProductArea([]); setTheme([]); setPersona([]); setClient([]); setSource([]); }}
             >
               Clear filters
             </Button>
