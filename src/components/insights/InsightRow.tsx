@@ -1,35 +1,25 @@
 "use client";
-import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { ExternalLink, Trash2, Pencil, MessageSquare } from "lucide-react";
+import { ExternalLink, MessageSquare } from "lucide-react";
 import { shortName } from "@/lib/people";
 import type { InsightItem } from "@/lib/types";
 
 interface InsightRowProps {
   insight: InsightItem;
-  onDelete?: (id: string) => void;
-  onEdit?: (item: InsightItem) => void;
+  /** Opens the detail panel. Edit and delete live in there now. */
+  onOpen: (item: InsightItem) => void;
 }
 
-export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
+export function InsightRow({ insight, onOpen }: InsightRowProps) {
   const dateStr = insight.date
     ? new Date(insight.date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
     : null;
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (confirm("Delete this feedback entry?")) onDelete?.(insight.id);
-  };
-
-  const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onEdit?.(insight);
-  };
-
   return (
-    <tr className="group border-b border-[rgba(50,43,95,0.07)] hover:bg-[rgba(93,7,226,0.03)] transition-colors">
+    <tr
+      onClick={() => onOpen(insight)}
+      className="group border-b border-[rgba(50,43,95,0.07)] hover:bg-[rgba(93,7,226,0.03)] transition-colors cursor-pointer"
+    >
       <td className="py-3 px-4 align-top">
         <Badge type="area" value={insight.productArea} />
       </td>
@@ -42,12 +32,9 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
         )}
       </td>
       <td className="py-3 px-4 align-top max-w-xs">
-        <Link
-          href={`/insights/${insight.id}`}
-          className="text-[14px] text-brand-primary font-medium hover:text-brand-secondary-600 transition-colors leading-snug line-clamp-2"
-        >
+        <span className="text-[14px] text-brand-primary font-medium group-hover:text-brand-secondary-600 transition-colors leading-snug line-clamp-2">
           {insight.oneLiner}
-        </Link>
+        </span>
       </td>
       <td className="py-3 px-4 align-top">
         {insight.client && (
@@ -61,6 +48,7 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
               href={insight.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="flex items-center gap-1 text-[12px] text-brand-secondary-600 hover:underline"
             >
               <span className="max-w-[160px] truncate">{insight.sourceName}</span>
@@ -85,44 +73,19 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
         </span>
       </td>
       <td className="py-3 px-4 align-top whitespace-nowrap">
-        <Link
-          href={`/insights/${insight.id}`}
-          className={`inline-flex items-center gap-1 text-[12px] transition-opacity ${
-            insight.commentCount
-              ? "text-brand-secondary-600 opacity-80 hover:opacity-100"
-              : "text-brand-primary opacity-25 hover:opacity-50"
+        <span
+          className={`inline-flex items-center gap-1 text-[12px] ${
+            insight.commentCount ? "text-brand-secondary-600 opacity-80" : "text-brand-primary opacity-25"
           }`}
           title={
             insight.commentCount
               ? `${insight.commentCount} comment${insight.commentCount === 1 ? "" : "s"}`
-              : "No comments yet — click to add one"
+              : "No comments yet"
           }
         >
           <MessageSquare className="w-3.5 h-3.5" />
           {insight.commentCount ?? 0}
-        </Link>
-      </td>
-      <td className="py-3 px-4 align-top">
-        <div className="flex items-center justify-end gap-1">
-          {onEdit && (
-            <button
-              onClick={handleEdit}
-              className="p-1.5 rounded text-brand-primary opacity-0 group-hover:opacity-30 hover:!opacity-80 hover:text-brand-secondary-500 transition-all"
-              title="Edit"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={handleDelete}
-              className="p-1.5 rounded text-brand-primary opacity-0 group-hover:opacity-30 hover:!opacity-80 hover:text-red-500 transition-all"
-              title="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        </span>
       </td>
     </tr>
   );

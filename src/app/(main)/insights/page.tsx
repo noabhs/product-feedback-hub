@@ -1,11 +1,13 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Search, Plus, Download, Upload, ArrowUp, ArrowDown } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { InsightRow } from "@/components/insights/InsightRow";
 import { EditFeedbackModal } from "@/components/insights/EditFeedbackModal";
+import { FeedbackPanel } from "@/components/insights/FeedbackPanel";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
 import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
@@ -35,6 +37,15 @@ const COLUMNS: { key: SortKey; label: string }[] = [
 ];
 
 export default function FeedbackPage() {
+  // useSearchParams needs a Suspense boundary during prerender.
+  return (
+    <Suspense fallback={<div className="p-8" />}>
+      <Feedback />
+    </Suspense>
+  );
+}
+
+function Feedback() {
   const [search, setSearch] = useState("");
   // Each filter holds every picked value; empty means "all".
   const [productArea, setProductArea] = useState<string[]>([]);
@@ -47,12 +58,16 @@ export default function FeedbackPage() {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
+  // /insights/<id> redirects here as ?open=<id>, so old links, the home page's
+  // recent list, the AI citations and any bookmark all open the panel.
+  const [panelId, setPanelId] = useState<string | null>(useSearchParams().get("open"));
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   // Count of every entry, ignoring filters — the denominator in "23/245".
   const [grandTotal, setGrandTotal] = useState(0);
 
   const [facets, setFacets] = useState<{ areas: string[]; themes: string[] }>({ areas: [], themes: [] });
+  const [me, setMe] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/insights/facets")
@@ -60,6 +75,7 @@ export default function FeedbackPage() {
       .then((d) => {
         setClients((d.clients ?? []).map((c: string) => ({ value: c, label: c })));
         setFacets({ areas: d.areas ?? [], themes: d.themes ?? [] });
+        setMe(d.me ?? null);
       })
       .catch(() => {});
   }, []);
@@ -111,6 +127,20 @@ export default function FeedbackPage() {
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  // A linked entry the current filters exclude isn't in `items`, which would
+  // leave the panel silently not opening. Fetch it in and keep track of which
+  // ids we've tried, so a deleted id doesn't retry on every render.
+  const fetchedIds = useRef(new Set<string>());
+  useEffect(() => {
+    if (!panelId || loading) return;
+    if (items.some((i) => i.id === panelId) || fetchedIds.current.has(panelId)) return;
+    fetchedIds.current.add(panelId);
+    fetch(`/api/insights/${panelId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((found) => found && setItems((prev) => [found, ...prev]))
+      .catch(() => {});
+  }, [panelId, loading, items]);
 
   // Search filtered client-side — instant, no API call
   const filtered = useMemo(() => {
@@ -203,6 +233,10 @@ export default function FeedbackPage() {
     for (const v of client) params.append("client", v);
     window.location.href = `/api/insights/export?${params}`;
   };
+
+  // Derived rather than stored, so an edit saved through the modal is reflected
+  // in the panel behind it instead of showing the pre-edit copy.
+  const panelItem = panelId ? items.find((i) => i.id === panelId) ?? null : null;
 
   const hasFilters = !!search || !!productArea.length || !!theme.length || !!client.length || !!source.length;
   const editingItem = modal !== "new" ? modal : null;
@@ -327,12 +361,11 @@ export default function FeedbackPage() {
                       </th>
                     );
                   })}
-                  <th className="w-16" />
                 </tr>
               </thead>
               <tbody>
                 {displayed.map((item) => (
-                  <InsightRow key={item.id} insight={item} onDelete={handleDelete} onEdit={(i) => setModal(i)} />
+                  <InsightRow key={item.id} insight={item} onOpen={(i) => setPanelId(i.id)} />
                 ))}
               </tbody>
             </table>
@@ -347,6 +380,16 @@ export default function FeedbackPage() {
           columns="Product Area, Theme, Persona / POC, One-liner, Feedback, Date, WTP, Source, Client"
           onClose={() => setShowImport(false)}
           onImported={() => fetchItems()}
+        />
+      )}
+
+      {panelItem && (
+        <FeedbackPanel
+          item={panelItem}
+          currentUser={me}
+          onEdit={(i) => setModal(i)}
+          onDelete={(id) => { setPanelId(null); handleDelete(id); }}
+          onClose={() => setPanelId(null)}
         />
       )}
 

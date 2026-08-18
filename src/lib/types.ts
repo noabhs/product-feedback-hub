@@ -17,7 +17,10 @@ export interface InsightItem {
   sourceType?: string | null;
   date?: string | null;
   wtp?: string | null;
+  /** The free-text client this arrived with, when a remap replaced it. */
+  clientRaw?: string | null;
   createdBy?: string | null;
+  createdAt?: string | null;
   commentCount?: number;
 }
 
