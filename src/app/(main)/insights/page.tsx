@@ -18,14 +18,16 @@ const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
 const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
 
 type SortKey =
-  | "productArea" | "theme" | "client" | "oneLiner"
+  | "productArea" | "theme" | "persona" | "oneLiner" | "client"
   | "sourceName" | "date" | "createdBy" | "commentCount";
 
+// Order here drives the header; InsightRow renders its cells to match.
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "productArea", label: "Area" },
   { key: "theme", label: "Theme" },
-  { key: "client", label: "Client" },
+  { key: "persona", label: "Persona" },
   { key: "oneLiner", label: "Feedback" },
+  { key: "client", label: "Client" },
   { key: "sourceName", label: "Source" },
   { key: "date", label: "Date" },
   { key: "createdBy", label: "Reporter" },
@@ -133,6 +135,7 @@ export default function FeedbackPage() {
       switch (sortKey) {
         case "productArea": return areaLabel(item.productArea);
         case "theme": return themeLabel(item.theme);
+        case "persona": return item.persona?.toLowerCase() || null;
         case "client": return item.client?.toLowerCase() || null;
         case "oneLiner": return item.oneLiner.toLowerCase();
         case "sourceName": return item.sourceName?.toLowerCase() || null;

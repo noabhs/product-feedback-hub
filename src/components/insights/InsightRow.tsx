@@ -37,8 +37,8 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
         <Badge type="theme" value={insight.theme} />
       </td>
       <td className="py-3 px-4 align-top">
-        {insight.client && (
-          <span className="text-[13px] font-medium text-brand-secondary-600">{insight.client}</span>
+        {insight.persona && (
+          <span className="text-[12px] text-brand-primary opacity-60 line-clamp-2">{insight.persona}</span>
         )}
       </td>
       <td className="py-3 px-4 align-top max-w-xs">
@@ -48,8 +48,10 @@ export function InsightRow({ insight, onDelete, onEdit }: InsightRowProps) {
         >
           {insight.oneLiner}
         </Link>
-        {insight.persona && (
-          <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">{insight.persona}</p>
+      </td>
+      <td className="py-3 px-4 align-top">
+        {insight.client && (
+          <span className="text-[13px] font-medium text-brand-secondary-600">{insight.client}</span>
         )}
       </td>
       <td className="py-3 px-4 align-top whitespace-nowrap">
