@@ -1,7 +1,8 @@
 "use client";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { fmtDay } from "@/lib/format";
+import { renewalWindow, renewalPhrase, atRenewalRisk } from "@/lib/accounts";
 import type { AccountDetail } from "@/lib/types";
 
 interface AccountRowProps {
@@ -12,8 +13,22 @@ interface AccountRowProps {
 
 const Empty = () => <span className="text-[13px] text-brand-primary opacity-25">—</span>;
 
+// Overdue reads as worse than urgent, so it gets the heavier treatment; "soon"
+// stays amber to match the same thresholds the detail panel uses.
+const RISK_TEXT: Record<string, string> = {
+  overdue: "text-red-700 font-semibold",
+  urgent: "text-red-700",
+  soon: "text-amber-700",
+};
+
 export function AccountRow({ account, onOpen }: AccountRowProps) {
   const live = fmtDay(account.liveDate);
+  const renewal = fmtDay(account.renewalDate);
+  const phrase = renewalPhrase(account.renewalDate);
+  // The date is always shown; the warning only when the account also isn't
+  // healthy, so a green account renewing next month stays quiet.
+  const window = renewalWindow(account.renewalDate);
+  const flagged = atRenewalRisk(account);
 
   return (
     <tr
@@ -52,6 +67,25 @@ export function AccountRow({ account, onOpen }: AccountRowProps) {
       </td>
       <td className="py-3 px-4 align-top whitespace-nowrap text-[13px] text-brand-primary opacity-70">
         {live ?? <Empty />}
+      </td>
+      <td className="py-3 px-4 align-top whitespace-nowrap">
+        {renewal ? (
+          <>
+            <span className="block text-[13px] text-brand-primary opacity-70">{renewal}</span>
+            {phrase && (
+              <span
+                className={`mt-0.5 inline-flex items-center gap-1 text-[11px] ${
+                  flagged ? RISK_TEXT[window as string] : "text-brand-primary opacity-40"
+                }`}
+              >
+                {flagged && <AlertTriangle className="w-3 h-3 shrink-0" />}
+                {phrase}
+              </span>
+            )}
+          </>
+        ) : (
+          <Empty />
+        )}
       </td>
       <td className="py-3 px-4 align-top whitespace-nowrap">
         <span

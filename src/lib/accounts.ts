@@ -231,3 +231,50 @@ export function daysUntil(iso: string | null | undefined): number | null {
   return Math.round((Date.UTC(then.getUTCFullYear(), then.getUTCMonth(), then.getUTCDate())
     - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / day);
 }
+
+/** Renewals inside this many days count as near enough to act on. */
+export const RENEWAL_WINDOW_DAYS = 90;
+
+/**
+ * How close a renewal is, as a level. `overdue` is kept separate from `urgent`
+ * on purpose: a date that has already passed is not a renewal to prepare for,
+ * it's either a silent churn or a stale record, and telling someone to "prep
+ * this renewal" is the wrong instruction for it.
+ */
+export type RenewalWindow = "overdue" | "urgent" | "soon";
+
+export function renewalWindow(iso: string | null | undefined): RenewalWindow | null {
+  const days = daysUntil(iso);
+  if (days === null) return null;
+  if (days < 0) return "overdue";
+  if (days <= 30) return "urgent";
+  if (days <= RENEWAL_WINDOW_DAYS) return "soon";
+  return null;
+}
+
+/** Words for a renewal date: "in 12 days", "today", "109 days ago". */
+export function renewalPhrase(iso: string | null | undefined): string | null {
+  const days = daysUntil(iso);
+  if (days === null) return null;
+  if (days < 0) return `${-days} day${days === -1 ? "" : "s"} ago`;
+  if (days === 0) return "today";
+  return `in ${days} day${days === 1 ? "" : "s"}`;
+}
+
+/**
+ * A renewal close enough to act on, on an account that isn't healthy.
+ *
+ * Health is part of the rule rather than a second filter because a green
+ * account renewing next month isn't the thing anyone needs a list of. Note that
+ * the health half currently excludes nothing — as of the 2026-08-18 report every
+ * account renewing inside the window is Red — but it's the rule that's wanted,
+ * and it starts doing work the moment health moves.
+ *
+ * An account with no health on record still counts: the report not covering it
+ * is not evidence that it's fine.
+ */
+export function atRenewalRisk(
+  account: { renewalDate: string | null; health: string | null },
+): boolean {
+  return renewalWindow(account.renewalDate) !== null && account.health !== "Green";
+}

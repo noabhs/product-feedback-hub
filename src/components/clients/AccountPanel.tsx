@@ -4,7 +4,7 @@ import Link from "next/link";
 import { X, MessageSquare, AlertTriangle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { daysUntil, REPORT_AS_OF } from "@/lib/accounts";
+import { renewalWindow, renewalPhrase, atRenewalRisk, REPORT_AS_OF } from "@/lib/accounts";
 import { fmtDay, money, moneyExact, members, dateInputValue } from "@/lib/format";
 import type { AccountDetail } from "@/lib/types";
 
@@ -47,21 +47,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/**
- * How close a renewal is, as words plus a colour. The accounts report shipped a
- * "time to renewal" column, but it was a number frozen on the day the report ran
- * — this recomputes so a renewal doesn't stay 3 days away for a month.
- */
-function renewalNote(iso: string | null): { text: string; className: string; urgent: boolean } | null {
-  const days = daysUntil(iso);
-  if (days === null) return null;
-  if (days < 0) return { text: `${-days} days ago`, className: "text-red-700", urgent: true };
-  if (days === 0) return { text: "today", className: "text-red-700", urgent: true };
-  if (days <= 30) return { text: `in ${days} days`, className: "text-red-700", urgent: true };
-  if (days <= 90) return { text: `in ${days} days`, className: "text-amber-700", urgent: true };
-  return { text: `in ${days} days`, className: "text-brand-primary opacity-40", urgent: false };
-}
-
 export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanelProps) {
   const [liveDraft, setLiveDraft] = useState(dateInputValue(account.liveDate));
   const [saving, setSaving] = useState(false);
@@ -96,7 +81,11 @@ export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanel
     }
   }
 
-  const renewal = renewalNote(account.renewalDate);
+  // Same thresholds as the table, from the same helper — the panel used to
+  // compute its own and the two could drift apart.
+  const phrase = renewalPhrase(account.renewalDate);
+  const window = renewalWindow(account.renewalDate);
+  const flagged = atRenewalRisk(account);
   const liveDirty = liveDraft !== dateInputValue(account.liveDate);
   // Only meaningful as a gap: CARR above ARR is contracted revenue not yet live.
   const carrGap =
@@ -203,10 +192,16 @@ export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanel
 
               <Prop label="Renewal">
                 <Value>{fmtDay(account.renewalDate)}</Value>
-                {renewal && (
-                  <p className={`text-[11px] mt-0.5 inline-flex items-center gap-1 ${renewal.className}`}>
-                    {renewal.urgent && <AlertTriangle className="w-3 h-3 shrink-0" />}
-                    {renewal.text}
+                {phrase && (
+                  <p
+                    className={`text-[11px] mt-0.5 inline-flex items-center gap-1 ${
+                      flagged
+                        ? window === "soon" ? "text-amber-700" : "text-red-700"
+                        : "text-brand-primary opacity-40"
+                    }`}
+                  >
+                    {flagged && <AlertTriangle className="w-3 h-3 shrink-0" />}
+                    {phrase}
                   </p>
                 )}
               </Prop>

@@ -1,17 +1,17 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
 import { AccountRow } from "@/components/clients/AccountRow";
 import { AccountPanel } from "@/components/clients/AccountPanel";
-import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF } from "@/lib/accounts";
+import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk } from "@/lib/accounts";
 import { money } from "@/lib/format";
 import type { AccountDetail } from "@/lib/types";
 
-type SortKey = "name" | "health" | "products" | "ehr" | "segment" | "liveDate" | "feedbackCount";
+type SortKey = "name" | "health" | "products" | "ehr" | "segment" | "liveDate" | "renewalDate" | "feedbackCount";
 
 // Order here drives the header; AccountRow renders its cells to match.
 const COLUMNS: { key: SortKey; label: string }[] = [
@@ -21,6 +21,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "ehr", label: "EHR" },
   { key: "segment", label: "Segment" },
   { key: "liveDate", label: "Live date" },
+  { key: "renewalDate", label: "Renewal" },
   { key: "feedbackCount", label: "Feedback" },
 ];
 
@@ -57,6 +58,7 @@ export default function ClientsPage() {
   const [ehr, setEhr] = useState<string[]>([]);
   const [segment, setSegment] = useState<string[]>([]);
   const [csm, setCsm] = useState<string[]>([]);
+  const [riskOnly, setRiskOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [panelId, setPanelId] = useState<string | null>(null);
@@ -90,7 +92,9 @@ export default function ClientsPage() {
   const productOptions = PRODUCTS.map((p) => ({ value: p, label: p }));
   const segmentOptions = SEGMENTS.map((s) => ({ value: s, label: s }));
 
-  const filtered = useMemo(() => {
+  // Split from `filtered` so the at-risk count reflects the other filters
+  // without the toggle narrowing its own denominator.
+  const beforeRisk = useMemo(() => {
     const q = search.trim().toLowerCase();
     return accounts.filter((a) => {
       if (health.length && !(a.health && health.includes(a.health))) return false;
@@ -111,6 +115,12 @@ export default function ClientsPage() {
     });
   }, [accounts, search, health, products, ehr, segment, csm]);
 
+  const riskCount = useMemo(() => beforeRisk.filter(atRenewalRisk).length, [beforeRisk]);
+  const filtered = useMemo(
+    () => (riskOnly ? beforeRisk.filter(atRenewalRisk) : beforeRisk),
+    [beforeRisk, riskOnly],
+  );
+
   // Sorted client-side — 95 rows are all loaded, so this is instant.
   const displayed = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -126,6 +136,7 @@ export default function ClientsPage() {
         case "ehr": return a.ehr?.toLowerCase() ?? null;
         case "segment": return a.segment?.toLowerCase() ?? null;
         case "liveDate": return a.liveDate ? new Date(a.liveDate).getTime() : null;
+        case "renewalDate": return a.renewalDate ? new Date(a.renewalDate).getTime() : null;
         case "feedbackCount": return a.feedbackCount || null;
       }
     };
@@ -186,7 +197,7 @@ export default function ClientsPage() {
   const panelAccount = panelId ? accounts.find((a) => a.id === panelId) ?? null : null;
 
   const hasFilters =
-    !!search || !!health.length || !!products.length || !!ehr.length || !!segment.length || !!csm.length;
+    !!search || !!health.length || !!products.length || !!ehr.length || !!segment.length || !!csm.length || riskOnly;
 
   // Headline numbers over whatever is on screen, so they follow the filters.
   const summary = useMemo(() => {
@@ -207,9 +218,15 @@ export default function ClientsPage() {
           <div>
             <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Clients</h1>
             <p className="text-[14px] text-brand-primary opacity-50 max-w-2xl">
-              The canonical account list — new feedback can only point at a client on it, so the same
-              account stops arriving under three spellings. Health, products, EHR, segment and
-              contract figures are a snapshot of the Salesforce accounts report from {REPORT_AS_OF}.
+              Who our clients are and how they&rsquo;re doing, so feedback can be weighed by the
+              account behind it — a red account renewing in two months is a different signal from a
+              green one three years out. Open any client for its full picture and everything it has
+              told us.
+            </p>
+            <p className="text-[12px] text-brand-primary opacity-35 max-w-2xl mt-1.5">
+              Account data is a snapshot of the Salesforce accounts report from {REPORT_AS_OF}. This
+              is also the canonical list — feedback can only point at a client on it, so one account
+              stops arriving under three spellings.
             </p>
           </div>
         </div>
@@ -240,11 +257,26 @@ export default function ClientsPage() {
           <MultiSelect value={ehr} onChange={setEhr} options={ehrOptions} placeholder="All EHRs" className="w-40" />
           <MultiSelect value={segment} onChange={setSegment} options={segmentOptions} placeholder="All segments" className="w-44" />
           <MultiSelect value={csm} onChange={setCsm} options={csmOptions} placeholder="All CSMs" className="w-40" />
+          <button
+            type="button"
+            onClick={() => setRiskOnly((v) => !v)}
+            aria-pressed={riskOnly}
+            title={`Renewing within ${RENEWAL_WINDOW_DAYS} days, or already past, and not green`}
+            className={`h-10 inline-flex items-center gap-2 rounded-sm border px-3 text-sm cursor-pointer transition-all duration-200 ${
+              riskOnly
+                ? "border-red-300 bg-red-50 text-red-800 font-semibold"
+                : "border-black/15 bg-white text-brand-primary hover:border-black/30"
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            Renewal at risk
+            <span className={riskOnly ? "" : "opacity-50"}>{riskCount}</span>
+          </button>
           {hasFilters && (
             <Button
               variant="text"
               size="sm"
-              onClick={() => { setSearch(""); setHealth([]); setProducts([]); setEhr([]); setSegment([]); setCsm([]); }}
+              onClick={() => { setSearch(""); setHealth([]); setProducts([]); setEhr([]); setSegment([]); setCsm([]); setRiskOnly(false); }}
             >
               Clear filters
             </Button>
