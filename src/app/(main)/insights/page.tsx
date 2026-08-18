@@ -81,14 +81,14 @@ function Feedback() {
       .catch(() => {});
   }, []);
 
-  // Roles are derived, so the options are whichever ones the loaded rows
-  // actually produce — same handling of picked-but-absent as sources below.
-  const personaOptions = useMemo(() => {
-    const present = new Set(items.flatMap((i) => personaRoles(i.persona)));
-    return PERSONA_ROLES
-      .filter((r) => present.has(r) || persona.includes(r))
-      .map((r) => ({ value: r, label: r }));
-  }, [items, persona]);
+  // Every role, not just the ones the loaded rows happen to produce: a newly
+  // added role (Coder, Clinic manager) has no entries yet and would otherwise
+  // be invisible here. Matches how the area and theme filters offer all the
+  // built-in values; only the derived Source list is present-only.
+  const personaOptions = useMemo(
+    () => PERSONA_ROLES.map((r) => ({ value: r, label: r })),
+    []
+  );
 
   // Only categories actually present are worth offering — plus any already
   // picked, which the area/theme/client filters may have narrowed out of view.
