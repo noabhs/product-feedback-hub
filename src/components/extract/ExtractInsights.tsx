@@ -6,18 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
-import { AREA_OPTIONS as AREAS } from "@/lib/labels";
-
-const THEMES = [
-  { value: "WORKFLOW", label: "Workflow" },
-  { value: "DATA_INTEGRATION", label: "Data & integration" },
-  { value: "TRUST", label: "Trust" },
-  { value: "PAIN_POINTS", label: "Pain points" },
-  { value: "GOALS", label: "Goals" },
-  { value: "PRICING_WTP", label: "Pricing / WTP" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "OTHER", label: "Other" },
-];
+import { AREA_OPTIONS as AREAS , THEME_OPTIONS as THEMES } from "@/lib/labels";
 
 interface Item {
   oneLiner: string;

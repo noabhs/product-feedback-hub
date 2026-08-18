@@ -11,17 +11,7 @@ import type { Question, Source } from "@/lib/types";
 import { AddQuestionModal } from "@/components/discovery/AddQuestionModal";
 import { AddSourceModal } from "@/components/discovery/AddSourceModal";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
-import { AREA_OPTIONS as AREAS, areaLabel } from "@/lib/labels";
-
-const THEMES = [
-  { value: "WORKFLOW", label: "Workflow" },
-  { value: "DATA_INTEGRATION", label: "Data & integration" },
-  { value: "TRUST", label: "Trust" },
-  { value: "PAIN_POINTS", label: "Pain points" },
-  { value: "GOALS", label: "Goals" },
-  { value: "PRICING_WTP", label: "Pricing / WTP" },
-  { value: "AGENTIC", label: "Agentic" },
-];
+import { AREA_OPTIONS as AREAS, areaLabel , THEME_OPTIONS as THEMES } from "@/lib/labels";
 
 type Tab = "questions" | "sources";
 
@@ -53,6 +43,7 @@ export default function DiscoveryPage() {
   const [qGrandTotal, setQGrandTotal] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
+  const [qError, setQError] = useState<string | null>(null);
 
   // Sources state
   const [sources, setSources] = useState<Source[]>([]);
@@ -91,6 +82,25 @@ export default function DiscoveryPage() {
     };
     load();
   }, [tab]);
+
+  // Optimistic, rolled back on failure — the same shape as deleteSource below,
+  // so a rejected reclassification doesn't sit on screen looking saved.
+  async function reclassify(id: string, patch: { productArea?: string; theme?: string }) {
+    const snapshot = questions;
+    setQError(null);
+    setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...patch } : q)));
+    try {
+      const res = await fetch(`/api/questions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `Server returned ${res.status}`);
+    } catch (e) {
+      setQuestions(snapshot);
+      setQError(`Couldn't update that question — ${(e as Error).message}`);
+    }
+  }
 
   function exportQuestions() {
     const params = new URLSearchParams();
@@ -197,6 +207,15 @@ export default function DiscoveryPage() {
               )}
             </div>
 
+            {qError && (
+              <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-[13px] text-red-700">{qError}</p>
+                <button onClick={() => setQError(null)} className="text-[13px] text-red-700 opacity-60 hover:opacity-100 shrink-0">
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {!qLoading && questions.length > 0 && (
               <RowCount shown={questions.length} total={qGrandTotal} noun="questions" className="mb-3" />
             )}
@@ -237,7 +256,7 @@ export default function DiscoveryPage() {
                         </div>
                       </div>
                     </button>
-                    {expanded === q.id && (q.notesIntent || q.source) && (
+                    {expanded === q.id && (
                       <div className="px-10 pb-4 border-t border-[rgba(50,43,95,0.06)]">
                         {q.notesIntent && (
                           <p className="text-[13px] text-brand-primary opacity-60 mt-3 italic">{q.notesIntent}</p>
@@ -245,6 +264,26 @@ export default function DiscoveryPage() {
                         {q.source && (
                           <p className="text-[12px] text-brand-secondary-600 mt-1">Source: {q.source}</p>
                         )}
+                        <div className="flex flex-wrap items-end gap-3 mt-3">
+                          <label className="text-[11px] font-semibold text-brand-primary opacity-50 uppercase tracking-wide">
+                            Product area
+                            <Select
+                              value={q.productArea}
+                              onChange={(val) => reclassify(q.id, { productArea: val })}
+                              options={AREAS}
+                              className="mt-1 w-44 h-9 text-[13px] block"
+                            />
+                          </label>
+                          <label className="text-[11px] font-semibold text-brand-primary opacity-50 uppercase tracking-wide">
+                            Theme
+                            <Select
+                              value={q.theme}
+                              onChange={(val) => reclassify(q.id, { theme: val })}
+                              options={THEMES}
+                              className="mt-1 w-40 h-9 text-[13px] block"
+                            />
+                          </label>
+                        </div>
                       </div>
                     )}
                   </div>

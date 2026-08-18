@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 
 interface MultiSelectProps {
   value: string[];
@@ -12,14 +12,20 @@ interface MultiSelectProps {
   className?: string;
 }
 
+/** Below this many options, scanning the list beats typing at it. */
+const SEARCH_THRESHOLD = 8;
+
 /**
  * Checkbox dropdown for the feed filters. A native <select multiple> needs
  * ctrl-click to add a second value and has no closed state, so the filters get
- * their own panel: click to add, click again to remove.
+ * their own panel: click to add, click again to remove. Long lists (clients,
+ * of which there are ~100) get a search box.
  */
 export function MultiSelect({ value, onChange, options, placeholder, className }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const root = useRef<HTMLDivElement>(null);
+  const searchable = options.length > SEARCH_THRESHOLD;
 
   useEffect(() => {
     if (!open) return;
@@ -40,6 +46,14 @@ export function MultiSelect({ value, onChange, options, placeholder, className }
   const toggle = (v: string) =>
     onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
 
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    // Ticked options stay listed however the query narrows things, so a pick
+    // can always be undone without clearing the search first.
+    return options.filter((o) => o.label.toLowerCase().includes(q) || value.includes(o.value));
+  }, [options, query, value]);
+
   // Ordered by the options list rather than click order, so the summary doesn't
   // reshuffle as picks are added and removed.
   const selected = options.filter((o) => value.includes(o.value)).map((o) => o.label);
@@ -52,7 +66,9 @@ export function MultiSelect({ value, onChange, options, placeholder, className }
     <div ref={root} className={clsx("relative", className)}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        // Query cleared on every open — the button is the only way in, so
+        // reopening never shows a list still narrowed by a forgotten search.
+        onClick={() => { setQuery(""); setOpen((o) => !o); }}
         aria-expanded={open}
         title={selected.join(", ") || placeholder}
         className={clsx(
@@ -68,10 +84,26 @@ export function MultiSelect({ value, onChange, options, placeholder, className }
 
       {open && (
         <div className="absolute z-30 mt-1 w-full min-w-52 max-h-72 overflow-y-auto rounded-sm border border-black/10 bg-white shadow-lg py-1">
+          {searchable && (
+            <div className="sticky top-0 bg-white px-2 pt-1 pb-2 border-b border-black/5">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-primary opacity-30 pointer-events-none" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search…"
+                  autoFocus
+                  className="w-full h-8 rounded-sm bg-white border border-black/15 pl-7 pr-2 text-[13px] text-brand-primary placeholder:text-brand-primary/40 focus:outline-none focus:border-brand-secondary-500"
+                />
+              </div>
+            </div>
+          )}
           {options.length === 0 ? (
             <p className="px-3 py-2 text-[13px] text-brand-primary opacity-40">Nothing to filter by yet</p>
+          ) : shown.length === 0 ? (
+            <p className="px-3 py-2 text-[13px] text-brand-primary opacity-40">No match for “{query}”</p>
           ) : (
-            options.map((o) => {
+            shown.map((o) => {
               const checked = value.includes(o.value);
               return (
                 <button

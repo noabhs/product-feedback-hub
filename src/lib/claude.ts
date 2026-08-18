@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { AREA_LABELS } from "@/lib/labels";
+import { AREA_LABELS, THEME_LABELS } from "@/lib/labels";
 
 function getClient(apiKey?: string) {
   return new Anthropic({ apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY });
@@ -21,7 +21,8 @@ function parseJSON(raw: string): unknown {
 const AREAS = Object.keys(AREA_LABELS);
 /** The enum spelled out for the prompt, so it can never drift from the schema. */
 const AREAS_FOR_PROMPT = AREAS.map((a) => `"${a}"`).join(" | ");
-const THEMES = ["WORKFLOW", "DATA_INTEGRATION", "TRUST", "PAIN_POINTS", "GOALS", "PRICING_WTP", "OTHER"];
+const THEMES = Object.keys(THEME_LABELS);
+const THEMES_FOR_PROMPT = THEMES.map((t) => `"${t}"`).join(" | ");
 
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] };
 
@@ -96,7 +97,7 @@ Return an object with an "insights" array. Each insight has:
 - oneLiner: string (max 100 chars, sentence case)
 - content: string (full detail)
 - productArea: one of ${AREAS_FOR_PROMPT}
-- theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
+- theme: one of ${THEMES_FOR_PROMPT}
 - persona: string or null
 - client: string or null
 - tags: string[] (3–5 keywords)`,
@@ -148,7 +149,7 @@ Do not invent questions on topics the document does not touch.
 Return an object with a "questions" array. Each item has:
 - question: string (the question, phrased for asking out loud)
 - productArea: one of ${AREAS_FOR_PROMPT}
-- theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
+- theme: one of ${THEMES_FOR_PROMPT}
 - persona: string or null (who to ask, if the document indicates one)
 - notesIntent: string or null (what the question is trying to learn, and any context worth having)
 

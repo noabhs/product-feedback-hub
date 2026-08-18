@@ -42,6 +42,13 @@ export const THEME_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
+/**
+ * The built-in themes as dropdown options. Same reasoning as AREA_OPTIONS: these
+ * feed edit controls now, so a list missing a value (OTHER, in three of the four
+ * copies this replaced) would display the wrong theme for a question.
+ */
+export const THEME_OPTIONS = Object.entries(THEME_LABELS).map(([value, label]) => ({ value, label }));
+
 export const AREA_COLORS: Record<string, string> = {
   POP_HEALTH: "#5d07e2",
   QUALITY: "#322B5F",
