@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { normalizeKey } from "@/lib/labels";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { insightWhere } from "@/lib/insight-filters";
-import { resolveClient } from "@/lib/accounts-db";
+import { resolveClientForEdit } from "@/lib/accounts-db";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -52,6 +52,16 @@ export async function POST(req: NextRequest) {
   const productArea = normalizeKey(body.productArea ?? "") || "GENERAL";
   const theme = normalizeKey(body.theme ?? "") || "OTHER";
 
+  // A typed client that isn't on the list used to be stored as null, so the
+  // entry saved "fine" and silently lost its client. Say so instead.
+  const client = await resolveClientForEdit(body.client, null);
+  if (client.kind === "unknown") {
+    return NextResponse.json(
+      { error: `"${client.raw}" isn't on the client list. Add it on the Clients page, then set it here.` },
+      { status: 400 },
+    );
+  }
+
   const insight = await prisma.insight.create({
     data: {
       productArea,
@@ -61,7 +71,7 @@ export async function POST(req: NextRequest) {
       content: body.content,
       // Resolved against the canonical list; anything unrecognised is stored
       // as null rather than starting a new one-off client.
-      client: await resolveClient(body.client),
+      client: client.kind === "set" ? client.value : null,
       clientRaw: body.client?.trim() || null,
       sourceName: body.sourceName ?? null,
       sourceUrl: body.sourceUrl ?? null,

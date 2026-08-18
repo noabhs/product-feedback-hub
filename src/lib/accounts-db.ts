@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { matchAccount, type AccountLike } from "@/lib/accounts";
+import { matchAccount, normalizeAccount, type AccountLike } from "@/lib/accounts";
 
 /** Aliases are stored as a JSON string; a malformed one shouldn't break matching. */
 function parseAliases(raw: string): string[] {
@@ -30,16 +30,35 @@ export async function resolveClient(raw: string | null | undefined): Promise<str
 }
 
 /**
- * The resolver for edits, which must not destroy data as a side effect.
+ * The resolver for a write path, which must never discard the caller's value
+ * silently.
  *
- * Before the historical remap has been applied, plenty of rows still carry an
- * unrecognised client. Editing such a row's date would otherwise blank its
- * client, because the value resolves to null. So: an empty value clears the
- * field, a recognised one is stored, and an unrecognised one leaves the column
- * untouched (`undefined`) — cleaning those up is the Clients page's job.
+ * `keep` leaves the column untouched — used when the field wasn't submitted at
+ * all, and when the submitted value is the row's existing unmatched value (a
+ * pre-remap row shouldn't lose its client because someone edited its date).
+ * `unknown` means the caller typed something new that isn't on the list; the
+ * route turns that into a 400 so the user finds out, rather than saving
+ * "successfully" and dropping the edit.
  */
-export async function resolveClientForEdit(raw: string | null | undefined): Promise<string | null | undefined> {
-  if (raw === undefined) return undefined;
-  if (!raw?.trim()) return null;
-  return (await resolveClient(raw)) ?? undefined;
+export type ClientResolution =
+  | { kind: "set"; value: string | null }
+  | { kind: "keep" }
+  | { kind: "unknown"; raw: string };
+
+export async function resolveClientForEdit(
+  raw: string | null | undefined,
+  current: string | null | undefined,
+): Promise<ClientResolution> {
+  if (raw === undefined) return { kind: "keep" };
+
+  const trimmed = raw?.trim() ?? "";
+  if (!trimmed) return { kind: "set", value: null };
+
+  const matched = await resolveClient(trimmed);
+  if (matched) return { kind: "set", value: matched };
+
+  // Unchanged from what's already stored: leave it be.
+  if (current && normalizeAccount(trimmed) === normalizeAccount(current)) return { kind: "keep" };
+
+  return { kind: "unknown", raw: trimmed };
 }

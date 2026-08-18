@@ -27,7 +27,6 @@ async function fetchAll(): Promise<{ list: string[]; remap: RemapResponse }> {
 export default function ClientsPage() {
   const [clients, setClients] = useState<string[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<string | null>(null);
@@ -38,7 +37,6 @@ export default function ClientsPage() {
   const applyData = useCallback((d: { list: string[]; remap: RemapResponse }) => {
     setClients(d.list);
     setProposals(d.remap.proposals ?? []);
-    setPending(d.remap.pending ?? 0);
     // No spinner on refreshes: `loading` starts true for the first paint, and
     // later reloads are covered by the acting button's own spinner.
     setLoading(false);
@@ -95,15 +93,19 @@ export default function ClientsPage() {
     }
   }
 
-  const changes = proposals.filter((p) => p.from !== p.to);
+  // Only renames are applied; unmatched values are left untouched, so they
+  // mustn't be counted in the Apply button.
+  const changes = proposals.filter((p) => p.to !== null && p.from !== p.to);
+  const unmatched = proposals.filter((p) => p.to === null);
 
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Clients</h1>
         <p className="text-[14px] text-brand-primary opacity-50 mb-8">
-          The canonical account list. Feedback can only point at a client on this list — anything
-          else is stored blank rather than starting a near-duplicate.
+          The canonical account list. New feedback can only point at a client on this list, so the
+          same account stops arriving under three spellings. Existing values that don&apos;t match are
+          left alone until you decide where they belong.
         </p>
 
         {error && (
@@ -118,7 +120,8 @@ export default function ClientsPage() {
             <div>
               <h2 className="text-[16px] font-bold text-brand-primary">Historical values</h2>
               <p className="text-[13px] text-brand-primary opacity-50">
-                What the client field on existing feedback would become. Nothing changes until you apply.
+                Renames applied to the client field on existing feedback. Nothing changes until you
+                apply, and values with no match are left exactly as they are.
               </p>
             </div>
             {changes.length > 0 && (
@@ -169,7 +172,9 @@ export default function ClientsPage() {
                             {p.to ? (
                               <span className="text-brand-primary font-medium">{p.to}</span>
                             ) : (
-                              <span className="text-brand-primary opacity-40 italic">left blank — no match</span>
+                              <span className="text-brand-primary opacity-40 italic">
+                                no match — left as-is
+                              </span>
                             )}
                           </span>
                         </td>
@@ -184,8 +189,12 @@ export default function ClientsPage() {
               </p>
             </>
           )}
-          {pending !== changes.length && !loading && (
-            <p className="mt-2 text-[12px] text-brand-primary opacity-40">{pending} pending server-side</p>
+          {unmatched.length > 0 && !loading && (
+            <p className="mt-2 text-[12px] text-brand-primary opacity-40">
+              {unmatched.length} {unmatched.length === 1 ? "value has" : "values have"} no match and
+              {unmatched.length === 1 ? " is" : " are"} left untouched. Add the account below (or as
+              an alias of an existing one) and these will match on the next pass.
+            </p>
           )}
         </section>
 

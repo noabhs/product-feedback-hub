@@ -43,9 +43,15 @@ export async function GET() {
   });
 }
 
-/** Apply the remap. Keeps the original text in clientRaw so it stays traceable. */
+/**
+ * Apply the remap. Renames only — a value with no match is left exactly as it
+ * is. Blanking those was destroying hand-entered clients on one click, and an
+ * unmatched value is a prompt for a human decision, not garbage.
+ *
+ * Keeps the original text in clientRaw so a rename stays traceable.
+ */
 export async function POST() {
-  const rows = (await proposals()).filter((r) => r.from !== r.to);
+  const rows = (await proposals()).filter((r) => r.to !== null && r.from !== r.to);
 
   let changed = 0;
   for (const row of rows) {

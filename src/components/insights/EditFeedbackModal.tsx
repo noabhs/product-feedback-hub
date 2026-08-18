@@ -126,7 +126,12 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
       const res = isEdit
         ? await fetch(`/api/insights/${item!.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
         : await fetch("/api/insights", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) {
+        // Surface the server's reason — "X isn't on the client list" is
+        // actionable, "Failed to save" is not.
+        const detail = await res.json().catch(() => null);
+        throw new Error(detail?.error ?? `Couldn't save — HTTP ${res.status}`);
+      }
       const saved = await res.json();
       onSave(isEdit ? { ...item!, ...saved } : saved);
     } catch (e) {

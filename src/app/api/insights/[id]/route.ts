@@ -14,6 +14,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
+
+  // The row's current client decides whether an unrecognised value is the one
+  // already stored (leave it) or something newly typed (tell the user).
+  const existing = await prisma.insight.findUnique({ where: { id }, select: { client: true } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const client = await resolveClientForEdit(body.client, existing.client);
+  if (client.kind === "unknown") {
+    return NextResponse.json(
+      { error: `"${client.raw}" isn't on the client list. Add it on the Clients page, then set it here.` },
+      { status: 400 },
+    );
+  }
+
   const updated = await prisma.insight.update({
     where: { id },
     data: {
@@ -22,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       productArea: normalizeKey(body.productArea ?? "") || "GENERAL",
       theme: normalizeKey(body.theme ?? "") || "OTHER",
       persona: body.persona ?? null,
-      client: await resolveClientForEdit(body.client),
+      client: client.kind === "set" ? client.value : undefined,
       sourceName: body.sourceName ?? null,
       sourceUrl: body.sourceUrl ?? null,
       date: body.date ? new Date(body.date) : null,
