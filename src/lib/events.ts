@@ -6,6 +6,9 @@ import { auth } from "@/auth";
  * slow the action being recorded, so failures are swallowed after a log line.
  */
 
+/** Cap on rows the log will render, so a very chatty month can't blow up the page. */
+export const EVENT_LOG_LIMIT = 600;
+
 export const ACTIONS = {
   feedbackCreated: "feedback.created",
   feedbackUpdated: "feedback.updated",

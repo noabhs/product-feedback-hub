@@ -1,10 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUp, ArrowDown, Search } from "lucide-react";
+import { ArrowUp, ArrowDown, Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { ACTION_LABELS } from "@/lib/events";
 import { shortName } from "@/lib/people";
 import { RowCount } from "@/components/ui/RowCount";
+import {
+  EVENT_RANGES,
+  DEFAULT_EVENT_RANGE,
+  eventRangeParams,
+  type EventRangeKey,
+} from "@/lib/event-range";
 
 export interface EventRow {
   id: string;
@@ -17,6 +23,8 @@ export interface EventRow {
 }
 
 type SortKey = "createdAt" | "actor" | "action";
+
+const PAGE_SIZE = 10;
 
 function fmtWhen(iso: string) {
   const d = new Date(iso);
@@ -73,19 +81,75 @@ export function EventLog({ events }: { events: EventRow[] }) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("createdAt");
   const [desc, setDesc] = useState(true);
+  const [page, setPage] = useState(1);
+
+  // The page server-renders the default range, so `loaded` starts null and the
+  // prop is used as-is. Any other range is fetched.
+  const [range, setRange] = useState<EventRangeKey>(DEFAULT_EVENT_RANGE);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [loaded, setLoaded] = useState<EventRow[] | null>(null);
+  const [capped, setCapped] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const source = loaded ?? events;
+
+  /** Fetched from the change handlers rather than an effect, so nothing is set
+   *  synchronously during render and the range only reloads when it's asked to. */
+  async function loadRange(next: EventRangeKey, from: string, to: string) {
+    if (next === DEFAULT_EVENT_RANGE) {
+      setLoaded(null);
+      setCapped(false);
+      return;
+    }
+    // An incomplete custom range would otherwise query wide open.
+    if (next === "custom" && (!from || !to)) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/events?${eventRangeParams(next, from, to)}`);
+      const data = await res.json();
+      setLoaded(data.events ?? []);
+      setCapped((data.total ?? 0) > (data.limit ?? Infinity));
+    } catch {
+      setLoaded([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function pickRange(next: EventRangeKey) {
+    setRange(next);
+    setPage(1);
+    void loadRange(next, customFrom, customTo);
+  }
+
+  function pickCustom(from: string, to: string) {
+    setCustomFrom(from);
+    setCustomTo(to);
+    setPage(1);
+    void loadRange("custom", from, to);
+  }
+
+  function exportCsv() {
+    const params = eventRangeParams(range, customFrom, customTo);
+    if (actor) params.set("actor", actor);
+    if (action) params.set("action", action);
+    if (q.trim()) params.set("search", q.trim());
+    window.location.href = `/api/events/export?${params}`;
+  }
 
   const actors = useMemo(
-    () => Array.from(new Set(events.map((e) => e.actor))).sort(),
-    [events]
+    () => Array.from(new Set(source.map((e) => e.actor))).sort(),
+    [source]
   );
   const actions = useMemo(
-    () => Array.from(new Set(events.map((e) => e.action))).sort(),
-    [events]
+    () => Array.from(new Set(source.map((e) => e.action))).sort(),
+    [source]
   );
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const filtered = events.filter((e) => {
+    const filtered = source.filter((e) => {
       if (actor && e.actor !== actor) return false;
       if (action && e.action !== action) return false;
       if (needle) {
@@ -104,9 +168,10 @@ export function EventLog({ events }: { events: EventRow[] }) {
       // Ties within an action sort newest-first so the group reads chronologically.
       return dir * (al.localeCompare(bl) || a.createdAt.localeCompare(b.createdAt));
     });
-  }, [events, actor, action, q, sort, desc]);
+  }, [source, actor, action, q, sort, desc]);
 
   function toggleSort(key: SortKey) {
+    setPage(1);
     if (key === sort) {
       setDesc(!desc);
     } else {
@@ -115,6 +180,13 @@ export function EventLog({ events }: { events: EventRow[] }) {
     }
   }
 
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  // Clamped rather than trusted: a filter that shrinks the set mid-read would
+  // otherwise leave the view on a page that no longer exists.
+  const current = Math.min(page, pageCount);
+  const start = (current - 1) * PAGE_SIZE;
+  const pageRows = rows.slice(start, start + PAGE_SIZE);
+
   return (
     <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)]">
       <div className="p-5 pb-3">
@@ -122,10 +194,21 @@ export function EventLog({ events }: { events: EventRow[] }) {
           <div>
             <h2 className="text-[14px] font-semibold text-brand-primary">Event log</h2>
             <p className="text-[12px] text-brand-primary opacity-45 mt-0.5">
-              Who did what, and when — most recent {events.length.toLocaleString()} events
+              Who did what, and when
+              {capped && " — showing the most recent 600 in this range; the export has all of them"}
             </p>
           </div>
-          <RowCount shown={rows.length} total={events.length} noun="events" />
+          <div className="flex items-center gap-3">
+            <RowCount shown={rows.length} total={source.length} noun="events" />
+            <button
+              onClick={exportCsv}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-secondary-600 border border-[rgba(93,7,226,0.25)] rounded-sm px-2.5 py-1.5 hover:bg-[rgba(93,7,226,0.05)] transition-colors"
+              title="Download every event in this range as CSV, ignoring the 600-row display cap"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export full report
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 mt-4 flex-wrap">
@@ -133,12 +216,38 @@ export function EventLog({ events }: { events: EventRow[] }) {
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-primary opacity-35" />
             <input
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => { setQ(e.target.value); setPage(1); }}
               placeholder="Search events"
               className="text-[13px] border border-[rgba(50,43,95,0.12)] rounded-sm pl-8 pr-2.5 py-1.5 w-56 bg-white text-brand-primary focus:outline-none focus:border-brand-secondary-500"
             />
           </div>
-          <select value={actor} onChange={(e) => setActor(e.target.value)} className={SELECT}>
+          <select value={range} onChange={(e) => pickRange(e.target.value as EventRangeKey)} className={SELECT}>
+            {EVENT_RANGES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+          {range === "custom" && (
+            <>
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo || undefined}
+                onChange={(e) => pickCustom(e.target.value, customTo)}
+                className={SELECT}
+              />
+              <span className="text-[12px] text-brand-primary opacity-40">to</span>
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom || undefined}
+                onChange={(e) => pickCustom(customFrom, e.target.value)}
+                className={SELECT}
+              />
+            </>
+          )}
+          <select value={actor} onChange={(e) => { setActor(e.target.value); setPage(1); }} className={SELECT}>
             <option value="">All people</option>
             {actors.map((a) => (
               <option key={a} value={a}>
@@ -146,7 +255,7 @@ export function EventLog({ events }: { events: EventRow[] }) {
               </option>
             ))}
           </select>
-          <select value={action} onChange={(e) => setAction(e.target.value)} className={SELECT}>
+          <select value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} className={SELECT}>
             <option value="">All actions</option>
             {actions.map((a) => (
               <option key={a} value={a}>
@@ -160,6 +269,7 @@ export function EventLog({ events }: { events: EventRow[] }) {
                 setActor("");
                 setAction("");
                 setQ("");
+                setPage(1);
               }}
               className="text-[12px] text-brand-secondary-600 hover:underline"
             >
@@ -180,7 +290,7 @@ export function EventLog({ events }: { events: EventRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((e) => {
+            {pageRows.map((e) => {
               const when = fmtWhen(e.createdAt);
               return (
                 <tr
@@ -221,10 +331,43 @@ export function EventLog({ events }: { events: EventRow[] }) {
 
         {rows.length === 0 && (
           <p className="text-[13px] text-brand-primary opacity-45 px-5 py-8 text-center">
-            No events match these filters.
+            {loading
+              ? "Loading…"
+              : range === "custom" && (!customFrom || !customTo)
+                ? "Pick a start and end date."
+                : "No events match these filters."}
           </p>
         )}
       </div>
+
+      {rows.length > 0 && (
+        <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-[rgba(50,43,95,0.08)]">
+          <p className="text-[12px] text-brand-primary opacity-45">
+            {start + 1}–{Math.min(start + PAGE_SIZE, rows.length)} of {rows.length.toLocaleString()}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(current - 1)}
+              disabled={current <= 1}
+              className="inline-flex items-center gap-1 text-[12px] text-brand-primary px-2 py-1 rounded-sm disabled:opacity-25 enabled:hover:bg-[rgba(50,43,95,0.05)] transition-colors"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Previous
+            </button>
+            <span className="text-[12px] text-brand-primary opacity-60 px-2 tabular-nums">
+              Page {current} of {pageCount}
+            </span>
+            <button
+              onClick={() => setPage(current + 1)}
+              disabled={current >= pageCount}
+              className="inline-flex items-center gap-1 text-[12px] text-brand-primary px-2 py-1 rounded-sm disabled:opacity-25 enabled:hover:bg-[rgba(50,43,95,0.05)] transition-colors"
+            >
+              Next
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,14 +2,12 @@ export const dynamic = "force-dynamic";
 
 import { Activity, Users, Sparkles, Eye, Info } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { ACTION_LABELS, AI_ACTIONS, ACTIONS } from "@/lib/events";
+import { ACTION_LABELS, AI_ACTIONS, ACTIONS, EVENT_LOG_LIMIT } from "@/lib/events";
 import { shortName } from "@/lib/people";
 import { EventLog, type EventRow } from "@/components/analytics/EventLog";
 
 const WINDOW_DAYS = 30;
 const TREND_DAYS = 14;
-/** Cap the log query so a very chatty month can't blow up the page. */
-const LOG_LIMIT = 600;
 
 const WRITE_ACTIONS = new Set<string>(
   Object.values(ACTIONS).filter((a) => a !== ACTIONS.pageView && !AI_ACTIONS.includes(a))
@@ -104,7 +102,7 @@ async function loadAnalytics() {
   const topPages = [...pageCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   const maxPage = Math.max(...topPages.map(([, n]) => n), 1);
 
-  const logRows: EventRow[] = events.slice(0, LOG_LIMIT).map((e) => ({
+  const logRows: EventRow[] = events.slice(0, EVENT_LOG_LIMIT).map((e) => ({
     id: e.id,
     actor: e.actor,
     action: e.action,
