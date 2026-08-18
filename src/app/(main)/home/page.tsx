@@ -1,13 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import {
-  ArrowRight, MessageSquare, Users, FileQuestion, Sparkles,
-  Plus, Upload, Building2,
-} from "lucide-react";
-import {
-  SectionHeading, QuickAction, KpiCard, MeterCard, ChartCard, BarRow,
-} from "@/components/home/cards";
+import { ArrowRight, MessageSquare, Users, FileQuestion, Sparkles, Building2 } from "lucide-react";
+import { SectionHeading, KpiCard, MeterCard, ChartCard, BarRow } from "@/components/home/cards";
 import { prisma } from "@/lib/prisma";
 import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
 import { shortName } from "@/lib/people";
@@ -106,13 +101,6 @@ export default async function HomePage() {
             Connect feedback across every source to uncover the insights that matter — spot patterns
             across clients, sharpen discovery, and turn scattered signals into product decisions.
           </p>
-
-          <div className="flex flex-wrap items-center gap-2 mt-5">
-            <QuickAction href="/insights" Icon={Plus} label="Add feedback" primary />
-            <QuickAction href="/upload" Icon={Upload} label="AI extract" />
-            <QuickAction href="/feedback-insights" Icon={Sparkles} label="Ask the feedback" />
-            <QuickAction href="/discovery/generate" Icon={FileQuestion} label="Build a discovery doc" />
-          </div>
         </div>
 
         {/* ── Overview ───────────────────────────────────────────────────── */}
@@ -125,12 +113,7 @@ export default async function HomePage() {
         </div>
 
         {/* ── Client coverage ────────────────────────────────────────────── */}
-        <SectionHeading
-          title="Client coverage"
-          note={`account data as of ${fmtDay(REPORT_AS_OF) ?? REPORT_AS_OF}`}
-          href="/clients"
-          linkLabel="All clients"
-        />
+        <SectionHeading title="Client coverage" note={`account data as of ${fmtDay(REPORT_AS_OF) ?? REPORT_AS_OF}`} />
         <div className="grid grid-cols-2 gap-4 mb-4">
           <MeterCard
             Icon={Building2}
@@ -139,25 +122,25 @@ export default async function HomePage() {
             sub={`${clients.length - heardFrom.length} have none yet`}
             pct={clients.length ? heardFrom.length / clients.length : 0}
             color="#5d07e2"
+            href="/clients"
           />
-          <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-5">
-            <h3 className="text-[13px] font-semibold text-brand-primary mb-1">Account health</h3>
-            <p className="text-[11px] text-brand-primary opacity-40 mb-3.5">
-              {rated.length} accounts rated in the report
-            </p>
-            <div className="space-y-2.5">
-              {healthMix.map((h) => (
-                <BarRow
-                  key={h.health}
-                  label={h.health}
-                  count={h.count}
-                  pct={rated.length ? h.count / rated.length : 0}
-                  color={HEALTH_COLORS[h.health]}
-                  labelWidth="w-14"
-                />
-              ))}
-            </div>
-          </div>
+          <ChartCard
+            title="Account health"
+            note={`${rated.length} accounts rated in the report`}
+            href="/clients"
+            linkLabel="Clients"
+          >
+            {healthMix.map((h) => (
+              <BarRow
+                key={h.health}
+                label={h.health}
+                count={h.count}
+                pct={rated.length ? h.count / rated.length : 0}
+                color={HEALTH_COLORS[h.health]}
+                labelWidth="w-14"
+              />
+            ))}
+          </ChartCard>
         </div>
 
         {silent.length > 0 && (
@@ -189,7 +172,7 @@ export default async function HomePage() {
         )}
 
         {/* ── What we're hearing ─────────────────────────────────────────── */}
-        <SectionHeading title="What we're hearing" href="/insights" linkLabel="All feedback" />
+        <SectionHeading title="What we're hearing" />
         <div className="grid grid-cols-2 gap-4 mb-4">
           <ChartCard title="By product area" href="/insights">
             {byAreaRaw.map((r) => (
