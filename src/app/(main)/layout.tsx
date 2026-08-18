@@ -4,14 +4,25 @@ import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
 
-const NAV = [
-  { href: "/home", label: "Home", icon: Home },
-  { href: "/insights", label: "Feedback", icon: Search },
-  { href: "/discovery", label: "Discovery", icon: BookOpen },
-  { href: "/upload", label: "AI extract", icon: Upload },
-  { href: "/clients", label: "Clients", icon: Building2 },
-  { href: "/feedback-insights", label: "Feedback insights log", icon: MessageSquare },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+/**
+ * Grouped, not flat. Everything about the feedback sits together — including AI
+ * extract, which is how feedback arrives rather than a place of its own — then
+ * the reference material, then Analytics, which measures the hub itself rather
+ * than the product. Dividers alone, no section headings: seven items don't earn
+ * the extra height.
+ */
+const NAV_GROUPS = [
+  [{ href: "/home", label: "Home", icon: Home }],
+  [
+    { href: "/insights", label: "Feedback", icon: Search },
+    { href: "/feedback-insights", label: "Feedback insights log", icon: MessageSquare },
+    { href: "/upload", label: "AI extract", icon: Upload },
+  ],
+  [
+    { href: "/discovery", label: "Discovery", icon: BookOpen },
+    { href: "/clients", label: "Clients", icon: Building2 },
+  ],
+  [{ href: "/analytics", label: "Analytics", icon: BarChart3 }],
 ];
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
@@ -32,16 +43,24 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           </Link>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+        <nav className="flex-1 px-3 py-4">
+          {NAV_GROUPS.map((group, i) => (
+            <div
+              key={group[0].href}
+              // Matches the rule under the logo, so the sidebar reads as one system.
+              className={`space-y-1${i > 0 ? " mt-2 pt-2 border-t border-white/10" : ""}`}
             >
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </Link>
+              {group.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {label}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
 
