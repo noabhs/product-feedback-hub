@@ -198,3 +198,36 @@ export function matchAccount(raw: string | null | undefined, accounts: AccountLi
 function escape(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/**
+ * When the Salesforce accounts report the per-account data came from was run.
+ * Shown on /clients so nobody reads a stale ARR as today's number.
+ */
+export const REPORT_AS_OF = "2026-08-18";
+
+/** Worst first — a health filter and a health sort both want this order. */
+export const HEALTH_ORDER = ["Red", "Yellow", "Green"] as const;
+
+/**
+ * Every product the report knows about. Listed rather than derived so the filter
+ * keeps a stable order (roughly by how many accounts carry each one) instead of
+ * reshuffling as accounts change.
+ */
+export const PRODUCTS = ["Risk", "Quality", "HIE", "Clinician Copilot", "Reporting API"] as const;
+
+export const SEGMENTS = ["Physician Group", "ACO/MSO", "Health System", "Health Plan"] as const;
+
+/**
+ * Days until renewal, negative once it's past. Derived rather than stored: the
+ * report's own "time to renewal" column was correct on 2026-08-18 and wrong
+ * every day after.
+ */
+export function daysUntil(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return null;
+  const today = new Date();
+  const day = 24 * 60 * 60 * 1000;
+  return Math.round((Date.UTC(then.getUTCFullYear(), then.getUTCMonth(), then.getUTCDate())
+    - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / day);
+}

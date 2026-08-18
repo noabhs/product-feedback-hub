@@ -46,3 +46,31 @@ export interface Source {
   notes: string | null;
   createdBy: string | null;
 }
+
+/**
+ * A client row on /clients: the canonical account plus its Salesforce report
+ * snapshot. Every report field is nullable — the report covered active direct
+ * accounts only, so 21 of the 95 accounts legitimately have none of it.
+ */
+export interface AccountDetail {
+  id: string;
+  name: string;
+  health: string | null;
+  products: string[];
+  ehr: string | null;
+  segment: string | null;
+  billingState: string | null;
+  accountOwner: string | null;
+  csmName: string | null;
+  hieMembers: number | null;
+  qualityMembers: number | null;
+  riskMembers: number | null;
+  arr: number | null;
+  carr: number | null;
+  renewalDate: string | null;
+  lastActivityAt: string | null;
+  firstClosedWon: string | null;
+  liveDate: string | null;
+  /** Feedback entries filed against this account. */
+  feedbackCount: number;
+}

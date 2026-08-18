@@ -18,8 +18,19 @@ const AREA_CLASSES: Record<string, string> = {
   COMPETITIVE:  "bg-red-100 text-red-800",
 };
 
+/**
+ * Account health, worst to best. A tint plus a dot plus the word — the word is
+ * there on purpose, so "Red" still reads as bad to someone who can't tell these
+ * three tints apart.
+ */
+const HEALTH_CLASSES: Record<string, { pill: string; dot: string }> = {
+  Red:    { pill: "bg-red-50 text-red-800 border border-red-200",             dot: "bg-red-500" },
+  Yellow: { pill: "bg-amber-50 text-amber-800 border border-amber-200",       dot: "bg-amber-500" },
+  Green:  { pill: "bg-emerald-50 text-emerald-800 border border-emerald-200", dot: "bg-emerald-500" },
+};
+
 interface BadgeProps {
-  type: "area" | "theme" | "source";
+  type: "area" | "theme" | "source" | "health";
   value: string;
   className?: string;
 }
@@ -29,6 +40,15 @@ export function Badge({ type, value, className }: BadgeProps) {
     return (
       <span className={clsx("inline-flex items-center px-2.5 py-0.5 rounded-pill text-xs font-medium", AREA_CLASSES[value] ?? "bg-surface-app text-brand-primary border border-black/10", className)}>
         {areaLabel(value)}
+      </span>
+    );
+  }
+  if (type === "health") {
+    const c = HEALTH_CLASSES[value];
+    return (
+      <span className={clsx("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill text-xs font-semibold", c?.pill ?? "bg-surface-app text-brand-primary border border-black/10", className)}>
+        <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", c?.dot ?? "bg-brand-primary/30")} />
+        {value}
       </span>
     );
   }

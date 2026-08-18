@@ -51,7 +51,9 @@ function Feedback() {
   const [productArea, setProductArea] = useState<string[]>([]);
   const [theme, setTheme] = useState<string[]>([]);
   const [persona, setPersona] = useState<string[]>([]);
-  const [client, setClient] = useState<string[]>([]);
+  // Seeded from ?client=<name> so the "N entries from this client" link on
+  // /clients lands here already filtered to that account.
+  const [client, setClient] = useState<string[]>(useSearchParams().getAll("client"));
   const [source, setSource] = useState<string[]>([]);
   const [clients, setClients] = useState<{ value: string; label: string }[]>([]);
   const [items, setItems] = useState<InsightItem[]>([]);

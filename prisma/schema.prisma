@@ -52,6 +52,31 @@ model Account {
   /// Email of whoever added it from the UI; null for the seeded list.
   createdBy String?
   createdAt DateTime @default(now())
+
+  // Everything below is a snapshot of Navina's Salesforce accounts report
+  // (2026-08-18), which covered active direct accounts only. An account outside
+  // that filter keeps its nulls, and /clients renders those as "-".
+  /// "Green" | "Yellow" | "Red".
+  health         String?
+  /// JSON array of live product names, e.g. ["Risk","Quality","HIE"].
+  products       String    @default("[]")
+  ehr            String?
+  /// "Physician Group" | "ACO/MSO" | "Health System" | "Health Plan".
+  segment        String?
+  billingState   String?
+  accountOwner   String?
+  csmName        String?
+  hieMembers     Int?
+  qualityMembers Int?
+  riskMembers    Int?
+  /// Current ARR and contracted ARR, in whole dollars.
+  arr            Int?
+  carr           Int?
+  renewalDate    DateTime?
+  lastActivityAt DateTime?
+  firstClosedWon DateTime?
+  /// Go-live date. Not in the report - entered by hand from the client panel.
+  liveDate       DateTime?
 }
 
 model Comment {
