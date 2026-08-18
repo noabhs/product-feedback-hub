@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUp, ArrowDown, Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUp, ArrowDown, Search, Download } from "lucide-react";
 import { ACTION_LABELS } from "@/lib/events";
 import { shortName } from "@/lib/people";
 import { RowCount } from "@/components/ui/RowCount";
+import { Pagination } from "@/components/ui/Pagination";
 import {
   EVENT_RANGES,
   DEFAULT_EVENT_RANGE,
@@ -341,32 +342,15 @@ export function EventLog({ events }: { events: EventRow[] }) {
       </div>
 
       {rows.length > 0 && (
-        <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-[rgba(50,43,95,0.08)]">
-          <p className="text-[12px] text-brand-primary opacity-45">
-            {start + 1}–{Math.min(start + PAGE_SIZE, rows.length)} of {rows.length.toLocaleString()}
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage(current - 1)}
-              disabled={current <= 1}
-              className="inline-flex items-center gap-1 text-[12px] text-brand-primary px-2 py-1 rounded-sm disabled:opacity-25 enabled:hover:bg-[rgba(50,43,95,0.05)] transition-colors"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              Previous
-            </button>
-            <span className="text-[12px] text-brand-primary opacity-60 px-2 tabular-nums">
-              Page {current} of {pageCount}
-            </span>
-            <button
-              onClick={() => setPage(current + 1)}
-              disabled={current >= pageCount}
-              className="inline-flex items-center gap-1 text-[12px] text-brand-primary px-2 py-1 rounded-sm disabled:opacity-25 enabled:hover:bg-[rgba(50,43,95,0.05)] transition-colors"
-            >
-              Next
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={current}
+          pageCount={pageCount}
+          start={start}
+          pageSize={PAGE_SIZE}
+          total={rows.length}
+          noun="events"
+          onPage={setPage}
+        />
       )}
     </div>
   );

@@ -11,6 +11,7 @@ import { ImportCsvModal } from "@/components/ImportCsvModal";
 import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
 import { RowCount } from "@/components/ui/RowCount";
+import { Pagination } from "@/components/ui/Pagination";
 import type { InsightItem } from "@/lib/types";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
 import { SOURCE_CATEGORIES, sourceCategory } from "@/lib/sources";
@@ -24,6 +25,8 @@ type SortKey =
   | "sourceName" | "date" | "createdBy" | "commentCount";
 
 // Order here drives the header; InsightRow renders its cells to match.
+const PAGE_SIZE = 20;
+
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "productArea", label: "Area" },
   { key: "theme", label: "Theme" },
@@ -58,6 +61,7 @@ function Feedback() {
   const [clients, setClients] = useState<{ value: string; label: string }[]>([]);
   const [items, setItems] = useState<InsightItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
@@ -202,9 +206,26 @@ function Feedback() {
     });
   }, [filtered, sortKey, sortDir]);
 
+  /** Wraps a filter setter so changing it also returns to the first page —
+   *  page 4 of an old result set is meaningless against a new one. */
+  function onFilter<T>(set: (value: T) => void) {
+    return (value: T) => {
+      setPage(1);
+      set(value);
+    };
+  }
+
+  const pageCount = Math.max(1, Math.ceil(displayed.length / PAGE_SIZE));
+  // Clamped rather than trusted: a filter that shrinks the set would otherwise
+  // leave the table on a page that no longer exists.
+  const current = Math.min(page, pageCount);
+  const start = (current - 1) * PAGE_SIZE;
+  const pageRows = displayed.slice(start, start + PAGE_SIZE);
+
   // Same column toggles direction; a new column starts descending for dates
   // and counts (newest / most first) and ascending for text.
   const toggleSort = (key: SortKey) => {
+    setPage(1);
     if (key === sortKey) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -305,19 +326,19 @@ function Feedback() {
             icon={<Search className="w-4 h-4" />}
             placeholder="Search feedback..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-60"
           />
-          <MultiSelect value={productArea} onChange={setProductArea} options={areaOptions} placeholder="All product areas" className="w-44" />
-          <MultiSelect value={theme} onChange={setTheme} options={themeOptions} placeholder="All themes" className="w-40" />
-          <MultiSelect value={persona} onChange={setPersona} options={personaOptions} placeholder="All personas" className="w-40" />
-          <MultiSelect value={client} onChange={setClient} options={clients} placeholder="All clients" className="w-44" />
-          <MultiSelect value={source} onChange={setSource} options={sourceOptions} placeholder="All sources" className="w-40" />
+          <MultiSelect value={productArea} onChange={onFilter(setProductArea)} options={areaOptions} placeholder="All product areas" className="w-44" />
+          <MultiSelect value={theme} onChange={onFilter(setTheme)} options={themeOptions} placeholder="All themes" className="w-40" />
+          <MultiSelect value={persona} onChange={onFilter(setPersona)} options={personaOptions} placeholder="All personas" className="w-40" />
+          <MultiSelect value={client} onChange={onFilter(setClient)} options={clients} placeholder="All clients" className="w-44" />
+          <MultiSelect value={source} onChange={onFilter(setSource)} options={sourceOptions} placeholder="All sources" className="w-40" />
           {hasFilters && (
             <Button
               variant="text"
               size="sm"
-              onClick={() => { setSearch(""); setProductArea([]); setTheme([]); setPersona([]); setClient([]); setSource([]); }}
+              onClick={() => { setSearch(""); setProductArea([]); setTheme([]); setPersona([]); setClient([]); setSource([]); setPage(1); }}
             >
               Clear filters
             </Button>
@@ -376,11 +397,20 @@ function Feedback() {
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((item) => (
+                {pageRows.map((item) => (
                   <InsightRow key={item.id} insight={item} onOpen={(i) => setPanelId(i.id)} />
                 ))}
               </tbody>
             </table>
+            <Pagination
+              page={current}
+              pageCount={pageCount}
+              start={start}
+              pageSize={PAGE_SIZE}
+              total={displayed.length}
+              noun="entries"
+              onPage={setPage}
+            />
           </div>
         )}
       </div>
