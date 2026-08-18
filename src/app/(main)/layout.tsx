@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, BarChart3, Building2, LogOut } from "lucide-react";
+import { Home, Search, BookOpen, Upload, BarChart3, Building2, MessageSquare, LogOut } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/discovery", label: "Discovery", icon: BookOpen },
   { href: "/upload", label: "AI extract", icon: Upload },
   { href: "/clients", label: "Clients", icon: Building2 },
+  { href: "/feedback-insights", label: "Feedback insights", icon: MessageSquare },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

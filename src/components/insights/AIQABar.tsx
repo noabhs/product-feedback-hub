@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
+import { RateAnswer } from "@/components/ask/RateAnswer";
 
 interface Source {
   id: string;
@@ -19,6 +20,9 @@ export function AIQABar() {
   // reading `question` at copy time could caption the answer with a later one.
   const [asked, setAsked] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
+  // Id of the stored Q&A pair, which is what makes the answer rateable. Null
+  // when the write failed — the answer still shows, just without the thumbs.
+  const [askId, setAskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
@@ -36,6 +40,7 @@ export function AIQABar() {
     setLoading(true);
     setAnswer("");
     setSources([]);
+    setAskId(null);
     setCopied(false);
     setCopyError("");
     try {
@@ -48,6 +53,7 @@ export function AIQABar() {
       setAnswer(data.answer);
       setAsked(question.trim());
       setSources(data.sources ?? []);
+      setAskId(data.askId ?? null);
     } finally {
       setLoading(false);
     }
@@ -121,6 +127,21 @@ export function AIQABar() {
             </button>
           </div>
           {copyError && <p className="text-[12px] text-amber-200 mb-3">{copyError}</p>}
+          {askId && (
+            <div className="flex items-start gap-3 mb-3">
+              {/* Keyed so a new answer starts unrated rather than inheriting the
+                  previous verdict. */}
+              <RateAnswer key={askId} askId={askId} rating={null} note={null} tone="dark" />
+              <p className="text-[11.5px] text-white/40 leading-relaxed pt-1.5">
+                Rate it — questions and answers are kept on{" "}
+                <Link href="/feedback-insights" className="text-teal hover:text-mint-200 underline underline-offset-2">
+                  Feedback insights
+                </Link>
+                .
+              </p>
+            </div>
+          )}
+
           {sources.length > 0 && (
             <div className="border-t border-white/10 pt-3">
               <p className="text-[11px] text-white/40 uppercase tracking-wide mb-2">Sources</p>

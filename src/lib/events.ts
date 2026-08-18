@@ -24,6 +24,7 @@ export const ACTIONS = {
   aiExtract: "ai.extract",
   aiExtractQuestions: "ai.extract_questions",
   aiAsk: "ai.ask",
+  askRated: "ask.rated",
   aiGenerateDoc: "ai.generate_doc",
   pageView: "page.view",
 } as const;
@@ -49,6 +50,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "ai.extract": "Ran AI extract",
   "ai.extract_questions": "Extracted questions from a doc",
   "ai.ask": "Asked the feedback a question",
+  "ask.rated": "Rated an AI answer",
   "ai.generate_doc": "Generated a discovery doc",
   "page.view": "Viewed a page",
 };

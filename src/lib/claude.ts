@@ -36,13 +36,22 @@ function extractText(content: Anthropic.ContentBlock[]): string {
   return block.text;
 }
 
+/**
+ * The model and prompt behind "Ask the feedback", named so every stored answer
+ * records what produced it. Bump QA_PROMPT_VERSION whenever the system prompt
+ * below changes: without it a thumbs-down from last month can't be traced to the
+ * prompt that earned it, and the ratings stop being usable as an eval set.
+ */
+export const QA_MODEL = "claude-sonnet-5";
+export const QA_PROMPT_VERSION = "qa-1";
+
 export async function answerQuestion(question: string, insights: { oneLiner: string; content: string; client?: string | null; productArea: string; id: string }[], apiKey?: string) {
   const context = insights
     .map((i, idx) => `[${idx + 1}] Client: ${i.client ?? "Unknown"} | Area: ${i.productArea}\n${i.oneLiner}\n${i.content}`)
     .join("\n\n---\n\n");
 
   const stream = getClient(apiKey).messages.stream({
-    model: "claude-sonnet-5",
+    model: QA_MODEL,
     max_tokens: 4096,
     thinking: { type: "adaptive" },
     system: `You are an expert product researcher for Navina, an AI-powered clinical intelligence platform.

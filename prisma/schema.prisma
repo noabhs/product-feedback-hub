@@ -139,3 +139,41 @@ model Event {
   @@index([actor])
   @@index([action])
 }
+
+/// One question asked of "Ask the feedback", with the answer it got.
+///
+/// Deliberately not an Event row: an Event is a fire-and-forget line in a log
+/// that also holds every page view, while a Q&A pair has a life after it is
+/// written — it gets rated, read by other people, and replayed when the prompt
+/// changes.
+model AskLog {
+  id        String @id @default(cuid())
+  /// Email of whoever asked. Shown only to the hub owner (see lib/people.ts):
+  /// the page is shared so the team can learn from past questions, and people
+  /// ask differently when their name is attached.
+  actor     String
+  question  String
+  answer    String
+  /// JSON array of the insight ids the answer cited.
+  sourceIds String @default("[]")
+  /// How many insights the search fed to Claude. 0 vs 15 separates "the search
+  /// never found the right rows" from "it had them and still answered badly" —
+  /// two failure modes with opposite fixes.
+  matchedCount  Int
+  model         String
+  /// Bumped whenever the QA system prompt changes, so a bad rating can always be
+  /// traced back to the prompt that produced it.
+  promptVersion String
+  latencyMs     Int?
+  /// "up" | "down". Null means nobody has judged it yet.
+  rating     String?
+  /// What was wrong with the answer. The thumb alone is barely actionable; this
+  /// is the part that tells you what to change.
+  ratingNote String?
+  ratedBy    String?
+  ratedAt    DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([rating])
+}
