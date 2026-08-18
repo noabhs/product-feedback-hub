@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search, Plus, Download, Upload, ArrowUp, ArrowDown } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -295,12 +294,6 @@ function Feedback() {
           <MultiSelect value={theme} onChange={setTheme} options={themeOptions} placeholder="All themes" className="w-40" />
           <MultiSelect value={client} onChange={setClient} options={clients} placeholder="All clients" className="w-44" />
           <MultiSelect value={source} onChange={setSource} options={sourceOptions} placeholder="All sources" className="w-40" />
-          <Link
-            href="/clients"
-            className="text-[13px] font-medium text-brand-secondary-500 hover:underline"
-          >
-            Manage clients
-          </Link>
           {hasFilters && (
             <Button
               variant="text"
