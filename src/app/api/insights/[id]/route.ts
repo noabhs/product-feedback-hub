@@ -26,6 +26,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       sourceUrl: body.sourceUrl ?? null,
       date: body.date ? new Date(body.date) : null,
       wtp: body.wtp ?? null,
+      // undefined leaves the column alone — a caller that doesn't send a
+      // reporter must not silently drop the existing attribution.
+      createdBy: body.createdBy === undefined ? undefined : (body.createdBy?.trim() || null),
     },
   });
   void logEvent(ACTIONS.feedbackUpdated, { target: id, label: updated.oneLiner });

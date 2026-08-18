@@ -6,16 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
-
-const AREAS = [
-  { value: "POP_HEALTH", label: "Pop health" },
-  { value: "QUALITY", label: "Quality" },
-  { value: "ANALYTICS", label: "Analytics" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "RISK_DX", label: "Risk / Dx" },
-  { value: "AMBIENT", label: "Ambient" },
-  { value: "GENERAL", label: "General" },
-];
+import { AREA_OPTIONS as AREAS } from "@/lib/labels";
 
 export default function GenerateDocPage() {
   const { aiHeaders } = useApiKey();

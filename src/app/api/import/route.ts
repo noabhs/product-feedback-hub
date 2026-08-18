@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { logEvent, ACTIONS } from "@/lib/events";
+import { AREA_LABELS } from "@/lib/labels";
 
 // Kept deliberately in sync with prisma/seed.ts so that importing via this
 // route and running `npm run seed` produce identical ids and categories.
@@ -9,9 +10,7 @@ function hashId(prefix: string, content: string): string {
   return `${prefix}-${createHash("md5").update(content).digest("hex").slice(0, 24)}`;
 }
 
-const KNOWN_AREAS = new Set([
-  "POP_HEALTH", "QUALITY", "ANALYTICS", "AGENTIC", "RISK_DX", "AMBIENT", "GENERAL", "COMPETITIVE",
-]);
+const KNOWN_AREAS = new Set(Object.keys(AREA_LABELS));
 
 function mapProductArea(raw: string): string {
   // Values that are already canonical enums (e.g. from seed-sources.ts) pass through.
@@ -26,6 +25,14 @@ function mapProductArea(raw: string): string {
     "agentic / pop health": "AGENTIC",
     "risk / dx": "RISK_DX",
     "risk/dx": "RISK_DX",
+    "risk adjustment": "RISK_DX",
+    "cost and utilization": "COST_AND_UTILIZATION",
+    "cost & utilization": "COST_AND_UTILIZATION",
+    "hospitalization": "HOSPITALIZATION",
+    "point of care": "POINT_OF_CARE",
+    "payers": "PAYERS",
+    "care management": "CARE_MANAGEMENT",
+    "coders": "CODERS",
     "ambient": "AMBIENT",
     "general": "GENERAL",
     "competitive": "COMPETITIVE",

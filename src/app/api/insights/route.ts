@@ -78,7 +78,10 @@ export async function POST(req: NextRequest) {
       date: new Date(body.date),
       wtp: body.wtp ?? null,
       tags: body.tags ? JSON.stringify(body.tags) : "[]",
-      createdBy: session?.user?.email ?? null,
+      // Reporter is editable in the form: whoever gathered the feedback, which
+      // is not always whoever is typing it in. Falls back to the signed-in user
+      // when the field is left empty.
+      createdBy: body.createdBy?.trim() || session?.user?.email || null,
     },
   });
 

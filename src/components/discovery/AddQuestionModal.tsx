@@ -3,17 +3,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
-
-const AREAS = [
-  { value: "POP_HEALTH", label: "Pop health" },
-  { value: "QUALITY", label: "Quality" },
-  { value: "ANALYTICS", label: "Analytics" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "RISK_DX", label: "Risk / Dx" },
-  { value: "AMBIENT", label: "Ambient" },
-  { value: "GENERAL", label: "General" },
-  { value: "COMPETITIVE", label: "Competitive" },
-];
+import { AREA_OPTIONS as AREAS } from "@/lib/labels";
 
 const THEMES = [
   { value: "WORKFLOW", label: "Workflow" },
@@ -25,7 +15,6 @@ const THEMES = [
   { value: "AGENTIC", label: "Agentic" },
   { value: "OTHER", label: "Other" },
 ];
-
 
 import type { Question } from "@/lib/types";
 

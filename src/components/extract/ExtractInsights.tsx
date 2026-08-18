@@ -1,22 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Link2, Sparkles, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
-
-const AREAS = [
-  { value: "POP_HEALTH", label: "Pop health" },
-  { value: "QUALITY", label: "Quality" },
-  { value: "ANALYTICS", label: "Analytics" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "RISK_DX", label: "Risk / Dx" },
-  { value: "AMBIENT", label: "Ambient" },
-  { value: "GENERAL", label: "General" },
-  { value: "COMPETITIVE", label: "Competitive" },
-];
+import { AREA_OPTIONS as AREAS } from "@/lib/labels";
 
 const THEMES = [
   { value: "WORKFLOW", label: "Workflow" },
@@ -59,6 +49,21 @@ export function ExtractInsights() {
   // One date for the whole batch: an extraction comes from a single document,
   // so a per-row date would be busywork. Required, same as the manual form.
   const [date, setDate] = useState("");
+  // Reporter is batch-level for the same reason. Defaults to the signed-in user
+  // and is editable, so a doc someone else gathered lands under their name.
+  const [reporter, setReporter] = useState("");
+  const [reporters, setReporters] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/insights/facets")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setReporters(d.reporters ?? []);
+        setReporter((prev) => prev || d.me || "");
+      })
+      .catch(() => {}); // non-fatal: the field still works as free text
+  }, []);
 
   async function extract() {
     const hasContent = text.trim() || url.trim();
@@ -125,6 +130,7 @@ export function ExtractInsights() {
             persona: i.persona,
             client: i.client,
             date,
+            createdBy: reporter.trim() || null,
             tags: i.tags,
             sourceUrl: sourceUrl || null,
             sourceName: hostname || "AI extract",
@@ -230,6 +236,19 @@ export function ExtractInsights() {
                   onChange={(e) => setDate(e.target.value)}
                   className="rounded-sm bg-white border border-black/15 px-2 py-1.5 text-[13px] text-brand-primary focus:outline-none focus:border-brand-secondary-500"
                 />
+              </label>
+              <label className="flex items-center gap-2 text-[12px] font-semibold text-brand-primary opacity-70">
+                Reporter
+                <input
+                  value={reporter}
+                  onChange={(e) => setReporter(e.target.value)}
+                  placeholder="name@navina.ai"
+                  list="extract-reporter-suggestions"
+                  className="w-40 rounded-sm bg-white border border-black/15 px-2 py-1.5 text-[13px] text-brand-primary placeholder:text-brand-primary/30 focus:outline-none focus:border-brand-secondary-500"
+                />
+                <datalist id="extract-reporter-suggestions">
+                  {reporters.map((r) => <option key={r} value={r} />)}
+                </datalist>
               </label>
               <Button variant="ghost" size="sm" onClick={() => setStage("input")}>
                 Back

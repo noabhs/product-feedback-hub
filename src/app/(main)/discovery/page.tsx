@@ -11,16 +11,7 @@ import type { Question, Source } from "@/lib/types";
 import { AddQuestionModal } from "@/components/discovery/AddQuestionModal";
 import { AddSourceModal } from "@/components/discovery/AddSourceModal";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
-
-const AREAS = [
-  { value: "POP_HEALTH", label: "Pop health" },
-  { value: "QUALITY", label: "Quality" },
-  { value: "ANALYTICS", label: "Analytics" },
-  { value: "AGENTIC", label: "Agentic" },
-  { value: "RISK_DX", label: "Risk / Dx" },
-  { value: "AMBIENT", label: "Ambient" },
-  { value: "GENERAL", label: "General" },
-];
+import { AREA_OPTIONS as AREAS, areaLabel } from "@/lib/labels";
 
 const THEMES = [
   { value: "WORKFLOW", label: "Workflow" },
@@ -31,13 +22,6 @@ const THEMES = [
   { value: "PRICING_WTP", label: "Pricing / WTP" },
   { value: "AGENTIC", label: "Agentic" },
 ];
-
-const AREA_LABELS: Record<string, string> = {
-  POP_HEALTH: "Pop health", QUALITY: "Quality", ANALYTICS: "Analytics",
-  AGENTIC: "Agentic", RISK_DX: "Risk / Dx", AMBIENT: "Ambient",
-  GENERAL: "General", COMPETITIVE: "Competitive",
-};
-
 
 type Tab = "questions" | "sources";
 
@@ -340,7 +324,7 @@ export default function DiscoveryPage() {
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-[12px] text-brand-primary opacity-50">
-                            {AREA_LABELS[s.productArea] ?? s.productArea}
+                            {areaLabel(s.productArea)}
                           </span>
                         </td>
                         <td className="py-3 px-4">

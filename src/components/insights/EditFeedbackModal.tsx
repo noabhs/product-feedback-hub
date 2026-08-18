@@ -36,6 +36,7 @@ function today(): string {
 const EMPTY = {
   oneLiner: "", content: "", productArea: "GENERAL", theme: "WORKFLOW",
   client: "", persona: "", sourceName: "", sourceUrl: "", date: today(), wtp: "",
+  reporter: "",
 };
 
 export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalProps) {
@@ -51,22 +52,32 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
     sourceUrl: item?.sourceUrl ?? EMPTY.sourceUrl,
     date: item?.date ? item.date.slice(0, 10) : EMPTY.date,
     wtp: item?.wtp ?? EMPTY.wtp,
+    // Filled in from the session once facets loads, when creating a new entry.
+    reporter: item?.createdBy ?? EMPTY.reporter,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   // Areas/themes/clients already in use, so custom values someone else added
   // are pickable here rather than retyped into a near-duplicate.
-  const [facets, setFacets] = useState<{ areas: string[]; themes: string[]; clients: string[] }>({
-    areas: [], themes: [], clients: [],
-  });
+  const [facets, setFacets] = useState<{
+    areas: string[]; themes: string[]; clients: string[]; reporters: string[];
+  }>({ areas: [], themes: [], clients: [], reporters: [] });
 
   useEffect(() => {
     fetch("/api/insights/facets")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setFacets(d))
+      .then((d) => {
+        if (!d) return;
+        setFacets(d);
+        // Default a new entry's reporter to the signed-in user, without
+        // clobbering anything already typed. Never on an edit: the seeded rows
+        // have no reporter, and defaulting there would quietly reassign them.
+        if (isEdit) return;
+        setForm((prev) => (prev.reporter || !d.me ? prev : { ...prev, reporter: d.me }));
+      })
       .catch(() => {}); // non-fatal: built-in options still work
-  }, []);
+  }, [isEdit]);
 
   const areaOptions = useMemo(
     () => [...new Set([...BUILT_IN_AREAS, ...facets.areas])]
@@ -107,6 +118,7 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
         sourceUrl: form.sourceUrl || null,
         date: form.date,
         wtp: form.wtp || null,
+        createdBy: form.reporter.trim() || null,
         sourceType: "MANUAL",
         tags: "[]",
       };
@@ -215,6 +227,24 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
             <Field label="Date *">
               <Input type="date" value={form.date} onChange={(e) => set("date")(e.target.value)} className="w-full" />
             </Field>
+            <Field label="Reporter">
+              {/* Defaults to you, but editable — the person who gathered the
+                  feedback is often not the one entering it. Cleared means the
+                  entry shows as imported. */}
+              <Input
+                value={form.reporter}
+                onChange={(e) => set("reporter")(e.target.value)}
+                placeholder="name@navina.ai"
+                list="reporter-suggestions"
+                className="w-full"
+              />
+              <datalist id="reporter-suggestions">
+                {facets.reporters.map((r) => <option key={r} value={r} />)}
+              </datalist>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <Field label="WTP">
               <Input value={form.wtp} onChange={(e) => set("wtp")(e.target.value)} placeholder="e.g. $0.20 PMPM" className="w-full" />
             </Field>

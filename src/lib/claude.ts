@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AREA_LABELS } from "@/lib/labels";
 
 function getClient(apiKey?: string) {
   return new Anthropic({ apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY });
@@ -17,7 +18,9 @@ function parseJSON(raw: string): unknown {
  * Schema rules: every object needs additionalProperties: false, and nullable
  * fields use anyOf rather than a type array.
  */
-const AREAS = ["POP_HEALTH", "QUALITY", "ANALYTICS", "AGENTIC", "RISK_DX", "AMBIENT", "GENERAL", "COMPETITIVE"];
+const AREAS = Object.keys(AREA_LABELS);
+/** The enum spelled out for the prompt, so it can never drift from the schema. */
+const AREAS_FOR_PROMPT = AREAS.map((a) => `"${a}"`).join(" | ");
 const THEMES = ["WORKFLOW", "DATA_INTEGRATION", "TRUST", "PAIN_POINTS", "GOALS", "PRICING_WTP", "OTHER"];
 
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] };
@@ -92,7 +95,7 @@ export async function extractInsights(text: string, apiKey?: string) {
 Return an object with an "insights" array. Each insight has:
 - oneLiner: string (max 100 chars, sentence case)
 - content: string (full detail)
-- productArea: one of "POP_HEALTH" | "QUALITY" | "ANALYTICS" | "AGENTIC" | "RISK_DX" | "AMBIENT" | "GENERAL" | "COMPETITIVE"
+- productArea: one of ${AREAS_FOR_PROMPT}
 - theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
 - persona: string or null
 - client: string or null
@@ -144,7 +147,7 @@ Do not invent questions on topics the document does not touch.
 
 Return an object with a "questions" array. Each item has:
 - question: string (the question, phrased for asking out loud)
-- productArea: one of "POP_HEALTH" | "QUALITY" | "ANALYTICS" | "AGENTIC" | "RISK_DX" | "AMBIENT" | "GENERAL" | "COMPETITIVE"
+- productArea: one of ${AREAS_FOR_PROMPT}
 - theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
 - persona: string or null (who to ask, if the document indicates one)
 - notesIntent: string or null (what the question is trying to learn, and any context worth having)

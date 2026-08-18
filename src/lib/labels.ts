@@ -10,11 +10,26 @@ export const AREA_LABELS: Record<string, string> = {
   QUALITY: "Quality",
   ANALYTICS: "Analytics",
   AGENTIC: "Agentic",
-  RISK_DX: "Risk / Dx",
+  // Stored key stays RISK_DX so existing entries keep their area; only the
+  // display name changed to "Risk Adjustment".
+  RISK_DX: "Risk Adjustment",
   AMBIENT: "Ambient",
+  COST_AND_UTILIZATION: "Cost and Utilization",
+  HOSPITALIZATION: "Hospitalization",
+  POINT_OF_CARE: "Point of care",
+  PAYERS: "Payers",
+  CARE_MANAGEMENT: "Care Management",
+  CODERS: "Coders",
   GENERAL: "General",
   COMPETITIVE: "Competitive",
 };
+
+/**
+ * The built-in areas as dropdown options, in the curated order above. Every
+ * area picker in the app reads this, so adding a key to AREA_LABELS is all it
+ * takes to offer a new area everywhere.
+ */
+export const AREA_OPTIONS = Object.entries(AREA_LABELS).map(([value, label]) => ({ value, label }));
 
 export const THEME_LABELS: Record<string, string> = {
   WORKFLOW: "Workflow",
@@ -34,6 +49,12 @@ export const AREA_COLORS: Record<string, string> = {
   AGENTIC: "#9333ea",
   RISK_DX: "#dc2626",
   AMBIENT: "#0891b2",
+  COST_AND_UTILIZATION: "#4d7c0f",
+  HOSPITALIZATION: "#be185d",
+  POINT_OF_CARE: "#0d9488",
+  PAYERS: "#1d4ed8",
+  CARE_MANAGEMENT: "#4338ca",
+  CODERS: "#7c2d12",
   GENERAL: "#78716c",
   COMPETITIVE: "#d97706",
 };

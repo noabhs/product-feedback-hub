@@ -8,6 +8,12 @@ const AREA_CLASSES: Record<string, string> = {
   AGENTIC:      "bg-brand-secondary-500 text-white",
   RISK_DX:      "bg-lavender text-brand-primary",
   AMBIENT:      "bg-mint-200 text-brand-primary",
+  COST_AND_UTILIZATION: "bg-mint-200 text-brand-primary",
+  HOSPITALIZATION:      "bg-lavender text-brand-primary",
+  POINT_OF_CARE:        "bg-mint-100 text-brand-primary",
+  PAYERS:               "bg-mint-400 text-brand-primary",
+  CARE_MANAGEMENT:      "bg-lavender text-brand-primary",
+  CODERS:               "bg-mint-200 text-brand-primary",
   GENERAL:      "bg-surface-app text-brand-primary",
   COMPETITIVE:  "bg-red-100 text-red-800",
 };
