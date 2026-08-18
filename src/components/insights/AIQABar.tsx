@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Sparkles, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, ChevronRight, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { useApiKey } from "@/hooks/useApiKey";
@@ -15,15 +15,29 @@ interface Source {
 export function AIQABar() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  // The question as asked. The input stays editable after an answer lands, so
+  // reading `question` at copy time could caption the answer with a later one.
+  const [asked, setAsked] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState("");
   const { aiHeaders } = useApiKey();
+
+  // Reset the confirmation, cancelling cleanly if the answer changes first.
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   async function ask() {
     if (!question.trim() || loading) return;
     setLoading(true);
     setAnswer("");
     setSources([]);
+    setCopied(false);
+    setCopyError("");
     try {
       const res = await fetch("/api/ai/qa", {
         method: "POST",
@@ -32,9 +46,34 @@ export function AIQABar() {
       });
       const data = await res.json();
       setAnswer(data.answer);
+      setAsked(question.trim());
       setSources(data.sources ?? []);
     } finally {
       setLoading(false);
+    }
+  }
+
+  /**
+   * Plain text for pasting into Slack or a doc. The answer cites its sources as
+   * [1], [2] — in the order the API returned them — so the list is numbered to
+   * match and includes every source, not just the five shown here.
+   */
+  async function copyAnswer() {
+    const lines = [asked, "", answer];
+    if (sources.length > 0) {
+      lines.push("", "Sources:");
+      sources.forEach((s, i) =>
+        lines.push(`[${i + 1}] ${s.client ? `${s.client} — ` : ""}${s.oneLiner}`),
+      );
+    }
+
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopied(true);
+      setCopyError("");
+    } catch {
+      // Clipboard access can be blocked (older browser, insecure context).
+      setCopyError("Couldn't copy — select the text and press Cmd+C.");
     }
   }
 
@@ -61,7 +100,27 @@ export function AIQABar() {
 
       {answer && (
         <div className="mt-4">
-          <p className="text-[14px] text-white/90 leading-relaxed mb-3">{answer}</p>
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <p className="text-[14px] text-white/90 leading-relaxed">{answer}</p>
+            <button
+              onClick={copyAnswer}
+              title="Copy the answer and its sources"
+              className="shrink-0 flex items-center gap-1.5 rounded-sm border border-white/20 bg-white/10 px-2.5 py-1.5 text-[12px] font-medium text-white/80 hover:bg-white/20 hover:text-white transition-colors"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-teal" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </>
+              )}
+            </button>
+          </div>
+          {copyError && <p className="text-[12px] text-amber-200 mb-3">{copyError}</p>}
           {sources.length > 0 && (
             <div className="border-t border-white/10 pt-3">
               <p className="text-[11px] text-white/40 uppercase tracking-wide mb-2">Sources</p>
