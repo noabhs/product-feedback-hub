@@ -54,7 +54,11 @@ export function ExtractInsights() {
   const [stage, setStage] = useState<Stage>("input");
   const [error, setError] = useState("");
   const [savedCount, setSavedCount] = useState(0);
+  const [saveError, setSaveError] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  // One date for the whole batch: an extraction comes from a single document,
+  // so a per-row date would be busywork. Required, same as the manual form.
+  const [date, setDate] = useState("");
 
   async function extract() {
     const hasContent = text.trim() || url.trim();
@@ -78,6 +82,9 @@ export function ExtractInsights() {
         }))
       );
       setSourceUrl(url.trim());
+      // Default to today; the reviewer can change it to when the feedback was
+      // actually given before saving.
+      setDate(new Date().toISOString().slice(0, 10));
       setStage("review");
     } catch (e) {
       setError((e as Error).message);
@@ -92,15 +99,22 @@ export function ExtractInsights() {
 
   async function save() {
     const approved = items.filter((i) => i.approved);
-    if (approved.length === 0) return;
+    if (approved.length === 0 || !date) return;
     setSaving(true);
+    setSaveError("");
     let hostname = "";
     try {
       if (sourceUrl) hostname = new URL(sourceUrl).hostname;
     } catch {}
-    await Promise.all(
-      approved.map((i) =>
-        fetch("/api/insights", {
+
+    // Sequential with an explicit ok check on each: the previous version fired
+    // these in parallel and ignored the responses, so a rejected row still
+    // reported success.
+    let ok = 0;
+    const failures: string[] = [];
+    for (const i of approved) {
+      try {
+        const res = await fetch("/api/insights", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -110,15 +124,24 @@ export function ExtractInsights() {
             theme: i.theme,
             persona: i.persona,
             client: i.client,
-            tags: JSON.stringify(i.tags),
+            date,
+            tags: i.tags,
             sourceUrl: sourceUrl || null,
             sourceName: hostname || "AI extract",
             sourceType: "AI_EXTRACT",
           }),
-        })
-      )
-    );
-    setSavedCount(approved.length);
+        });
+        if (res.ok) ok++;
+        else failures.push((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
+      } catch (e) {
+        failures.push((e as Error).message);
+      }
+    }
+
+    setSavedCount(ok);
+    if (failures.length) {
+      setSaveError(`${failures.length} of ${approved.length} couldn't be saved — ${failures[0]}`);
+    }
     setSaving(false);
     setStage("saved");
   }
@@ -129,13 +152,29 @@ export function ExtractInsights() {
   if (stage === "saved") {
     return (
       <div className="p-8 max-w-xl mx-auto text-center mt-12">
-        <div className="w-14 h-14 rounded-full bg-[rgba(15,110,86,0.1)] flex items-center justify-center mx-auto mb-4">
-          <Check className="w-7 h-7 text-positive-strong" />
+        <div
+          className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+            savedCount > 0 ? "bg-[rgba(15,110,86,0.1)]" : "bg-red-50"
+          }`}
+        >
+          {savedCount > 0 ? (
+            <Check className="w-7 h-7 text-positive-strong" />
+          ) : (
+            <X className="w-7 h-7 text-red-700" />
+          )}
         </div>
-        <h2 className="text-[22px] font-bold text-brand-primary mb-2">Feedback saved</h2>
-        <p className="text-[14px] text-brand-primary opacity-50 mb-8">
+        <h2 className="text-[22px] font-bold text-brand-primary mb-2">
+          {savedCount > 0 ? "Feedback saved" : "Nothing was saved"}
+        </h2>
+        <p className="text-[14px] text-brand-primary opacity-50 mb-4">
           {savedCount} {savedCount === 1 ? "entry" : "entries"} added to the feedback hub
         </p>
+        {saveError && (
+          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-left">
+            <p className="text-[13px] text-red-700">{saveError}</p>
+          </div>
+        )}
+        <div className="mb-8" />
         <div className="flex gap-3 justify-center">
           <Button
             variant="ghost"
@@ -183,10 +222,25 @@ export function ExtractInsights() {
                 Deny all
               </button>
               <div className="w-px h-4 bg-[rgba(50,43,95,0.15)] mx-1" />
+              <label className="flex items-center gap-2 text-[12px] font-semibold text-brand-primary opacity-70">
+                Date
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="rounded-sm bg-white border border-black/15 px-2 py-1.5 text-[13px] text-brand-primary focus:outline-none focus:border-brand-secondary-500"
+                />
+              </label>
               <Button variant="ghost" size="sm" onClick={() => setStage("input")}>
                 Back
               </Button>
-              <Button size="sm" onClick={save} loading={saving} disabled={approvedCount === 0}>
+              <Button
+                size="sm"
+                onClick={save}
+                loading={saving}
+                disabled={approvedCount === 0 || !date}
+                title={!date ? "Pick a date first" : undefined}
+              >
                 <Check className="w-4 h-4" />
                 Save {approvedCount > 0 ? `${approvedCount} ` : ""}approved
               </Button>
