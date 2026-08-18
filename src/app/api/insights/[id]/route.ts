@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeKey } from "@/lib/labels";
 import { logEvent, ACTIONS } from "@/lib/events";
+import { resolveClientForEdit } from "@/lib/accounts-db";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       productArea: normalizeKey(body.productArea ?? "") || "GENERAL",
       theme: normalizeKey(body.theme ?? "") || "OTHER",
       persona: body.persona ?? null,
-      client: body.client ?? null,
+      client: await resolveClientForEdit(body.client),
       sourceName: body.sourceName ?? null,
       sourceUrl: body.sourceUrl ?? null,
       date: body.date ? new Date(body.date) : null,

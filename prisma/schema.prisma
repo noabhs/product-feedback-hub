@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // Vercel's Neon integration created these under a NEON_ prefix because a
   // stale DATABASE_URL (Prisma Postgres) already occupied that name.
   // url must be the pooled host for serverless; migrations need a direct
@@ -25,6 +25,9 @@ model Insight {
   sourceType  String    @default("SHEET")
   date        DateTime?
   wtp         String?
+  // The free-text client this row arrived with, kept when the value was remapped
+  // onto a canonical Account — so a bad match can be traced back and redone.
+  clientRaw   String?
   tags        String    @default("[]")
   // Email of the signed-in user who added this entry. Nullable because the 230
   // seeded rows predate auth and have no author.
@@ -32,11 +35,23 @@ model Insight {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  comments    Comment[]
+  comments Comment[]
 
   @@index([productArea])
   @@index([client])
   @@index([theme])
+}
+
+/// The canonical client list. Client was free text until Aug 2026, which split
+/// "DTC", "DTC — Lynn" and "DTC Family Health" into three clients everywhere.
+model Account {
+  id        String   @id
+  name      String   @unique
+  /// JSON array of alternative spellings that resolve here. Never displayed.
+  aliases   String   @default("[]")
+  /// Email of whoever added it from the UI; null for the seeded list.
+  createdBy String?
+  createdAt DateTime @default(now())
 }
 
 model Comment {
@@ -48,13 +63,13 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  insight Insight @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
   @@index([insightId])
 }
 
 model DiscoveryQuestion {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   productArea String
   theme       String
   persona     String?
@@ -63,7 +78,7 @@ model DiscoveryQuestion {
   source      String?
   // Email of the signed-in user who added this. Nullable: seeded rows predate auth.
   createdBy   String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([productArea])
   @@index([theme])

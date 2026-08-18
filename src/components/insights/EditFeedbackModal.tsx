@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ComboField } from "@/components/ui/ComboField";
+import { ClientField } from "@/components/insights/ClientField";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel, normalizeKey } from "@/lib/labels";
 import type { InsightItem } from "@/lib/types";
 
@@ -196,18 +197,15 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Client">
-              {/* Free text with suggestions — picking an existing spelling avoids
-                  near-duplicates like "Aegis" vs "Aegis providers". */}
-              <Input
+              <ClientField
                 value={form.client}
-                onChange={(e) => set("client")(e.target.value)}
-                placeholder="Client name"
-                list="client-suggestions"
+                onChange={set("client")}
+                clients={facets.clients}
+                onClientAdded={(name) =>
+                  setFacets((prev) => ({ ...prev, clients: [...prev.clients, name].sort() }))
+                }
                 className="w-full"
               />
-              <datalist id="client-suggestions">
-                {facets.clients.map((c) => <option key={c} value={c} />)}
-              </datalist>
             </Field>
             <Field label="Persona / POC">
               <Input value={form.persona} onChange={(e) => set("persona")(e.target.value)} placeholder="e.g. Quality Manager" className="w-full" />

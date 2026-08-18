@@ -3,6 +3,8 @@ import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { AREA_LABELS } from "@/lib/labels";
+import { matchAccount } from "@/lib/accounts";
+import { loadAccounts } from "@/lib/accounts-db";
 
 // Kept deliberately in sync with prisma/seed.ts so that importing via this
 // route and running `npm run seed` produce identical ids and categories.
@@ -138,6 +140,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (type === "feedback") {
+      // Loaded once for the whole batch rather than per row.
+      const accounts = await loadAccounts();
       for (const row of rows) {
         // Columns 10 and 11 are optional, so older exports still import fine.
         const [productAreaRaw, themeRaw, persona, oneLiner, content, date, wtp, source, client, sourceUrl, reporter] = row;
@@ -153,7 +157,9 @@ export async function POST(req: NextRequest) {
               persona: persona?.trim() || null,
               oneLiner: oneLiner.trim(),
               content: content?.trim() || oneLiner.trim(),
-              client: client?.trim() || null,
+              // Unmatched clients import as null — see lib/accounts.ts.
+              client: matchAccount(client, accounts),
+              clientRaw: client?.trim() || null,
               sourceName: source?.trim() || null,
               sourceUrl: sourceUrl?.trim() || null,
               sourceType: "SHEET",

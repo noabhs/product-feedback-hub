@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withPinnedClients } from "@/lib/clients";
 import { auth } from "@/auth";
 
 /**
- * Distinct product areas, themes, and clients currently in use — including
- * any custom ones users have added. Feeds the form dropdowns and the feed
- * filters so a custom value is pickable by the next person instead of being
- * retyped (and misspelled) into a duplicate.
+ * Distinct product areas and themes currently in use — including any custom
+ * ones users have added — so a custom value is pickable by the next person
+ * instead of being retyped (and misspelled) into a duplicate.
+ *
+ * Clients are different: they come from the canonical Account list, not from
+ * whatever happens to be stored, so the feed can't offer a half-spelled client
+ * as though it were real.
  *
  * Also returns the reporters already on record and `me`, the signed-in address.
  * The reporter field defaults to `me` but can be pointed at whoever actually
@@ -18,12 +20,7 @@ export async function GET() {
     auth(),
     prisma.insight.findMany({ select: { productArea: true }, distinct: ["productArea"] }),
     prisma.insight.findMany({ select: { theme: true }, distinct: ["theme"] }),
-    prisma.insight.findMany({
-      where: { client: { not: null } },
-      select: { client: true },
-      distinct: ["client"],
-      orderBy: { client: "asc" },
-    }),
+    prisma.account.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
     prisma.insight.findMany({
       where: { createdBy: { not: null } },
       select: { createdBy: true },
@@ -35,7 +32,7 @@ export async function GET() {
   return NextResponse.json({
     areas: areas.map((r) => r.productArea).filter(Boolean).sort(),
     themes: themes.map((r) => r.theme).filter(Boolean).sort(),
-    clients: withPinnedClients(clients.map((r) => r.client as string).filter(Boolean)),
+    clients: clients.map((r) => r.name),
     reporters: reporters.map((r) => r.createdBy as string).filter(Boolean),
     me: session?.user?.email ?? null,
   });

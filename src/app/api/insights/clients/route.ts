@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withPinnedClients } from "@/lib/clients";
 
+/** The canonical client list. Superseded by /api/accounts; kept for old links. */
 export async function GET() {
-  const rows = await prisma.insight.findMany({
-    where: { client: { not: null } },
-    select: { client: true },
-    distinct: ["client"],
-    orderBy: { client: "asc" },
+  const rows = await prisma.account.findMany({
+    select: { name: true },
+    orderBy: { name: "asc" },
   });
-  const clients = withPinnedClients(rows.map((r) => r.client as string).filter(Boolean));
-  return NextResponse.json(clients);
+  return NextResponse.json(rows.map((r) => r.name));
 }

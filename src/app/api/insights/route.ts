@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { normalizeKey } from "@/lib/labels";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { insightWhere } from "@/lib/insight-filters";
+import { resolveClient } from "@/lib/accounts-db";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -58,7 +59,10 @@ export async function POST(req: NextRequest) {
       persona: body.persona ?? null,
       oneLiner: body.oneLiner,
       content: body.content,
-      client: body.client ?? null,
+      // Resolved against the canonical list; anything unrecognised is stored
+      // as null rather than starting a new one-off client.
+      client: await resolveClient(body.client),
+      clientRaw: body.client?.trim() || null,
       sourceName: body.sourceName ?? null,
       sourceUrl: body.sourceUrl ?? null,
       sourceType: body.sourceType ?? "MANUAL",
