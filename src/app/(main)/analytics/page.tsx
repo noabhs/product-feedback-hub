@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ACTION_LABELS, AI_ACTIONS, ACTIONS, EVENT_LOG_LIMIT } from "@/lib/events";
 import { shortName } from "@/lib/people";
 import { EventLog, type EventRow } from "@/components/analytics/EventLog";
+import { ActivityChart } from "@/components/analytics/ActivityChart";
 
 const WINDOW_DAYS = 30;
 const TREND_DAYS = 14;
@@ -195,31 +196,8 @@ export default async function AnalyticsPage() {
 
         {/* Activity over time */}
         <Card title="Activity" subtitle={`Last ${TREND_DAYS} days · actions vs page views`} className="mb-5">
-          <div className="flex items-stretch gap-1.5 h-32 mt-2">
-            {trend.map((t) => {
-              const total = t.views + t.actions;
-              return (
-                // h-full matters: the bar's percentage height needs a definite
-                // parent height to resolve against.
-                <div
-                  key={t.key}
-                  className="flex-1 h-full flex flex-col justify-end items-center gap-1.5 group"
-                >
-                  <span className="text-[10px] text-brand-primary opacity-0 group-hover:opacity-60 transition-opacity tabular-nums">
-                    {total || ""}
-                  </span>
-                  <div
-                    className="w-full flex flex-col justify-end rounded-sm overflow-hidden"
-                    style={{ height: `${Math.max((total / maxDay) * 100, total ? 3 : 0)}%` }}
-                    title={`${t.label}: ${t.actions} actions, ${t.views} views`}
-                  >
-                    <div style={{ flex: t.actions || 0, background: "#5d07e2", minHeight: t.actions ? 2 : 0 }} />
-                    <div style={{ flex: t.views || 0, background: "#00c2b2", minHeight: t.views ? 2 : 0 }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ActivityChart trend={trend} max={maxDay} />
+
           <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[rgba(50,43,95,0.06)]">
             <Legend color="#5d07e2" label="Actions (adds, edits, AI)" />
             <Legend color="#00c2b2" label="Page views" />
