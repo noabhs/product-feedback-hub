@@ -9,6 +9,23 @@ function parseJSON(raw: string): unknown {
   return JSON.parse(stripped);
 }
 
+/**
+ * Structured outputs: the model is constrained to this schema server-side, so
+ * the response is always parseable. Replaces asking for JSON in prose, which
+ * broke whenever the source text contained quotes the model didn't escape.
+ *
+ * Schema rules: every object needs additionalProperties: false, and nullable
+ * fields use anyOf rather than a type array.
+ */
+const AREAS = ["POP_HEALTH", "QUALITY", "ANALYTICS", "AGENTIC", "RISK_DX", "AMBIENT", "GENERAL", "COMPETITIVE"];
+const THEMES = ["WORKFLOW", "DATA_INTEGRATION", "TRUST", "PAIN_POINTS", "GOALS", "PRICING_WTP", "OTHER"];
+
+const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] };
+
+function jsonFormat(schema: Record<string, unknown>): Anthropic.JSONOutputFormat {
+  return { type: "json_schema", schema };
+}
+
 function extractText(content: Anthropic.ContentBlock[]): string {
   const block = content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!block) throw new Error("No text block in Claude response");
@@ -40,35 +57,84 @@ If the context doesn't contain enough information, say so clearly.`,
   return extractText(message.content);
 }
 
+const INSIGHTS_SCHEMA = {
+  type: "object",
+  properties: {
+    insights: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          oneLiner: { type: "string" },
+          content: { type: "string" },
+          productArea: { type: "string", enum: AREAS },
+          theme: { type: "string", enum: THEMES },
+          persona: nullableString,
+          client: nullableString,
+          tags: { type: "array", items: { type: "string" } },
+        },
+        required: ["oneLiner", "content", "productArea", "theme", "persona", "client", "tags"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["insights"],
+  additionalProperties: false,
+};
+
 export async function extractInsights(text: string, apiKey?: string) {
   const stream = getClient(apiKey).messages.stream({
     model: "claude-sonnet-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
+    output_config: { format: jsonFormat(INSIGHTS_SCHEMA) },
     system: `You are a product research analyst for Navina. Extract discrete client insights from the provided text.
-Return a JSON array of insights. Each insight must have:
+Return an object with an `insights` array. Each insight has:
 - oneLiner: string (max 100 chars, sentence case)
 - content: string (full detail)
 - productArea: one of "POP_HEALTH" | "QUALITY" | "ANALYTICS" | "AGENTIC" | "RISK_DX" | "AMBIENT" | "GENERAL" | "COMPETITIVE"
 - theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
 - persona: string or null
 - client: string or null
-- tags: string[] (3–5 keywords)
-
-Return ONLY valid JSON array, no markdown.`,
+- tags: string[] (3–5 keywords)`,
     messages: [{ role: "user", content: text }],
   });
 
   const message = await stream.finalMessage();
   const raw = extractText(message.content).trim();
-  return parseJSON(raw);
+  // The schema guarantees the wrapper object; hand callers the bare array.
+  return (parseJSON(raw) as { insights: unknown[] }).insights;
 }
+
+const QUESTIONS_SCHEMA = {
+  type: "object",
+  properties: {
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          question: { type: "string" },
+          productArea: { type: "string", enum: AREAS },
+          theme: { type: "string", enum: THEMES },
+          persona: nullableString,
+          notesIntent: nullableString,
+        },
+        required: ["question", "productArea", "theme", "persona", "notesIntent"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["questions"],
+  additionalProperties: false,
+};
 
 export async function extractQuestions(text: string, apiKey?: string) {
   const stream = getClient(apiKey).messages.stream({
     model: "claude-sonnet-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
+    output_config: { format: jsonFormat(QUESTIONS_SCHEMA) },
     system: `You are a product discovery facilitator for Navina, an AI clinical intelligence platform.
 Extract discovery questions from the provided document — questions a PM could ask a client in a discovery call.
 
@@ -76,7 +142,7 @@ Include questions that are explicitly written in the document. Also infer questi
 document's findings clearly imply are worth asking, but only where the document supports them.
 Do not invent questions on topics the document does not touch.
 
-Return a JSON array. Each item must have:
+Return an object with a `questions` array. Each item has:
 - question: string (the question, phrased for asking out loud)
 - productArea: one of "POP_HEALTH" | "QUALITY" | "ANALYTICS" | "AGENTIC" | "RISK_DX" | "AMBIENT" | "GENERAL" | "COMPETITIVE"
 - theme: one of "WORKFLOW" | "DATA_INTEGRATION" | "TRUST" | "PAIN_POINTS" | "GOALS" | "PRICING_WTP" | "OTHER"
@@ -84,16 +150,35 @@ Return a JSON array. Each item must have:
 - notesIntent: string or null (what the question is trying to learn, and any context worth having)
 
 Skip duplicates and near-duplicates. If the document contains no discovery-relevant
-questions, return an empty array rather than padding it.
-
-Return ONLY valid JSON array, no markdown.`,
+questions, return an empty array rather than padding it.`,
     messages: [{ role: "user", content: text }],
   });
 
   const message = await stream.finalMessage();
   const raw = extractText(message.content).trim();
-  return parseJSON(raw);
+  return (parseJSON(raw) as { questions: unknown[] }).questions;
 }
+
+const DOC_SCHEMA = {
+  type: "object",
+  properties: {
+    sessionContext: { type: "string" },
+    sections: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          questions: { type: "array", items: { type: "string" } },
+        },
+        required: ["title", "questions"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["sessionContext", "sections"],
+  additionalProperties: false,
+};
 
 export async function generateDiscoveryQuestions(
   topic: string,
@@ -110,6 +195,7 @@ export async function generateDiscoveryQuestions(
     model: "claude-sonnet-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
+    output_config: { format: jsonFormat(DOC_SCHEMA) },
     system: `You are an expert product discovery facilitator for Navina.
 Generate a structured discovery question document in this exact JSON format:
 {
@@ -122,7 +208,7 @@ Generate a structured discovery question document in this exact JSON format:
   ]
 }
 Group questions into 5–7 thematic sections. Draw on the provided questions and enrich with insights.
-Keep questions open-ended and hypothesis-driven. Return ONLY valid JSON.`,
+Keep questions open-ended and hypothesis-driven.`,
     messages: [
       {
         role: "user",
