@@ -59,7 +59,7 @@ export default async function FeedbackInsightsPage() {
     <div className="p-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-[28px] font-extrabold text-brand-primary mb-2">Feedback insights</h1>
+          <h1 className="text-[28px] font-extrabold text-brand-primary mb-2">Feedback insights log</h1>
           <p className="text-[15px] text-brand-primary leading-relaxed max-w-2xl" style={{ opacity: 0.65 }}>
             Every question the team has asked of the feedback, and the answer it got — shared, so
             nobody has to re-ask what someone already answered. Rate the answers you read: a thumb

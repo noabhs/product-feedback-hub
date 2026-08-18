@@ -9,14 +9,14 @@ interface RateAnswerProps {
   askId: string;
   rating: Rating;
   note: string | null;
-  /** "dark" sits on the purple ask bar, "light" on the Feedback insights page. */
+  /** "dark" sits on the purple ask bar, "light" on the Feedback insights log page. */
   tone?: "dark" | "light";
   /** Lets a list keep its own copy of the row in step with what was saved. */
   onChange?: (rating: Rating, note: string | null) => void;
 }
 
 /**
- * Shared by the ask bar and the Feedback insights page so the rules for rating an
+ * Shared by the ask bar and the Feedback insights log page so the rules for rating an
  * answer live in one place. The note is the point of this control: a thumb tells
  * you an answer was bad, the note tells you what to change.
  */

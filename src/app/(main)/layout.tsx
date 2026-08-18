@@ -10,7 +10,7 @@ const NAV = [
   { href: "/discovery", label: "Discovery", icon: BookOpen },
   { href: "/upload", label: "AI extract", icon: Upload },
   { href: "/clients", label: "Clients", icon: Building2 },
-  { href: "/feedback-insights", label: "Feedback insights", icon: MessageSquare },
+  { href: "/feedback-insights", label: "Feedback insights log", icon: MessageSquare },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
