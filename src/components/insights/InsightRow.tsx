@@ -10,6 +10,14 @@ interface InsightRowProps {
   onOpen: (item: InsightItem) => void;
 }
 
+/** One-liner, plus the detail underneath when it says something more. */
+function fullText(insight: InsightItem): string {
+  const detail = insight.content?.trim();
+  return detail && detail !== insight.oneLiner.trim()
+    ? `${insight.oneLiner}\n\n${detail}`
+    : insight.oneLiner;
+}
+
 export function InsightRow({ insight, onOpen }: InsightRowProps) {
   const dateStr = insight.date
     ? new Date(insight.date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
@@ -37,8 +45,17 @@ export function InsightRow({ insight, onOpen }: InsightRowProps) {
           <span className="text-[12px] text-brand-primary opacity-60 line-clamp-2">{insight.persona}</span>
         )}
       </td>
-      <td className="py-3 px-4 align-top max-w-xs">
-        <span className="text-[14px] text-brand-primary font-medium group-hover:text-brand-secondary-600 transition-colors leading-snug line-clamp-2">
+      {/* The widest column by intent: it holds the only free text on the row, and
+          every other column is short or nowrap, so this is where the space goes.
+          min-w claims it under table-auto, max-w stops it swallowing the row. */}
+      <td className="py-3 px-4 align-top min-w-[26rem] max-w-[34rem]">
+        <span
+          className="text-[14px] text-brand-primary font-medium group-hover:text-brand-secondary-600 transition-colors leading-snug line-clamp-2"
+          // line-clamp still bites on a long one-liner, so hovering gives the
+          // untruncated text — and the detail below it, when there's more to read
+          // than the one-liner repeats.
+          title={fullText(insight)}
+        >
           {insight.oneLiner}
         </span>
       </td>
