@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { answerQuestion, QA_MODEL, QA_PROMPT_VERSION } from "@/lib/claude";
+import { loadAccountFacts, loadAccounts } from "@/lib/accounts-db";
+import { matchAccount } from "@/lib/accounts";
 import { logEvent, ACTIONS } from "@/lib/events";
 
 /**
@@ -47,18 +49,42 @@ export async function POST(req: NextRequest) {
   const asked = question.trim();
 
   const words = asked.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
-  const insights = await prisma.insight.findMany({
-    where: {
-      OR: words.map((word: string) => ({
-        OR: [
-          { oneLiner: { contains: word, mode: "insensitive" } },
-          { content: { contains: word, mode: "insensitive" } },
-        ],
-      })),
-    },
-    take: 15,
-    orderBy: { createdAt: "desc" },
-  });
+
+  // A question naming a client used to find that client's feedback only if the
+  // name also happened to appear in the prose. Resolved through matchAccount
+  // rather than a LIKE on the client column: a third of the accounts have
+  // "Health" in the name, so `contains` on a stray word would flood the 15 slots
+  // with unrelated clients. The matcher is deliberately conservative and returns
+  // null when a question names two accounts or none.
+  const namedClient = matchAccount(asked, await loadAccounts());
+
+  const LIMIT = 15;
+  const [byClient, byWords] = await Promise.all([
+    namedClient
+      ? prisma.insight.findMany({ where: { client: namedClient }, take: LIMIT, orderBy: { createdAt: "desc" } })
+      : Promise.resolve([]),
+    words.length
+      ? prisma.insight.findMany({
+          where: {
+            OR: words.map((word: string) => ({
+              OR: [
+                { oneLiner: { contains: word, mode: "insensitive" } },
+                { content: { contains: word, mode: "insensitive" } },
+              ],
+            })),
+          },
+          take: LIMIT,
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  // The named client's own feedback goes first, so asking about one account can't
+  // have its answer crowded out by keyword hits from everywhere else.
+  const seen = new Set<string>();
+  const insights = [...byClient, ...byWords]
+    .filter((i) => !seen.has(i.id) && seen.add(i.id))
+    .slice(0, LIMIT);
 
   const session = await auth();
   const actor = session?.user?.email ?? "anonymous";
@@ -71,9 +97,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ answer, sources: [], askId });
   }
 
+  // Who the quoted clients are, so the answer can weigh a complaint from a red
+  // account renewing this month differently from the same words elsewhere.
+  const accounts = await loadAccountFacts(insights.map((i) => i.client));
+
   const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
   const startedAt = Date.now();
-  const answer = await answerQuestion(asked, insights, apiKey);
+  const answer = await answerQuestion(asked, insights, accounts, apiKey);
   const latencyMs = Date.now() - startedAt;
 
   void logEvent(ACTIONS.aiAsk, { label: asked, actor });

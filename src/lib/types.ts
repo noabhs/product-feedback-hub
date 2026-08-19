@@ -74,3 +74,15 @@ export interface AccountDetail {
   /** Feedback entries filed against this account. */
   feedbackCount: number;
 }
+
+/**
+ * The account facts worth handing to the model when it answers a question about
+ * feedback — who the client is, not the whole record. Derived from AccountDetail
+ * so the two can't describe the same column differently.
+ */
+export type AccountFacts = Pick<
+  AccountDetail,
+  | "name" | "health" | "segment" | "ehr" | "products"
+  | "arr" | "riskMembers" | "qualityMembers" | "hieMembers"
+  | "renewalDate" | "liveDate"
+>;

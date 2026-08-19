@@ -1,5 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AREA_LABELS, THEME_LABELS } from "@/lib/labels";
+import { renewalPhrase, REPORT_AS_OF } from "@/lib/accounts";
+import { money, members as formatMembers } from "@/lib/format";
+import type { AccountFacts } from "@/lib/types";
 
 function getClient(apiKey?: string) {
   return new Anthropic({ apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY });
@@ -43,27 +46,95 @@ function extractText(content: Anthropic.ContentBlock[]): string {
  * prompt that earned it, and the ratings stop being usable as an eval set.
  */
 export const QA_MODEL = "claude-sonnet-5";
-export const QA_PROMPT_VERSION = "qa-1";
+export const QA_PROMPT_VERSION = "qa-2";
 
-export async function answerQuestion(question: string, insights: { oneLiner: string; content: string; client?: string | null; productArea: string; id: string }[], apiKey?: string) {
+/**
+ * The account behind a quote, in one line. Feedback reads very differently
+ * depending on who said it — the same complaint from a green $4M account and a
+ * red one renewing next week are not the same finding — and the model had no way
+ * to know the difference when all it got was a client name.
+ *
+ * Only fields the report actually filled are written: an account it didn't cover
+ * would otherwise arrive as a line of "unknown", which reads like data rather
+ * than like an absence.
+ */
+function accountLine(a: AccountFacts): string {
+  const parts: string[] = [];
+  if (a.health) parts.push(`health ${a.health}`);
+  if (a.segment) parts.push(a.segment);
+  if (a.ehr) parts.push(`EHR ${a.ehr}`);
+  if (a.products.length) parts.push(`live on ${a.products.join(", ")}`);
+  if (a.arr !== null) parts.push(`ARR ${money(a.arr)}`);
+
+  // Zero contracted members means not sold that product, which the products
+  // list already says — so only non-zero counts are worth the tokens.
+  const memberCounts = [
+    a.riskMembers ? `${formatMembers(a.riskMembers)} risk` : null,
+    a.qualityMembers ? `${formatMembers(a.qualityMembers)} quality` : null,
+    a.hieMembers ? `${formatMembers(a.hieMembers)} HIE` : null,
+  ].filter(Boolean);
+  if (memberCounts.length) parts.push(`members: ${memberCounts.join(", ")}`);
+
+  const phrase = renewalPhrase(a.renewalDate);
+  if (a.renewalDate) {
+    parts.push(`renews ${a.renewalDate.slice(0, 10)}${phrase ? ` (${phrase})` : ""}`);
+  }
+  if (a.liveDate) parts.push(`live since ${a.liveDate.slice(0, 10)}`);
+
+  return `- ${a.name}: ${parts.length ? parts.join(" | ") : "no account data on record"}`;
+}
+
+export interface QaInsight {
+  oneLiner: string;
+  content: string;
+  client?: string | null;
+  productArea: string;
+  id: string;
+}
+
+export const QA_SYSTEM_PROMPT = `You are an expert product researcher for Navina, an AI-powered clinical intelligence platform.
+You answer questions about client feedback and product insights based only on the provided context.
+Be concise (2–5 sentences), synthesize across multiple sources, and always cite your sources with [number] references.
+If the context doesn't contain enough information, say so clearly.
+
+Some questions come with account facts for the clients being quoted — health (Red/Yellow/Green), segment, EHR, live products, ARR, contracted members, and renewal date. Use them to qualify the answer, not to replace it:
+- Say who is asking when it changes the weight of a finding. One request from three red accounts renewing this quarter is a different signal from the same request from one healthy account, and worth saying so.
+- Prefer concrete account facts over adjectives. "Two accounts, $1.2M combined ARR" beats "several important clients".
+- Never infer a fact that isn't listed. An account with no data on record is unknown, not average — and account facts describe the client, never what the client said.
+- Don't recite the account list back. Mention a fact only where it changes the answer.`;
+
+/**
+ * Everything sent to the model for one question, assembled without calling it.
+ * Pure so the prompt can be printed and checked against real data — the previous
+ * shape could only be verified by paying for an answer and reading the prose.
+ */
+export function buildQaPrompt(question: string, insights: QaInsight[], accounts: AccountFacts[]): string {
   const context = insights
     .map((i, idx) => `[${idx + 1}] Client: ${i.client ?? "Unknown"} | Area: ${i.productArea}\n${i.oneLiner}\n${i.content}`)
     .join("\n\n---\n\n");
 
+  // Scoped to the clients actually quoted rather than all 95 accounts: the model
+  // should be weighing the feedback it was given, not answering questions about
+  // the account list that retrieval never supported.
+  const accountContext = accounts.length
+    ? `\n\nAccounts behind that feedback (Salesforce snapshot, ${REPORT_AS_OF}):\n${accounts.map(accountLine).join("\n")}`
+    : "";
+
+  return `Context (${insights.length} insights):\n\n${context}${accountContext}\n\nQuestion: ${question}`;
+}
+
+export async function answerQuestion(
+  question: string,
+  insights: QaInsight[],
+  accounts: AccountFacts[],
+  apiKey?: string,
+) {
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
     max_tokens: 4096,
     thinking: { type: "adaptive" },
-    system: `You are an expert product researcher for Navina, an AI-powered clinical intelligence platform.
-You answer questions about client feedback and product insights based only on the provided context.
-Be concise (2–5 sentences), synthesize across multiple sources, and always cite your sources with [number] references.
-If the context doesn't contain enough information, say so clearly.`,
-    messages: [
-      {
-        role: "user",
-        content: `Context (${insights.length} insights):\n\n${context}\n\nQuestion: ${question}`,
-      },
-    ],
+    system: QA_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildQaPrompt(question, insights, accounts) }],
   });
 
   const message = await stream.finalMessage();
