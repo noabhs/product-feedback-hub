@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle, Download } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -8,11 +8,21 @@ import { RowCount } from "@/components/ui/RowCount";
 import { AccountRow } from "@/components/clients/AccountRow";
 import { AccountPanel } from "@/components/clients/AccountPanel";
 import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk } from "@/lib/accounts";
-import { matchesAccountFilters, accountFiltersToParams, type AccountFilters } from "@/lib/account-filters";
+import {
+  matchesAccountFilters,
+  accountFiltersToParams,
+  accountFiltersFromParams,
+  type AccountFilters,
+} from "@/lib/account-filters";
+import { ShareLink } from "@/components/ui/ShareLink";
+import { useUrlReader, useUrlMirror } from "@/hooks/useUrlState";
 import { money } from "@/lib/format";
 import type { AccountDetail } from "@/lib/types";
 
 type SortKey = "name" | "health" | "products" | "ehr" | "segment" | "liveDate" | "renewalDate" | "feedbackCount";
+
+const SORT_DIRS = ["asc", "desc"] as const;
+const DEFAULT_SORT: SortKey = "name";
 
 // Order here drives the header; AccountRow renders its cells to match.
 const COLUMNS: { key: SortKey; label: string }[] = [
@@ -25,6 +35,9 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "renewalDate", label: "Renewal" },
   { key: "feedbackCount", label: "Feedback" },
 ];
+
+// Derived from COLUMNS so ?sort= can only name a column that exists.
+const SORT_KEYS = COLUMNS.map((c) => c.key);
 
 /**
  * Options for a filter whose vocabulary comes from the data rather than a fixed
@@ -50,19 +63,33 @@ async function fetchAccounts(): Promise<AccountDetail[]> {
 }
 
 export default function ClientsPage() {
+  // useSearchParams needs a Suspense boundary during prerender.
+  return (
+    <Suspense fallback={<div className="p-8" />}>
+      <Clients />
+    </Suspense>
+  );
+}
+
+function Clients() {
+  // Decoded with the same pair the CSV export uses, so the link, the table and
+  // the downloaded file can't disagree about what a filter means.
+  const url = useUrlReader();
+  const [seeded] = useState(() => accountFiltersFromParams(url.params));
+
   const [accounts, setAccounts] = useState<AccountDetail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(seeded.search);
   // Each filter holds every picked value; empty means "all".
-  const [health, setHealth] = useState<string[]>([]);
-  const [products, setProducts] = useState<string[]>([]);
-  const [ehr, setEhr] = useState<string[]>([]);
-  const [segment, setSegment] = useState<string[]>([]);
-  const [csm, setCsm] = useState<string[]>([]);
-  const [riskOnly, setRiskOnly] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [panelId, setPanelId] = useState<string | null>(null);
+  const [health, setHealth] = useState<string[]>(seeded.health);
+  const [products, setProducts] = useState<string[]>(seeded.products);
+  const [ehr, setEhr] = useState<string[]>(seeded.ehr);
+  const [segment, setSegment] = useState<string[]>(seeded.segment);
+  const [csm, setCsm] = useState<string[]>(seeded.csm);
+  const [riskOnly, setRiskOnly] = useState(seeded.riskOnly);
+  const [sortKey, setSortKey] = useState<SortKey>(url.oneOf("sort", SORT_KEYS, DEFAULT_SORT));
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(url.oneOf("dir", SORT_DIRS, "asc"));
+  const [panelId, setPanelId] = useState<string | null>(url.str("open") || null);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
@@ -99,6 +126,20 @@ export default function ClientsPage() {
     () => ({ search, health, products, ehr, segment, csm, riskOnly }),
     [search, health, products, ehr, segment, csm, riskOnly],
   );
+
+  // The filters go through the export's encoder; the sort and the open panel are
+  // this page's own state, so they're appended rather than pushed into that module.
+  const query = useMemo(() => {
+    const params = accountFiltersToParams(filters);
+    if (sortKey !== DEFAULT_SORT) params.set("sort", sortKey);
+    // Direction only travels once it stops being the default for that column,
+    // which for the default sort is ascending.
+    if (sortKey !== DEFAULT_SORT || sortDir !== "asc") params.set("dir", sortDir);
+    if (panelId) params.set("open", panelId);
+    return params.toString();
+  }, [filters, sortKey, sortDir, panelId]);
+
+  useUrlMirror(query);
 
   // Split from `filtered` so the at-risk count reflects the other filters
   // without the toggle narrowing its own denominator.
@@ -228,10 +269,13 @@ export default function ClientsPage() {
               stops arriving under three spellings.
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!displayed.length}>
-            <Download className="w-4 h-4" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <ShareLink title="Copy a link to this filtered view" />
+            <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!displayed.length}>
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {error && (

@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
 import { Search, Plus, Download, Upload, ArrowUp, ArrowDown } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { MultiSelect } from "@/components/ui/MultiSelect";
@@ -12,6 +11,8 @@ import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
 import { RowCount } from "@/components/ui/RowCount";
 import { Pagination } from "@/components/ui/Pagination";
+import { ShareLink } from "@/components/ui/ShareLink";
+import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import type { InsightItem } from "@/lib/types";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel } from "@/lib/labels";
 import { SOURCE_CATEGORIES, sourceCategory } from "@/lib/sources";
@@ -39,6 +40,10 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "commentCount", label: "Comments" },
 ];
 
+const SORT_KEYS = COLUMNS.map((c) => c.key);
+const DEFAULT_SORT: SortKey = "date";
+const SORT_DIRS = ["asc", "desc"] as const;
+
 export default function FeedbackPage() {
   // useSearchParams needs a Suspense boundary during prerender.
   return (
@@ -49,25 +54,29 @@ export default function FeedbackPage() {
 }
 
 function Feedback() {
-  const [search, setSearch] = useState("");
+  // Every filter, the sort and the page are seeded from the query string and
+  // mirrored back to it below, so this whole view is one shareable link.
+  const url = useUrlReader();
+
+  const [search, setSearch] = useState(url.str("search"));
   // Each filter holds every picked value; empty means "all".
-  const [productArea, setProductArea] = useState<string[]>([]);
-  const [theme, setTheme] = useState<string[]>([]);
-  const [persona, setPersona] = useState<string[]>([]);
-  // Seeded from ?client=<name> so the "N entries from this client" link on
-  // /clients lands here already filtered to that account.
-  const [client, setClient] = useState<string[]>(useSearchParams().getAll("client"));
-  const [source, setSource] = useState<string[]>([]);
+  const [productArea, setProductArea] = useState<string[]>(url.list("productArea"));
+  const [theme, setTheme] = useState<string[]>(url.list("theme"));
+  const [persona, setPersona] = useState<string[]>(url.list("persona"));
+  // ?client=<name> is also how the "N entries from this client" link on /clients
+  // lands here already filtered to that account.
+  const [client, setClient] = useState<string[]>(url.list("client"));
+  const [source, setSource] = useState<string[]>(url.list("source"));
   const [clients, setClients] = useState<{ value: string; label: string }[]>([]);
   const [items, setItems] = useState<InsightItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey>("date");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(url.num("page", 1));
+  const [sortKey, setSortKey] = useState<SortKey>(url.oneOf("sort", SORT_KEYS, DEFAULT_SORT));
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(url.oneOf("dir", SORT_DIRS, "desc"));
   const [modal, setModal] = useState<InsightItem | null | "new">(null);
   // /insights/<id> redirects here as ?open=<id>, so old links, the home page's
   // recent list, the AI citations and any bookmark all open the panel.
-  const [panelId, setPanelId] = useState<string | null>(useSearchParams().get("open"));
+  const [panelId, setPanelId] = useState<string | null>(url.str("open") || null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   // Count of every entry, ignoring filters — the denominator in "23/245".
@@ -75,6 +84,23 @@ function Feedback() {
 
   const [facets, setFacets] = useState<{ areas: string[]; themes: string[] }>({ areas: [], themes: [] });
   const [me, setMe] = useState<string | null>(null);
+
+  // State at its default is passed as null so it stays out of the link — an
+  // untouched page shares as a bare /insights. `page` is the raw state rather
+  // than the clamped `current`, because until the rows land there is nothing to
+  // clamp against and a shared ?page=3 would be rewritten away before it loaded.
+  useUrlState({
+    search,
+    productArea,
+    theme,
+    persona,
+    client,
+    source,
+    sort: sortKey === DEFAULT_SORT ? null : sortKey,
+    dir: sortKey === DEFAULT_SORT && sortDir === "desc" ? null : sortDir,
+    page: page > 1 ? page : null,
+    open: panelId,
+  });
 
   useEffect(() => {
     fetch("/api/insights/facets")
@@ -299,6 +325,7 @@ function Feedback() {
               <Download className="w-4 h-4" />
               Export CSV
             </Button>
+            <ShareLink title="Copy a link to this filtered view" />
             <Button size="sm" onClick={() => setModal("new")}>
               <Plus className="w-4 h-4" />
               Add feedback

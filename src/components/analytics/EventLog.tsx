@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowUp, ArrowDown, Search, Download } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowUp, ArrowDown, Search, Download, Link2, Check } from "lucide-react";
 import { ACTION_LABELS } from "@/lib/events";
 import { shortName } from "@/lib/people";
 import { RowCount } from "@/components/ui/RowCount";
 import { Pagination } from "@/components/ui/Pagination";
+import { useCopyLink, copyLinkLabel } from "@/components/ui/ShareLink";
+import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import {
   EVENT_RANGES,
   DEFAULT_EVENT_RANGE,
@@ -24,6 +26,10 @@ export interface EventRow {
 }
 
 type SortKey = "createdAt" | "actor" | "action";
+
+const SORT_KEYS = ["createdAt", "actor", "action"] as const;
+const RANGE_KEYS = EVENT_RANGES.map((r) => r.value);
+const DEFAULT_SORT: SortKey = "createdAt";
 
 const PAGE_SIZE = 10;
 
@@ -77,23 +83,44 @@ function SortHeader({
 }
 
 export function EventLog({ events }: { events: EventRow[] }) {
-  const [actor, setActor] = useState("");
-  const [action, setAction] = useState("");
-  const [q, setQ] = useState("");
-  const [sort, setSort] = useState<SortKey>("createdAt");
-  const [desc, setDesc] = useState(true);
-  const [page, setPage] = useState(1);
+  // The log's filters, range, sort and page are seeded from the query string and
+  // mirrored back to it, so "what did Ariel do last week" is a link.
+  const url = useUrlReader();
+  const link = useCopyLink();
+
+  const [actor, setActor] = useState(url.str("actor"));
+  const [action, setAction] = useState(url.str("action"));
+  const [q, setQ] = useState(url.str("q"));
+  const [sort, setSort] = useState<SortKey>(url.oneOf("sort", SORT_KEYS, DEFAULT_SORT));
+  const [desc, setDesc] = useState(url.str("dir", "desc") !== "asc");
+  const [page, setPage] = useState(url.num("page", 1));
 
   // The page server-renders the default range, so `loaded` starts null and the
-  // prop is used as-is. Any other range is fetched.
-  const [range, setRange] = useState<EventRangeKey>(DEFAULT_EVENT_RANGE);
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  // prop is used as-is. Any other range is fetched — including one arriving in
+  // the URL, which the mount effect below picks up.
+  const [range, setRange] = useState<EventRangeKey>(url.oneOf("range", RANGE_KEYS, DEFAULT_EVENT_RANGE));
+  const [customFrom, setCustomFrom] = useState(url.str("from"));
+  const [customTo, setCustomTo] = useState(url.str("to"));
   const [loaded, setLoaded] = useState<EventRow[] | null>(null);
   const [capped, setCapped] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const source = loaded ?? events;
+
+  // `from`/`to` are the date-input values, not the ISO instants the API takes —
+  // those are derived by eventRangeParams at fetch time. Only carried when the
+  // range is custom, so a stale pair doesn't ride along in every link.
+  useUrlState({
+    actor,
+    action,
+    q,
+    range: range === DEFAULT_EVENT_RANGE ? null : range,
+    from: range === "custom" ? customFrom : null,
+    to: range === "custom" ? customTo : null,
+    sort: sort === DEFAULT_SORT ? null : sort,
+    dir: sort === DEFAULT_SORT && desc ? null : desc ? "desc" : "asc",
+    page: page > 1 ? page : null,
+  });
 
   /** Fetched from the change handlers rather than an effect, so nothing is set
    *  synchronously during render and the range only reloads when it's asked to. */
@@ -117,6 +144,30 @@ export function EventLog({ events }: { events: EventRow[] }) {
       setLoading(false);
     }
   }
+
+  // A range that arrived in the link needs fetching once, because the server
+  // rendered the default one — otherwise the select would say "Past week" over
+  // 30 days of rows. Mount only: every later change comes through pickRange.
+  useEffect(() => {
+    if (range === DEFAULT_EVENT_RANGE) return;
+    // An async closure so nothing is set synchronously during the effect, and
+    // a page left mid-request doesn't set state on the way out.
+    let cancelled = false;
+    (async () => {
+      if (range === "custom" && (!customFrom || !customTo)) return;
+      try {
+        const res = await fetch(`/api/events?${eventRangeParams(range, customFrom, customTo)}`);
+        const data = await res.json();
+        if (cancelled) return;
+        setLoaded(data.events ?? []);
+        setCapped((data.total ?? 0) > (data.limit ?? Infinity));
+      } catch {
+        if (!cancelled) setLoaded([]);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seeded from the URL once, by design
+  }, []);
 
   function pickRange(next: EventRangeKey) {
     setRange(next);
@@ -201,6 +252,15 @@ export function EventLog({ events }: { events: EventRow[] }) {
           </div>
           <div className="flex items-center gap-3">
             <RowCount shown={rows.length} total={source.length} noun="events" />
+            <button
+              onClick={link.copy}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-secondary-600 border border-[rgba(93,7,226,0.25)] rounded-sm px-2.5 py-1.5 hover:bg-[rgba(93,7,226,0.05)] transition-colors"
+              title="Copy a link to this range, filters and sort"
+              aria-live="polite"
+            >
+              {link.state === "copied" ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+              {copyLinkLabel(link.state)}
+            </button>
             <button
               onClick={exportCsv}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-secondary-600 border border-[rgba(93,7,226,0.25)] rounded-sm px-2.5 py-1.5 hover:bg-[rgba(93,7,226,0.05)] transition-colors"

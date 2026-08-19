@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { Search, FileText, Plus, Download, Upload, ChevronRight, ExternalLink, Trash2, Sparkles } from "lucide-react";
 import { Input, Select } from "@/components/ui/Input";
@@ -11,9 +11,14 @@ import type { Question, Source } from "@/lib/types";
 import { AddQuestionModal } from "@/components/discovery/AddQuestionModal";
 import { AddSourceModal } from "@/components/discovery/AddSourceModal";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
+import { ShareLink } from "@/components/ui/ShareLink";
+import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import { AREA_OPTIONS as AREAS, areaLabel , THEME_OPTIONS as THEMES } from "@/lib/labels";
 
 type Tab = "questions" | "sources";
+
+const TABS = ["questions", "sources"] as const;
+const DEFAULT_TAB: Tab = "questions";
 
 const FORMAT_COLORS: Record<string, string> = {
   Call: "bg-blue-50 text-blue-700",
@@ -32,16 +37,29 @@ function fmtDate(d: string | null) {
 }
 
 export default function DiscoveryPage() {
-  const [tab, setTab] = useState<Tab>("questions");
+  // useSearchParams needs a Suspense boundary during prerender.
+  return (
+    <Suspense fallback={<div className="p-8" />}>
+      <Discovery />
+    </Suspense>
+  );
+}
+
+function Discovery() {
+  // The tab and the question filters are seeded from the query string and
+  // mirrored back to it, so a prepared question list is a link.
+  const url = useUrlReader();
+
+  const [tab, setTab] = useState<Tab>(url.oneOf("tab", TABS, DEFAULT_TAB));
 
   // Questions state
-  const [search, setSearch] = useState("");
-  const [productArea, setProductArea] = useState("");
-  const [theme, setTheme] = useState("");
+  const [search, setSearch] = useState(url.str("search"));
+  const [productArea, setProductArea] = useState(url.str("productArea"));
+  const [theme, setTheme] = useState(url.str("theme"));
   const [questions, setQuestions] = useState<Question[]>([]);
   const [qLoading, setQLoading] = useState(false);
   const [qGrandTotal, setQGrandTotal] = useState(0);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(url.str("open") || null);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [qError, setQError] = useState<string | null>(null);
 
@@ -52,6 +70,15 @@ export default function DiscoveryPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Defaults pass as null so an untouched page shares as a bare /discovery.
+  useUrlState({
+    tab: tab === DEFAULT_TAB ? null : tab,
+    search,
+    productArea,
+    theme,
+    open: expanded,
+  });
 
   // Fetch questions
   useEffect(() => {
@@ -145,6 +172,7 @@ export default function DiscoveryPage() {
               <Download className="w-4 h-4" />
               Export CSV
             </Button>
+            <ShareLink title="Copy a link to this question list" />
             <Button variant="ghost" size="sm" onClick={() => setShowAddQuestion(true)}>
               <Plus className="w-4 h-4" />
               Add question
