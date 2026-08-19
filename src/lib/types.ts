@@ -6,7 +6,8 @@
 
 export interface InsightItem {
   id: string;
-  productArea: string;
+  /** One entry can touch several areas. Empty when none were picked. */
+  productAreas: string[];
   theme: string;
   persona?: string | null;
   oneLiner: string;

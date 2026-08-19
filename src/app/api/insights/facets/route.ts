@@ -18,7 +18,8 @@ import { auth } from "@/auth";
 export async function GET() {
   const [session, areas, themes, clients, reporters] = await Promise.all([
     auth(),
-    prisma.insight.findMany({ select: { productArea: true }, distinct: ["productArea"] }),
+    // No `distinct` on an array column — the areas in use are flattened below.
+    prisma.insight.findMany({ select: { productAreas: true } }),
     prisma.insight.findMany({ select: { theme: true }, distinct: ["theme"] }),
     prisma.account.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
     prisma.insight.findMany({
@@ -30,7 +31,7 @@ export async function GET() {
   ]);
 
   return NextResponse.json({
-    areas: areas.map((r) => r.productArea).filter(Boolean).sort(),
+    areas: [...new Set(areas.flatMap((r) => r.productAreas))].filter(Boolean).sort(),
     themes: themes.map((r) => r.theme).filter(Boolean).sort(),
     clients: clients.map((r) => r.name),
     reporters: reporters.map((r) => r.createdBy as string).filter(Boolean),

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { normalizeKey } from "@/lib/labels";
+import { normalizeKey, normalizeAreas } from "@/lib/labels";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { insightWhere } from "@/lib/insight-filters";
 import { resolveClientForEdit } from "@/lib/accounts-db";
@@ -49,8 +49,14 @@ export async function POST(req: NextRequest) {
 
   // Normalised here as well as in the form, so a direct API call can't
   // introduce a "Billing"/"billing" split in the charts.
-  const productArea = normalizeKey(body.productArea ?? "") || "GENERAL";
+  const productAreas = normalizeAreas(body.productAreas ?? body.productArea);
   const theme = normalizeKey(body.theme ?? "") || "OTHER";
+
+  // Required, like the one-liner and the date: an entry filed under no area at
+  // all appears in no area filter and no chart, which is worse than being asked.
+  if (!productAreas.length) {
+    return NextResponse.json({ error: "At least one product area is required" }, { status: 400 });
+  }
 
   // A typed client that isn't on the list used to be stored as null, so the
   // entry saved "fine" and silently lost its client. Say so instead.
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   const insight = await prisma.insight.create({
     data: {
-      productArea,
+      productAreas,
       theme,
       persona: body.persona ?? null,
       oneLiner: body.oneLiner,

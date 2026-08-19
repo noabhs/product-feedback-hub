@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Link2, Sparkles, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { AREA_OPTIONS as AREAS , THEME_OPTIONS as THEMES } from "@/lib/labels";
@@ -11,7 +12,7 @@ import { AREA_OPTIONS as AREAS , THEME_OPTIONS as THEMES } from "@/lib/labels";
 interface Item {
   oneLiner: string;
   content: string;
-  productArea: string;
+  productAreas: string[];
   theme: string;
   persona: string | null;
   client: string | null;
@@ -71,6 +72,9 @@ export function ExtractInsights() {
       setItems(
         (data.insights as Omit<Item, "approved" | "expanded">[]).map((i) => ({
           ...i,
+          // Defensive: the schema asks for at least one, but a row with none
+          // would be rejected on save with nothing on screen explaining why.
+          productAreas: i.productAreas?.length ? i.productAreas : ["GENERAL"],
           approved: true,
           expanded: false,
         }))
@@ -114,7 +118,7 @@ export function ExtractInsights() {
           body: JSON.stringify({
             oneLiner: i.oneLiner,
             content: i.content,
-            productArea: i.productArea,
+            productAreas: i.productAreas,
             theme: i.theme,
             persona: i.persona,
             client: i.client,
@@ -318,11 +322,12 @@ export function ExtractInsights() {
 
                       {/* Area */}
                       <td className="py-2 px-3">
-                        <Select
-                          value={item.productArea}
-                          onChange={(val) => update(idx, { productArea: val })}
+                        <MultiSelect
+                          value={item.productAreas}
+                          onChange={(val) => update(idx, { productAreas: val })}
                           options={AREAS}
-                          className="w-full h-7 text-[12px]"
+                          placeholder="Pick areas"
+                          className="w-full"
                         />
                       </td>
 

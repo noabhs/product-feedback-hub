@@ -21,7 +21,13 @@ export function InsightRow({ insight, onOpen }: InsightRowProps) {
       className="group border-b border-[rgba(50,43,95,0.07)] hover:bg-[rgba(93,7,226,0.03)] transition-colors cursor-pointer"
     >
       <td className="py-3 px-4 align-top">
-        <Badge type="area" value={insight.productArea} />
+        {/* Wraps rather than truncates: which areas an entry spans is the point
+            of the column, and hiding the second one would defeat it. */}
+        <div className="flex flex-wrap gap-1">
+          {insight.productAreas.map((area) => (
+            <Badge key={area} type="area" value={area} />
+          ))}
+        </div>
       </td>
       <td className="py-3 px-4 align-top">
         <Badge type="theme" value={insight.theme} />

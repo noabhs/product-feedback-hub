@@ -336,7 +336,7 @@ async function main() {
       where: { id },
       create: {
         id,
-        productArea: mapProductArea(productAreaRaw ?? ""),
+        productAreas: [mapProductArea(productAreaRaw ?? "")],
         theme: mapTheme(themeRaw ?? ""),
         persona: persona?.trim() || null,
         oneLiner: oneLiner.trim(),

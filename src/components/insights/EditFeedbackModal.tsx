@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ComboField } from "@/components/ui/ComboField";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { ClientField } from "@/components/insights/ClientField";
 import { AREA_LABELS, THEME_LABELS, areaLabel, themeLabel, normalizeKey } from "@/lib/labels";
 import type { InsightItem } from "@/lib/types";
@@ -35,7 +36,7 @@ function today(): string {
 }
 
 const EMPTY = {
-  oneLiner: "", content: "", productArea: "GENERAL", theme: "WORKFLOW",
+  oneLiner: "", content: "", theme: "WORKFLOW",
   client: "", persona: "", sourceName: "", sourceUrl: "", date: today(), wtp: "",
   reporter: "",
 };
@@ -45,7 +46,9 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
   const [form, setForm] = useState({
     oneLiner: item?.oneLiner ?? EMPTY.oneLiner,
     content: item?.content ?? EMPTY.content,
-    productArea: item?.productArea ?? EMPTY.productArea,
+    // No default area on a new entry: the old "GENERAL" default meant most
+    // entries were filed under an area nobody had actually chosen.
+    productAreas: item?.productAreas ?? [],
     theme: item?.theme ?? EMPTY.theme,
     client: item?.client ?? EMPTY.client,
     persona: item?.persona ?? EMPTY.persona,
@@ -56,6 +59,13 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
     // Filled in from the session once facets loads, when creating a new entry.
     reporter: item?.createdBy ?? EMPTY.reporter,
   });
+  // An area that isn't on the list yet: normalised the same way the server
+  // would, added to the options so it shows ticked, and selected.
+  const [newArea, setNewArea] = useState("");
+  const [addingArea, setAddingArea] = useState(false);
+  const [customAreas, setCustomAreas] = useState<string[]>([]);
+
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -81,11 +91,29 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
   }, [isEdit]);
 
   const areaOptions = useMemo(
-    () => [...new Set([...BUILT_IN_AREAS, ...facets.areas])]
+    () => [...new Set([...BUILT_IN_AREAS, ...facets.areas, ...customAreas])]
       .map((v) => ({ value: v, label: areaLabel(v) }))
       .sort((a, b) => a.label.localeCompare(b.label)),
-    [facets.areas]
+    [facets.areas, customAreas]
   );
+
+  function addArea() {
+    const typed = normalizeKey(newArea);
+    if (!typed) return;
+    // Typing an area's display name shouldn't create a second one: "Risk
+    // Adjustment" normalises to RISK_ADJUSTMENT, but it's stored as RISK_DX. So
+    // match against the labels on offer before treating this as new.
+    const existing = areaOptions.find(
+      (o) => o.value === typed || normalizeKey(o.label) === typed,
+    );
+    const key = existing?.value ?? typed;
+    setCustomAreas((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    setForm((prev) =>
+      prev.productAreas.includes(key) ? prev : { ...prev, productAreas: [...prev.productAreas, key] },
+    );
+    setNewArea("");
+    setAddingArea(false);
+  }
 
   const themeOptions = useMemo(
     () => [...new Set([...BUILT_IN_THEMES, ...facets.themes])]
@@ -97,12 +125,15 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
   const set = (key: keyof typeof form) => (val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
+  const setAreas = (productAreas: string[]) => setForm((prev) => ({ ...prev, productAreas }));
+
+
   async function handleSave() {
     if (!form.oneLiner.trim()) { setError("One-liner is required"); return; }
     if (!form.date) { setError("Date is required — when did this feedback happen?"); return; }
     // Checked post-normalisation: a value like "!!!" normalises to empty and
     // would otherwise silently fall back to General on the server.
-    if (!normalizeKey(form.productArea)) { setError("Product area needs at least one letter or number"); return; }
+    if (!form.productAreas.length) { setError("Pick at least one product area"); return; }
     if (!normalizeKey(form.theme)) { setError("Theme needs at least one letter or number"); return; }
     setSaving(true);
     setError("");
@@ -110,7 +141,7 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
       const payload = {
         ...form,
         // Normalise so a typed "Billing" and "billing" don't become two groups.
-        productArea: normalizeKey(form.productArea),
+        productAreas: form.productAreas,
         theme: normalizeKey(form.theme),
         client: form.client.trim() || null,
         content: form.content || form.oneLiner,
@@ -180,14 +211,37 @@ export function EditFeedbackModal({ item, onSave, onClose }: EditFeedbackModalPr
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Product area *">
-              <ComboField
-                value={form.productArea}
-                onChange={set("productArea")}
+            <Field label="Product areas *">
+              {/* An entry can touch several — Risk Adjustment and Coders both,
+                  say — so this is a multi-select rather than one value. */}
+              <MultiSelect
+                value={form.productAreas}
+                onChange={setAreas}
                 options={areaOptions}
-                placeholder="e.g. Billing"
+                placeholder="Pick one or more"
                 className="w-full"
               />
+              {addingArea ? (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Input
+                    value={newArea}
+                    onChange={(e) => setNewArea(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addArea()}
+                    placeholder="New area name"
+                    autoFocus
+                    className="w-full"
+                  />
+                  <Button size="sm" onClick={addArea}>Add</Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingArea(true)}
+                  className="mt-1.5 text-[12px] text-brand-secondary-500 hover:underline"
+                >
+                  ＋ Add a new area
+                </button>
+              )}
             </Field>
             <Field label="Theme *">
               <ComboField

@@ -48,6 +48,20 @@ function mapProductArea(raw: string): string {
   return map[raw.toLowerCase().trim()] ?? "GENERAL";
 }
 
+/**
+ * A feedback row's area cell, which may name several: "RISK_DX; CODERS", or the
+ * single value older sheets carry. Falls back to one GENERAL rather than none,
+ * because a bulk import shouldn't reject rows over a blank column.
+ */
+function mapProductAreas(raw: string): string[] {
+  const areas = raw
+    .split(/[;|]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map(mapProductArea);
+  return areas.length ? [...new Set(areas)] : ["GENERAL"];
+}
+
 function mapTheme(raw: string): string {
   const map: Record<string, string> = {
     "workflow": "WORKFLOW",
@@ -152,7 +166,10 @@ export async function POST(req: NextRequest) {
             where: { id },
             create: {
               id,
-              productArea: mapProductArea(productAreaRaw ?? ""),
+              // The export writes several areas into one cell as "A; B", so the
+              // column is split before mapping — otherwise a round trip through
+              // CSV collapses a two-area entry into one junk area.
+              productAreas: mapProductAreas(productAreaRaw ?? ""),
               theme: mapTheme(themeRaw ?? ""),
               persona: persona?.trim() || null,
               oneLiner: oneLiner.trim(),

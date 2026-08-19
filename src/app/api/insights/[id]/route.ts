@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { normalizeKey } from "@/lib/labels";
+import { normalizeKey, normalizeAreas } from "@/lib/labels";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { resolveClientForEdit } from "@/lib/accounts-db";
 
@@ -20,6 +20,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const existing = await prisma.insight.findUnique({ where: { id }, select: { client: true } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const productAreas = normalizeAreas(body.productAreas ?? body.productArea);
+  if (!productAreas.length) {
+    return NextResponse.json({ error: "At least one product area is required" }, { status: 400 });
+  }
+
   const client = await resolveClientForEdit(body.client, existing.client);
   if (client.kind === "unknown") {
     return NextResponse.json(
@@ -33,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: {
       oneLiner: body.oneLiner,
       content: body.content,
-      productArea: normalizeKey(body.productArea ?? "") || "GENERAL",
+      productAreas,
       theme: normalizeKey(body.theme ?? "") || "OTHER",
       persona: body.persona ?? null,
       client: client.kind === "set" ? client.value : undefined,

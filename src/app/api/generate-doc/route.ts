@@ -8,11 +8,15 @@ export async function POST(req: NextRequest) {
     const { topic, productAreas, persona, clientContext } = await req.json();
     if (!topic?.trim()) return NextResponse.json({ error: "Topic is required" }, { status: 400 });
 
-    const where = productAreas?.length > 0 ? { productArea: { in: productAreas as string[] } } : {};
+    const areas = (productAreas ?? []) as string[];
+    // Questions carry one area, insights several — so the two need different
+    // operators against the same picked list.
+    const questionWhere = areas.length ? { productArea: { in: areas } } : {};
+    const insightWhere = areas.length ? { productAreas: { hasSome: areas } } : {};
 
     const [questions, insights] = await Promise.all([
-      prisma.discoveryQuestion.findMany({ where, take: 60 }),
-      prisma.insight.findMany({ where, take: 30, orderBy: { createdAt: "desc" } }),
+      prisma.discoveryQuestion.findMany({ where: questionWhere, take: 60 }),
+      prisma.insight.findMany({ where: insightWhere, take: 30, orderBy: { createdAt: "desc" } }),
     ]);
 
     const apiKey = req.headers.get("x-anthropic-key") ?? undefined;

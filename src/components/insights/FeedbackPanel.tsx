@@ -67,7 +67,9 @@ export function FeedbackPanel({ item, currentUser, onEdit, onDelete, onClose }: 
         {/* Header */}
         <div className="shrink-0 flex items-start justify-between gap-3 px-6 py-4 bg-white border-b border-[rgba(50,43,95,0.1)]">
           <div className="flex flex-wrap gap-2 pt-0.5">
-            <Badge type="area" value={item.productArea} />
+            {item.productAreas.map((area) => (
+              <Badge key={area} type="area" value={area} />
+            ))}
             <Badge type="theme" value={item.theme} />
           </div>
           <div className="flex items-center gap-1 shrink-0">

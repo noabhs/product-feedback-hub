@@ -34,11 +34,9 @@ export default async function HomePage() {
     prisma.insight.count(),
     prisma.discoveryQuestion.count(),
     prisma.askLog.count(),
-    prisma.insight.groupBy({
-      by: ["productArea"],
-      _count: { id: true },
-      orderBy: { _count: { id: "desc" } },
-    }),
+    // groupBy can't group by the elements of an array column, so the areas are
+    // counted in memory below. 127 rows makes that a non-question.
+    prisma.insight.findMany({ select: { productAreas: true } }),
     prisma.insight.groupBy({
       by: ["theme"],
       _count: { id: true },
@@ -53,7 +51,7 @@ export default async function HomePage() {
     prisma.insight.findMany({
       orderBy: { createdAt: "desc" },
       take: 6,
-      select: { id: true, oneLiner: true, productArea: true, client: true, createdAt: true, createdBy: true },
+      select: { id: true, oneLiner: true, productAreas: true, client: true, createdAt: true, createdBy: true },
     }),
     prisma.account.findMany({ select: { name: true, health: true, arr: true } }),
   ]);
@@ -81,8 +79,18 @@ export default async function HomePage() {
     .sort((a, b) => (b.arr ?? 0) - (a.arr ?? 0))
     .slice(0, 6);
 
+  // An entry spanning two areas counts once under each, so these total more than
+  // the entry count — which is the point of the chart.
+  const areaCounts = new Map<string, number>();
+  for (const row of byAreaRaw) {
+    for (const area of row.productAreas) areaCounts.set(area, (areaCounts.get(area) ?? 0) + 1);
+  }
+  const byArea = [...areaCounts.entries()]
+    .map(([area, count]) => ({ area, count }))
+    .sort((a, b) => b.count - a.count);
+
   const topClients = feedbackByClient.slice(0, 8);
-  const maxArea = Math.max(...byAreaRaw.map((r) => r._count.id), 1);
+  const maxArea = Math.max(...byArea.map((r) => r.count), 1);
   const maxTheme = Math.max(...byThemeRaw.map((r) => r._count.id), 1);
   const maxClient = Math.max(...topClients.map((r) => r._count.id), 1);
 
@@ -175,13 +183,13 @@ export default async function HomePage() {
         <SectionHeading title="What we're hearing" />
         <div className="grid grid-cols-2 gap-4 mb-4">
           <ChartCard title="By product area" href="/insights">
-            {byAreaRaw.map((r) => (
+            {byArea.map((r) => (
               <BarRow
-                key={r.productArea}
-                label={areaLabel(r.productArea)}
-                count={r._count.id}
-                pct={r._count.id / maxArea}
-                color={areaColor(r.productArea)}
+                key={r.area}
+                label={areaLabel(r.area)}
+                count={r.count}
+                pct={r.count / maxArea}
+                color={areaColor(r.area)}
               />
             ))}
           </ChartCard>
@@ -228,7 +236,7 @@ export default async function HomePage() {
                 >
                   <div
                     className="w-1.5 h-1.5 rounded-full mt-[5px] shrink-0"
-                    style={{ background: areaColor(r.productArea) }}
+                    style={{ background: areaColor(r.productAreas[0] ?? "GENERAL") }}
                   />
                   <div className="flex-1 min-w-0">
                     <Link href={`/insights?open=${r.id}`}>
@@ -237,7 +245,7 @@ export default async function HomePage() {
                       </p>
                     </Link>
                     <p className="text-[11px] text-brand-primary opacity-40 mt-0.5">
-                      {areaLabel(r.productArea)}
+                      {r.productAreas.map(areaLabel).join(", ") || "No area"}
                       {r.client ? ` · ${r.client}` : ""}
                       {" · "}{fmtDate(r.createdAt)}
                       {" · "}{shortName(r.createdBy)}

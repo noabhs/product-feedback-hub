@@ -13,13 +13,15 @@ export function insightWhere(searchParams: URLSearchParams): Record<string, unkn
   const picked = (key: string) =>
     searchParams.getAll(key).map((v) => v.trim()).filter(Boolean);
 
-  const productArea = picked("productArea");
+  const productAreas = picked("productArea");
   const theme = picked("theme");
   const client = picked("client");
 
   // `in` with a single entry behaves the same as equality, so one code path
   // covers both, and a bare ?client=Aegis link keeps working.
-  if (productArea.length) where.productArea = { in: productArea };
+  // hasSome, not `in`: an entry spanning Risk and Coders should surface under a
+  // filter on either one.
+  if (productAreas.length) where.productAreas = { hasSome: productAreas };
   if (theme.length) where.theme = { in: theme };
   if (client.length) where.client = { in: client };
 

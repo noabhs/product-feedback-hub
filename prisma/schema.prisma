@@ -13,31 +13,33 @@ datasource db {
 }
 
 model Insight {
-  id          String    @id @default(cuid())
-  productArea String
-  theme       String
-  persona     String?
-  oneLiner    String
-  content     String
-  client      String?
-  sourceName  String?
-  sourceUrl   String?
-  sourceType  String    @default("SHEET")
-  date        DateTime?
-  wtp         String?
+  id           String    @id @default(cuid())
+  /// One entry can touch several areas ("Risk Adjustment" and "Coders" both, say),
+  /// so this is a Postgres text array rather than a single value. Queried with
+  /// hasSome. Discovery questions and source documents stay single-area.
+  productAreas String[]
+  theme        String
+  persona      String?
+  oneLiner     String
+  content      String
+  client       String?
+  sourceName   String?
+  sourceUrl    String?
+  sourceType   String    @default("SHEET")
+  date         DateTime?
+  wtp          String?
   // The free-text client this row arrived with, kept when the value was remapped
   // onto a canonical Account — so a bad match can be traced back and redone.
-  clientRaw   String?
-  tags        String    @default("[]")
+  clientRaw    String?
+  tags         String    @default("[]")
   // Email of the signed-in user who added this entry. Nullable because the 230
   // seeded rows predate auth and have no author.
-  createdBy   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   comments Comment[]
 
-  @@index([productArea])
   @@index([client])
   @@index([theme])
 }
@@ -147,15 +149,15 @@ model Event {
 /// written — it gets rated, read by other people, and replayed when the prompt
 /// changes.
 model AskLog {
-  id        String @id @default(cuid())
+  id            String    @id @default(cuid())
   /// Email of whoever asked. Shown only to the hub owner (see lib/people.ts):
   /// the page is shared so the team can learn from past questions, and people
   /// ask differently when their name is attached.
-  actor     String
-  question  String
-  answer    String
+  actor         String
+  question      String
+  answer        String
   /// JSON array of the insight ids the answer cited.
-  sourceIds String @default("[]")
+  sourceIds     String    @default("[]")
   /// How many insights the search fed to Claude. 0 vs 15 separates "the search
   /// never found the right rows" from "it had them and still answered badly" —
   /// two failure modes with opposite fixes.
@@ -166,13 +168,13 @@ model AskLog {
   promptVersion String
   latencyMs     Int?
   /// "up" | "down". Null means nobody has judged it yet.
-  rating     String?
+  rating        String?
   /// What was wrong with the answer. The thumb alone is barely actionable; this
   /// is the part that tells you what to change.
-  ratingNote String?
-  ratedBy    String?
-  ratedAt    DateTime?
-  createdAt  DateTime  @default(now())
+  ratingNote    String?
+  ratedBy       String?
+  ratedAt       DateTime?
+  createdAt     DateTime  @default(now())
 
   @@index([createdAt])
   @@index([rating])

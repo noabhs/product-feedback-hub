@@ -53,7 +53,7 @@ export interface QaInsight {
   oneLiner: string;
   content: string;
   client?: string | null;
-  productArea: string;
+  productAreas: string[];
   id: string;
 }
 
@@ -84,7 +84,7 @@ Rules that hold either way:
 export function buildQaPrompt(question: string, insights: QaInsight[], accounts: AccountDetail[]): string {
   const feedback = insights.length
     ? insights
-        .map((i, idx) => `[${idx + 1}] Client: ${i.client ?? "Unknown"} | Area: ${i.productArea}\n${i.oneLiner}\n${i.content}`)
+        .map((i, idx) => `[${idx + 1}] Client: ${i.client ?? "Unknown"} | Areas: ${i.productAreas.join(", ") || "none"}\n${i.oneLiner}\n${i.content}`)
         .join("\n\n---\n\n")
     : "(No feedback entries matched this question.)";
 
@@ -134,13 +134,16 @@ const INSIGHTS_SCHEMA = {
         properties: {
           oneLiner: { type: "string" },
           content: { type: "string" },
-          productArea: { type: "string", enum: AREAS },
+          // An array, so one piece of feedback can be filed under every area it
+          // touches. minItems keeps the model from returning none at all, which
+          // the API would reject anyway.
+          productAreas: { type: "array", items: { type: "string", enum: AREAS }, minItems: 1 },
           theme: { type: "string", enum: THEMES },
           persona: nullableString,
           client: nullableString,
           tags: { type: "array", items: { type: "string" } },
         },
-        required: ["oneLiner", "content", "productArea", "theme", "persona", "client", "tags"],
+        required: ["oneLiner", "content", "productAreas", "theme", "persona", "client", "tags"],
         additionalProperties: false,
       },
     },
@@ -159,7 +162,7 @@ export async function extractInsights(text: string, apiKey?: string) {
 Return an object with an "insights" array. Each insight has:
 - oneLiner: string (max 100 chars, sentence case)
 - content: string (full detail)
-- productArea: one of ${AREAS_FOR_PROMPT}
+- productAreas: one or more of ${AREAS_FOR_PROMPT} — list every area the feedback genuinely touches, and just the one when it only touches one
 - theme: one of ${THEMES_FOR_PROMPT}
 - persona: string or null
 - client: string or null
@@ -211,7 +214,7 @@ Do not invent questions on topics the document does not touch.
 
 Return an object with a "questions" array. Each item has:
 - question: string (the question, phrased for asking out loud)
-- productArea: one of ${AREAS_FOR_PROMPT}
+- productAreas: one or more of ${AREAS_FOR_PROMPT} — list every area the feedback genuinely touches, and just the one when it only touches one
 - theme: one of ${THEMES_FOR_PROMPT}
 - persona: string or null (who to ask, if the document indicates one)
 - notesIntent: string or null (what the question is trying to learn, and any context worth having)

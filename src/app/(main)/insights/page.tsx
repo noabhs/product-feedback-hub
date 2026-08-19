@@ -22,14 +22,14 @@ const BUILT_IN_AREAS = Object.keys(AREA_LABELS);
 const BUILT_IN_THEMES = Object.keys(THEME_LABELS);
 
 type SortKey =
-  | "productArea" | "theme" | "persona" | "oneLiner" | "client"
+  | "productAreas" | "theme" | "persona" | "oneLiner" | "client"
   | "sourceName" | "date" | "createdBy" | "commentCount";
 
 // Order here drives the header; InsightRow renders its cells to match.
 const PAGE_SIZE = 20;
 
 const COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "productArea", label: "Area" },
+  { key: "productAreas", label: "Areas" },
   { key: "theme", label: "Theme" },
   { key: "persona", label: "Persona" },
   { key: "oneLiner", label: "Feedback" },
@@ -209,7 +209,12 @@ function Feedback() {
     // mostly-blank cells doesn't bury the rows that actually have data.
     const rank = (item: InsightItem): string | number | null => {
       switch (sortKey) {
-        case "productArea": return areaLabel(item.productArea);
+        // Sorted on the alphabetically-first area, not the first one picked, so
+        // the order doesn't depend on which one someone happened to tick first.
+        case "productAreas": {
+          const labels = item.productAreas.map(areaLabel).sort();
+          return labels[0]?.toLowerCase() ?? null;
+        }
         case "theme": return themeLabel(item.theme);
         case "persona": return item.persona?.toLowerCase() || null;
         case "client": return item.client?.toLowerCase() || null;
@@ -446,7 +451,7 @@ function Feedback() {
         <ImportCsvModal
           type="feedback"
           title="Import client feedback"
-          columns="Product Area, Theme, Persona / POC, One-liner, Feedback, Date, WTP, Source, Client"
+          columns="Product Areas, Theme, Persona / POC, One-liner, Feedback, Date, WTP, Source, Client"
           onClose={() => setShowImport(false)}
           onImported={() => fetchItems()}
         />

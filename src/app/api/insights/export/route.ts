@@ -9,9 +9,10 @@ export async function GET(req: NextRequest) {
   const rows = await prisma.insight.findMany({ where, orderBy: { date: "desc" } });
 
   const csv = toCsv(
-    ["Product area", "Theme", "Client", "Persona", "One-liner", "Feedback", "Date", "Source", "Source URL", "WTP"],
+    ["Product areas", "Theme", "Client", "Persona", "One-liner", "Feedback", "Date", "Source", "Source URL", "WTP"],
     rows.map((r) => [
-      r.productArea,
+      // Semicolons, so a reader can split them and a comma can't break the CSV.
+      r.productAreas.join("; "),
       r.theme,
       r.client,
       r.persona,

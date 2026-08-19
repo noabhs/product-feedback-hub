@@ -91,6 +91,26 @@ export function areaColor(value: string): string {
 }
 
 /**
+ * Incoming product areas, normalised and de-duplicated. Accepts an array or a
+ * lone string, so a caller (or a CSV row) sending a single area still works.
+ *
+ * Returns an empty array when nothing usable arrived, rather than defaulting to
+ * GENERAL: the routes decide whether to reject that or let it through, and a
+ * silent fallback would file entries under an area nobody chose.
+ */
+export function normalizeAreas(input: unknown): string[] {
+  const raw = Array.isArray(input) ? input : input === null || input === undefined ? [] : [input];
+  return [
+    ...new Set(
+      raw
+        .filter((v): v is string => typeof v === "string")
+        .map(normalizeKey)
+        .filter(Boolean),
+    ),
+  ];
+}
+
+/**
  * Normalise a user-typed area/theme to the stored convention so "Billing",
  * "billing" and "Billing " don't become three separate groups in the charts.
  */
