@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { answerQuestion, QA_MODEL, QA_PROMPT_VERSION } from "@/lib/claude";
-import { loadAccountFacts, loadAccounts } from "@/lib/accounts-db";
+import { loadAccountDetails, loadAccounts } from "@/lib/accounts-db";
 import { matchAccount } from "@/lib/accounts";
 import { logEvent, ACTIONS } from "@/lib/events";
 
@@ -89,18 +89,15 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   const actor = session?.user?.email ?? "anonymous";
 
-  if (insights.length === 0) {
-    // Recorded, not discarded: a question the search couldn't match at all is the
-    // clearest possible signal that retrieval — not Claude — needs the work.
-    const answer = "No relevant insights found for this question.";
-    const askId = await record({ actor, question: asked, answer, sourceIds: [], matchedCount: 0, latencyMs: null });
-    return NextResponse.json({ answer, sources: [], askId });
-  }
+  // The whole client table goes with every question, so a question about the
+  // accounts — "how many clients run HIE" — is answerable on its own terms.
+  const accounts = await loadAccountDetails();
 
-  // Who the quoted clients are, so the answer can weigh a complaint from a red
-  // account renewing this month differently from the same words elsewhere.
-  const accounts = await loadAccountFacts(insights.map((i) => i.client));
-
+  // No early return on zero matches any more. It used to answer "No relevant
+  // insights found", which was right when feedback was the only context and
+  // wrong the moment the account table arrived: a counting question about
+  // clients matches no feedback by nature, and refusing it was the bug.
+  // matchedCount still records 0, so retrieval misses stay visible in the log.
   const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
   const startedAt = Date.now();
   const answer = await answerQuestion(asked, insights, accounts, apiKey);

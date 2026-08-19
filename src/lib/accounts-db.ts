@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { matchAccount, normalizeAccount, type AccountLike } from "@/lib/accounts";
-import type { AccountDetail, AccountFacts } from "@/lib/types";
+import type { AccountDetail } from "@/lib/types";
 
 /** Aliases are stored as a JSON string; a malformed one shouldn't break matching. */
 function parseAliases(raw: string): string[] {
@@ -112,44 +112,5 @@ export async function loadAccountDetails(): Promise<AccountDetail[]> {
     firstClosedWon: iso(r.firstClosedWon),
     liveDate: iso(r.liveDate),
     feedbackCount: byClient.get(r.name) ?? 0,
-  }));
-}
-
-/**
- * Account facts for a specific set of clients, for the "Ask the feedback"
- * prompt. Narrower than loadAccountDetails() on purpose: this runs on every
- * question, and it has no business counting feedback across all 127 insights to
- * describe the handful of clients one answer happens to cite.
- *
- * Names are matched exactly, because they arrive from Insight.client, which is
- * already a canonical account name or null. Nulls are taken rather than refused —
- * every caller has a list of clients where some rows have none.
- */
-export async function loadAccountFacts(names: (string | null | undefined)[]): Promise<AccountFacts[]> {
-  const wanted = [...new Set(names.filter((n): n is string => !!n))];
-  if (wanted.length === 0) return [];
-
-  const rows = await prisma.account.findMany({
-    where: { name: { in: wanted } },
-    select: {
-      name: true, health: true, segment: true, ehr: true, products: true,
-      arr: true, riskMembers: true, qualityMembers: true, hieMembers: true,
-      renewalDate: true, liveDate: true,
-    },
-    orderBy: { name: "asc" },
-  });
-
-  return rows.map((r) => ({
-    name: r.name,
-    health: r.health,
-    segment: r.segment,
-    ehr: r.ehr,
-    products: parseProducts(r.products),
-    arr: r.arr,
-    riskMembers: r.riskMembers,
-    qualityMembers: r.qualityMembers,
-    hieMembers: r.hieMembers,
-    renewalDate: r.renewalDate?.toISOString() ?? null,
-    liveDate: r.liveDate?.toISOString() ?? null,
   }));
 }

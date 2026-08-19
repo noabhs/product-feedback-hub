@@ -1,8 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AREA_LABELS, THEME_LABELS } from "@/lib/labels";
-import { renewalPhrase, REPORT_AS_OF } from "@/lib/accounts";
-import { money, members as formatMembers } from "@/lib/format";
-import type { AccountFacts } from "@/lib/types";
+import { REPORT_AS_OF } from "@/lib/accounts";
+import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
+import { toCsv } from "@/lib/csv";
+import type { AccountDetail } from "@/lib/types";
 
 function getClient(apiKey?: string) {
   return new Anthropic({ apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY });
@@ -46,43 +47,7 @@ function extractText(content: Anthropic.ContentBlock[]): string {
  * prompt that earned it, and the ratings stop being usable as an eval set.
  */
 export const QA_MODEL = "claude-sonnet-5";
-export const QA_PROMPT_VERSION = "qa-2";
-
-/**
- * The account behind a quote, in one line. Feedback reads very differently
- * depending on who said it — the same complaint from a green $4M account and a
- * red one renewing next week are not the same finding — and the model had no way
- * to know the difference when all it got was a client name.
- *
- * Only fields the report actually filled are written: an account it didn't cover
- * would otherwise arrive as a line of "unknown", which reads like data rather
- * than like an absence.
- */
-function accountLine(a: AccountFacts): string {
-  const parts: string[] = [];
-  if (a.health) parts.push(`health ${a.health}`);
-  if (a.segment) parts.push(a.segment);
-  if (a.ehr) parts.push(`EHR ${a.ehr}`);
-  if (a.products.length) parts.push(`live on ${a.products.join(", ")}`);
-  if (a.arr !== null) parts.push(`ARR ${money(a.arr)}`);
-
-  // Zero contracted members means not sold that product, which the products
-  // list already says — so only non-zero counts are worth the tokens.
-  const memberCounts = [
-    a.riskMembers ? `${formatMembers(a.riskMembers)} risk` : null,
-    a.qualityMembers ? `${formatMembers(a.qualityMembers)} quality` : null,
-    a.hieMembers ? `${formatMembers(a.hieMembers)} HIE` : null,
-  ].filter(Boolean);
-  if (memberCounts.length) parts.push(`members: ${memberCounts.join(", ")}`);
-
-  const phrase = renewalPhrase(a.renewalDate);
-  if (a.renewalDate) {
-    parts.push(`renews ${a.renewalDate.slice(0, 10)}${phrase ? ` (${phrase})` : ""}`);
-  }
-  if (a.liveDate) parts.push(`live since ${a.liveDate.slice(0, 10)}`);
-
-  return `- ${a.name}: ${parts.length ? parts.join(" | ") : "no account data on record"}`;
-}
+export const QA_PROMPT_VERSION = "qa-3";
 
 export interface QaInsight {
   oneLiner: string;
@@ -93,40 +58,58 @@ export interface QaInsight {
 }
 
 export const QA_SYSTEM_PROMPT = `You are an expert product researcher for Navina, an AI-powered clinical intelligence platform.
-You answer questions about client feedback and product insights based only on the provided context.
-Be concise (2–5 sentences), synthesize across multiple sources, and always cite your sources with [number] references.
-If the context doesn't contain enough information, say so clearly.
 
-Some questions come with account facts for the clients being quoted — health (Red/Yellow/Green), segment, EHR, live products, ARR, contracted members, and renewal date. Use them to qualify the answer, not to replace it:
-- Say who is asking when it changes the weight of a finding. One request from three red accounts renewing this quarter is a different signal from the same request from one healthy account, and worth saying so.
-- Prefer concrete account facts over adjectives. "Two accounts, $1.2M combined ARR" beats "several important clients".
-- Never infer a fact that isn't listed. An account with no data on record is unknown, not average — and account facts describe the client, never what the client said.
-- Don't recite the account list back. Mention a fact only where it changes the answer.`;
+You are given two kinds of context, and they answer different questions.
+
+1. FEEDBACK — what clients have told us, numbered. Cite these with [number] references. Never state something as feedback without a citation.
+
+2. THE CLIENT TABLE — Navina's account records as a CSV: health (Red/Yellow/Green), live products, EHR, segment, ARR and CARR, contracted members per product, renewal date and days to it, go-live date, account owner, CSM, billing state, and how many feedback entries each client has filed. These are facts about the accounts, not things anyone said. They carry no citation numbers, so don't invent any for them.
+
+Answer from whichever context fits the question:
+- Questions about the accounts themselves — how many clients run HIE, which are Red, total ARR by segment, who renews this quarter, which clients have filed no feedback — are answered from the client table alone. There is no need to find feedback first, and no need to apologise for its absence.
+- When you count or aggregate, count every row of the table, state the number plainly, and name the rows when there are few enough to be useful. Do not estimate.
+- Questions about what clients want, think, or complain about are answered from the feedback, with citations.
+- Where both apply, use the table to weigh the feedback: one request from three Red accounts renewing this quarter is a different signal from the same request from one healthy account, and worth saying so. Prefer concrete facts over adjectives — "two accounts, $1.2M combined ARR" beats "several important clients".
+
+Rules that hold either way:
+- Never infer a value that isn't in the table. A blank cell means the accounts report didn't cover that client; it means unknown, not zero and not average.
+- The table is a snapshot, not live. For anything time-sensitive, prefer the "Days to renewal" column over doing date arithmetic yourself.
+- Be concise. Two to five sentences for a question of judgement; for a counting question, lead with the number.`;
 
 /**
  * Everything sent to the model for one question, assembled without calling it.
  * Pure so the prompt can be printed and checked against real data — the previous
  * shape could only be verified by paying for an answer and reading the prose.
  */
-export function buildQaPrompt(question: string, insights: QaInsight[], accounts: AccountFacts[]): string {
-  const context = insights
-    .map((i, idx) => `[${idx + 1}] Client: ${i.client ?? "Unknown"} | Area: ${i.productArea}\n${i.oneLiner}\n${i.content}`)
-    .join("\n\n---\n\n");
+export function buildQaPrompt(question: string, insights: QaInsight[], accounts: AccountDetail[]): string {
+  const feedback = insights.length
+    ? insights
+        .map((i, idx) => `[${idx + 1}] Client: ${i.client ?? "Unknown"} | Area: ${i.productArea}\n${i.oneLiner}\n${i.content}`)
+        .join("\n\n---\n\n")
+    : "(No feedback entries matched this question.)";
 
-  // Scoped to the clients actually quoted rather than all 95 accounts: the model
-  // should be weighing the feedback it was given, not answering questions about
-  // the account list that retrieval never supported.
-  const accountContext = accounts.length
-    ? `\n\nAccounts behind that feedback (Salesforce snapshot, ${REPORT_AS_OF}):\n${accounts.map(accountLine).join("\n")}`
-    : "";
+  // The whole table, every question. Questions like "how many clients run HIE"
+  // are about the accounts rather than about anything a client said, and no
+  // amount of feedback retrieval can answer them — so the roster is context in
+  // its own right, not a footnote on the quotes.
+  //
+  // As CSV rather than prose: it's a third of the tokens, it's the shape the
+  // model counts most reliably, and it's the same table the CSV export produces.
+  const table = toCsv([...ACCOUNT_TABLE_COLUMNS], accounts.map(accountTableRow));
 
-  return `Context (${insights.length} insights):\n\n${context}${accountContext}\n\nQuestion: ${question}`;
+  return [
+    `FEEDBACK (${insights.length} ${insights.length === 1 ? "entry" : "entries"} matched):`,
+    feedback,
+    `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${REPORT_AS_OF}):`,
+    table,
+    `Question: ${question}`,
+  ].join("\n\n");
 }
 
 export async function answerQuestion(
   question: string,
   insights: QaInsight[],
-  accounts: AccountFacts[],
+  accounts: AccountDetail[],
   apiKey?: string,
 ) {
   const stream = getClient(apiKey).messages.stream({
