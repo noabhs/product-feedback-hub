@@ -64,9 +64,11 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           ))}
         </nav>
 
-        <div className="px-3 pb-2">
-          <ApiKeyControl />
-        </div>
+        {session?.user?.email === "noa.bhs@navina.ai" && (
+          <div className="px-3 pb-2">
+            <ApiKeyControl />
+          </div>
+        )}
 
         {session?.user && (
           <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
