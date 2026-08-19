@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUp, ArrowDown, Search, Download, Link2, Check } from "lucide-react";
+import { ArrowUp, ArrowDown, Search, Download, Link2 } from "lucide-react";
 import { ACTION_LABELS } from "@/lib/events";
 import { shortName } from "@/lib/people";
 import { RowCount } from "@/components/ui/RowCount";
 import { Pagination } from "@/components/ui/Pagination";
-import { useCopyLink, copyLinkLabel } from "@/components/ui/ShareLink";
+import { useCopyLink, CopyToast } from "@/components/ui/ShareLink";
 import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import {
   EVENT_RANGES,
@@ -241,6 +241,7 @@ export function EventLog({ events }: { events: EventRow[] }) {
 
   return (
     <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)]">
+      <CopyToast state={link.state} attempt={link.attempt} />
       <div className="p-5 pb-3">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
@@ -256,10 +257,9 @@ export function EventLog({ events }: { events: EventRow[] }) {
               onClick={link.copy}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-secondary-600 border border-[rgba(93,7,226,0.25)] rounded-sm px-2.5 py-1.5 hover:bg-[rgba(93,7,226,0.05)] transition-colors"
               title="Copy a link to this range, filters and sort"
-              aria-live="polite"
             >
-              {link.state === "copied" ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
-              {copyLinkLabel(link.state)}
+              <Link2 className="w-3.5 h-3.5" />
+              Share
             </button>
             <button
               onClick={exportCsv}

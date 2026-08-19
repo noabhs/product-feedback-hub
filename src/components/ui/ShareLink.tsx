@@ -1,11 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Link2, Check } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Toast } from "@/components/ui/Toast";
 
 /** Idle, or the outcome of the last attempt — a refusal has to say so rather
  *  than sit there looking like a successful copy. */
 export type CopyState = "copied" | "failed" | null;
+
+interface CopyLink {
+  state: CopyState;
+  /** Bumped per attempt, so clicking again replays the toast animation instead
+   *  of leaving an already-visible toast looking unresponsive. */
+  attempt: number;
+  copy: () => Promise<void>;
+}
 
 /**
  * Copies the address bar, which the filter bars keep in step with what's on
@@ -19,19 +28,21 @@ export type CopyState = "copied" | "failed" | null;
  * because the URL is rewritten by `useUrlState` outside of React's knowledge and
  * a held copy would go stale the moment a filter changed.
  */
-export function useCopyLink(): { state: CopyState; copy: () => Promise<void> } {
+export function useCopyLink(): CopyLink {
   const [state, setState] = useState<CopyState>(null);
+  const [attempt, setAttempt] = useState(0);
 
-  // Cleared on a timer so the button returns to its resting label. A failure
-  // lingers longer, because "Press ⌘C" is an instruction to act on.
+  // Cleared on a timer so the toast doesn't sit on screen. A failure lingers
+  // longer, because it asks the user to go and do something.
   useEffect(() => {
     if (!state) return;
-    const t = setTimeout(() => setState(null), state === "copied" ? 2000 : 4000);
+    const t = setTimeout(() => setState(null), state === "copied" ? 2500 : 5000);
     return () => clearTimeout(t);
-  }, [state]);
+  }, [state, attempt]);
 
   async function copy() {
     const url = window.location.href;
+    setAttempt((n) => n + 1);
     try {
       // Absent on http origins and refusable even on https, so this is a real
       // failure path rather than a defensive catch.
@@ -42,37 +53,46 @@ export function useCopyLink(): { state: CopyState; copy: () => Promise<void> } {
     }
   }
 
-  return { state, copy };
+  return { state, attempt, copy };
 }
 
-/** The label for a copy button in each state, so the two call sites word it the same. */
-export function copyLinkLabel(state: CopyState): string {
-  return state === "copied" ? "Copied" : state === "failed" ? "Press ⌘C" : "Copy link";
+/**
+ * The confirmation for a copy attempt. Rendered by each call site next to its own
+ * button, so the two share the wording without sharing the button chrome.
+ */
+export function CopyToast({ state, attempt }: { state: CopyState; attempt: number }) {
+  if (!state) return null;
+  return state === "copied" ? (
+    <Toast message="Link copied to clipboard" replayKey={attempt} />
+  ) : (
+    // Names the recovery rather than the error: the clipboard was refused, so
+    // telling the user to press ⌘C would send them at a selection that's gone.
+    <Toast message="Couldn't copy — copy the link from the address bar" tone="error" replayKey={attempt} />
+  );
 }
 
+/**
+ * The page-header version. The label stays "Share" through a copy — the toast is
+ * the feedback, so swapping the label too would say the same thing twice and make
+ * the button width jump.
+ */
 export function ShareLink({ title = "Copy a link to this view" }: { title?: string }) {
-  const { state, copy } = useCopyLink();
+  const { state, attempt, copy } = useCopyLink();
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={copy}
-      title={title}
-      // Announced rather than only shown, since the label change is the only
-      // feedback that the click did anything.
-      aria-live="polite"
-    >
-      {state === "copied" ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
-      {copyLinkLabel(state)}
-    </Button>
+    <>
+      <Button variant="ghost" size="sm" onClick={copy} title={title}>
+        <Link2 className="w-4 h-4" />
+        Share
+      </Button>
+      <CopyToast state={state} attempt={attempt} />
+    </>
   );
 }
 
 /**
  * The pre-clipboard-API route, for when `navigator.clipboard` is missing or
  * refused. `execCommand` is deprecated but still the only synchronous copy every
- * browser honours; if it fails too, the button falls back to advertising the
- * keyboard shortcut.
+ * browser honours.
  */
 function fallbackCopy(text: string): boolean {
   const area = document.createElement("textarea");
