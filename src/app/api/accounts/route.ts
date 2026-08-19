@@ -2,19 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { logEvent, ACTIONS } from "@/lib/events";
-import type { AccountDetail } from "@/lib/types";
-
-/** Products are stored as a JSON string; a malformed one shouldn't blank a row. */
-function parseProducts(raw: string): string[] {
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-const iso = (d: Date | null) => d?.toISOString() ?? null;
+import { loadAccountDetails } from "@/lib/accounts-db";
 
 /**
  * `?detail=1` returns the full account rows for /clients. Plain GET stays a
@@ -30,40 +18,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(rows.map((r) => r.name));
   }
 
-  const [rows, counts] = await Promise.all([
-    prisma.account.findMany({ orderBy: { name: "asc" } }),
-    prisma.insight.groupBy({
-      by: ["client"],
-      where: { client: { not: null } },
-      _count: { _all: true },
-    }),
-  ]);
-
-  const byClient = new Map(counts.map((c) => [c.client as string, c._count._all]));
-
-  const accounts: AccountDetail[] = rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    health: r.health,
-    products: parseProducts(r.products),
-    ehr: r.ehr,
-    segment: r.segment,
-    billingState: r.billingState,
-    accountOwner: r.accountOwner,
-    csmName: r.csmName,
-    hieMembers: r.hieMembers,
-    qualityMembers: r.qualityMembers,
-    riskMembers: r.riskMembers,
-    arr: r.arr,
-    carr: r.carr,
-    renewalDate: iso(r.renewalDate),
-    lastActivityAt: iso(r.lastActivityAt),
-    firstClosedWon: iso(r.firstClosedWon),
-    liveDate: iso(r.liveDate),
-    feedbackCount: byClient.get(r.name) ?? 0,
-  }));
-
-  return NextResponse.json({ accounts });
+  return NextResponse.json({ accounts: await loadAccountDetails() });
 }
 
 /** Add a client that isn't on the list yet. */

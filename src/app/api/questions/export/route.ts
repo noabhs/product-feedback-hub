@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-function esc(val: string | null | undefined): string {
-  if (!val) return "";
-  const s = String(val).replace(/"/g, '""');
-  return /[",\n\r]/.test(s) ? `"${s}"` : s;
-}
+import { toCsv, csvDownloadHeaders } from "@/lib/csv";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -29,18 +24,10 @@ export async function GET(req: NextRequest) {
     orderBy: [{ productArea: "asc" }, { theme: "asc" }],
   });
 
-  const headers = ["Product area", "Theme", "Persona", "Question", "Intent / Notes", "Source"];
-  const lines = [
-    headers.join(","),
-    ...rows.map((r) =>
-      [esc(r.productArea), esc(r.theme), esc(r.persona), esc(r.question), esc(r.notesIntent), esc(r.source)].join(",")
-    ),
-  ];
+  const csv = toCsv(
+    ["Product area", "Theme", "Persona", "Question", "Intent / Notes", "Source"],
+    rows.map((r) => [r.productArea, r.theme, r.persona, r.question, r.notesIntent, r.source]),
+  );
 
-  return new NextResponse(lines.join("\r\n"), {
-    headers: {
-      "Content-Type": "text/csv",
-      "Content-Disposition": `attachment; filename="navina-discovery-questions-${new Date().toISOString().slice(0, 10)}.csv"`,
-    },
-  });
+  return new NextResponse(csv, { headers: csvDownloadHeaders("navina-discovery-questions") });
 }

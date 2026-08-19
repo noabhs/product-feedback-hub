@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { matchAccount, normalizeAccount, type AccountLike } from "@/lib/accounts";
+import type { AccountDetail } from "@/lib/types";
 
 /** Aliases are stored as a JSON string; a malformed one shouldn't break matching. */
 function parseAliases(raw: string): string[] {
@@ -61,4 +62,55 @@ export async function resolveClientForEdit(
   if (current && normalizeAccount(trimmed) === normalizeAccount(current)) return { kind: "keep" };
 
   return { kind: "unknown", raw: trimmed };
+}
+
+/** Products are stored as a JSON string; a malformed one shouldn't blank a row. */
+function parseProducts(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Every account with its report snapshot and its feedback count — the shape
+ * /clients renders and its CSV export writes. Shared so the two can't disagree
+ * about what a client row contains.
+ */
+export async function loadAccountDetails(): Promise<AccountDetail[]> {
+  const [rows, counts] = await Promise.all([
+    prisma.account.findMany({ orderBy: { name: "asc" } }),
+    prisma.insight.groupBy({
+      by: ["client"],
+      where: { client: { not: null } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const byClient = new Map(counts.map((c) => [c.client as string, c._count._all]));
+  const iso = (d: Date | null) => d?.toISOString() ?? null;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    health: r.health,
+    products: parseProducts(r.products),
+    ehr: r.ehr,
+    segment: r.segment,
+    billingState: r.billingState,
+    accountOwner: r.accountOwner,
+    csmName: r.csmName,
+    hieMembers: r.hieMembers,
+    qualityMembers: r.qualityMembers,
+    riskMembers: r.riskMembers,
+    arr: r.arr,
+    carr: r.carr,
+    renewalDate: iso(r.renewalDate),
+    lastActivityAt: iso(r.lastActivityAt),
+    firstClosedWon: iso(r.firstClosedWon),
+    liveDate: iso(r.liveDate),
+    feedbackCount: byClient.get(r.name) ?? 0,
+  }));
 }

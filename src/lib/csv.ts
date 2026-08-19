@@ -48,3 +48,29 @@ export function parseCsv(text: string): string[][] {
 
   return rows;
 }
+
+/**
+ * One CSV cell. Quoted only when it has to be — a comma, a quote or a line
+ * break inside the value — with embedded quotes doubled per RFC 4180.
+ */
+export function csvEscape(val: string | number | null | undefined): string {
+  if (val === null || val === undefined || val === "") return "";
+  const s = String(val).replace(/"/g, '""');
+  return /[",\n\r]/.test(s) ? `"${s}"` : s;
+}
+
+/**
+ * A whole CSV body, CRLF-terminated because that's what Excel expects from a
+ * downloaded file. Lived in triplicate across the export routes before this.
+ */
+export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]): string {
+  return [headers.join(","), ...rows.map((r) => r.map(csvEscape).join(","))].join("\r\n");
+}
+
+/** The headers that make a browser download a string as a named .csv file. */
+export function csvDownloadHeaders(basename: string): Record<string, string> {
+  return {
+    "Content-Type": "text/csv",
+    "Content-Disposition": `attachment; filename="${basename}-${new Date().toISOString().slice(0, 10)}.csv"`,
+  };
+}

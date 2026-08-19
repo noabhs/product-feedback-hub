@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle, Download } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { MultiSelect } from "@/components/ui/MultiSelect";
@@ -8,6 +8,7 @@ import { RowCount } from "@/components/ui/RowCount";
 import { AccountRow } from "@/components/clients/AccountRow";
 import { AccountPanel } from "@/components/clients/AccountPanel";
 import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk } from "@/lib/accounts";
+import { matchesAccountFilters, accountFiltersToParams, type AccountFilters } from "@/lib/account-filters";
 import { money } from "@/lib/format";
 import type { AccountDetail } from "@/lib/types";
 
@@ -94,26 +95,17 @@ export default function ClientsPage() {
 
   // Split from `filtered` so the at-risk count reflects the other filters
   // without the toggle narrowing its own denominator.
-  const beforeRisk = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return accounts.filter((a) => {
-      if (health.length && !(a.health && health.includes(a.health))) return false;
-      // Any picked product counts — an account on Risk shows under a Risk filter
-      // whether or not it also runs Quality.
-      if (products.length && !a.products.some((p) => products.includes(p))) return false;
-      if (ehr.length && !(a.ehr && ehr.includes(a.ehr))) return false;
-      if (segment.length && !(a.segment && segment.includes(a.segment))) return false;
-      if (csm.length && !(a.csmName && csm.includes(a.csmName))) return false;
-      if (!q) return true;
-      // Owner and CSM included so "who does Zeshan cover" is one search away.
-      return (
-        a.name.toLowerCase().includes(q) ||
-        (a.accountOwner?.toLowerCase().includes(q) ?? false) ||
-        (a.csmName?.toLowerCase().includes(q) ?? false) ||
-        (a.billingState?.toLowerCase().includes(q) ?? false)
-      );
-    });
-  }, [accounts, search, health, products, ehr, segment, csm]);
+  const filters: AccountFilters = useMemo(
+    () => ({ search, health, products, ehr, segment, csm, riskOnly }),
+    [search, health, products, ehr, segment, csm, riskOnly],
+  );
+
+  // Split from `filtered` so the at-risk count reflects the other filters
+  // without the toggle narrowing its own denominator.
+  const beforeRisk = useMemo(
+    () => accounts.filter((a) => matchesAccountFilters(a, { ...filters, riskOnly: false })),
+    [accounts, filters],
+  );
 
   const riskCount = useMemo(() => beforeRisk.filter(atRenewalRisk).length, [beforeRisk]);
   const filtered = useMemo(
@@ -188,6 +180,13 @@ export default function ClientsPage() {
     }
   }
 
+  // Exported server-side from the same filters the table is using, so the file
+  // holds the rows on screen — plus the side-panel columns, which are the ones
+  // worth pivoting on once the data is in a spreadsheet.
+  const exportCsv = () => {
+    window.location.href = `/api/accounts/export?${accountFiltersToParams(filters)}`;
+  };
+
   // Patched in place rather than refetching the whole list, so saving a live
   // date doesn't reset the scroll position or reshuffle a sort mid-read.
   const handleLiveDateSaved = (id: string, liveDate: string | null) =>
@@ -229,6 +228,10 @@ export default function ClientsPage() {
               stops arriving under three spellings.
             </p>
           </div>
+          <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!displayed.length}>
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
         </div>
 
         {error && (
