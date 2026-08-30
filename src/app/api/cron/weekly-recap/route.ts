@@ -47,10 +47,16 @@ async function send(force: boolean, period: "week" | "month" = "week") {
     return NextResponse.json({ error: result.error, week: recap.week.key }, { status: 502 });
   }
 
-  // Warm the month brief while we are here. Nothing else schedules it, so
-  // without this the first person to open the month view pays for the call.
+  // The month brief has no schedule of its own, and page loads no longer
+  // generate anything, so this is the only thing that ever writes it. Awaited,
+  // not fired and forgotten: a serverless function stops executing the moment
+  // it responds, so a floating promise here would simply never finish.
   if (period === "week") {
-    void buildWeeklyRecap(new Date(), { period: "month" }).catch(() => {});
+    try {
+      await buildWeeklyRecap(new Date(), { period: "month" });
+    } catch (e) {
+      console.error("[recap] month brief failed:", (e as Error).message);
+    }
   }
 
   void logEvent(ACTIONS.recapPosted, {

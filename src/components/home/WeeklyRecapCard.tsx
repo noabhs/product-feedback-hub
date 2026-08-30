@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Send, Check, Copy, Sparkles } from "lucide-react";
+import { Send, Check, Copy } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
 
 export interface RecapView {
@@ -37,40 +37,6 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
   const [sent, setSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [writing, setWriting] = useState(false);
-
-  /**
-   * Deliberately not fetched on mount. A page load that silently kicks off a
-   * model call gave no way to tell "still working" from "wedged", and that is
-   * exactly how it failed. The brief arrives from the Sunday cron, or from this
-   * button — a request nobody started cannot hang.
-   */
-  async function writeBrief() {
-    setWriting(true);
-    setError(null);
-    const abort = new AbortController();
-    const timer = setTimeout(() => abort.abort(), 60_000);
-    try {
-      const res = await fetch(`/api/recap?period=${period}&narrative=1`, { signal: abort.signal });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data) {
-        throw new Error(data?.error ?? `The brief request failed (${res.status}).`);
-      }
-      setRecap(data);
-      if (!data.narrative) {
-        setError(data.narrativeError ?? "Claude returned no brief for this period.");
-      }
-    } catch (e) {
-      setError(
-        (e as Error).name === "AbortError"
-          ? "The brief took over 60s and was cancelled."
-          : (e as Error).message,
-      );
-    } finally {
-      clearTimeout(timer);
-      setWriting(false);
-    }
-  }
 
   async function pick(next: "week" | "month") {
     if (next === period) return;
@@ -196,19 +162,11 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             </div>
           ) : (
             <div className="mt-3">
-              <div className="flex items-center gap-2 mb-3">
-                <button
-                  onClick={writeBrief}
-                  disabled={writing}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-secondary-600 border border-[rgba(93,7,226,0.25)] rounded-sm px-2.5 py-1.5 hover:bg-[rgba(93,7,226,0.05)] disabled:opacity-40 transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {writing ? "Writing the brief…" : "Write the AI brief"}
-                </button>
-                <span className="text-[11px] text-brand-primary opacity-35">
-                  {writing ? "up to a minute" : "one Claude call, then cached"}
-                </span>
-              </div>
+              {recap.narrativeError && (
+                <p className="text-[11px] text-brand-primary opacity-35 mb-3">
+                  {recap.narrativeError}
+                </p>
+              )}
               {recap.themes.length > 0 && <ThemeList themes={recap.themes} />}
             </div>
           )}

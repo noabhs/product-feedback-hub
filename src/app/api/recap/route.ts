@@ -15,11 +15,9 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
-  // The AI brief is opt-in per request: the page renders immediately without it
-  // and asks for it straight after, so a cache miss costs a spinner in one card
-  // rather than several seconds of blank page.
-  const withNarrative = req.nextUrl.searchParams.get("narrative") === "1";
-  const recap = await buildWeeklyRecap(new Date(), { withNarrative, period });
+  // Read-only where the brief is concerned. This endpoint serves the home
+  // page's period toggle, and no page request may start a model call.
+  const recap = await buildWeeklyRecap(new Date(), { narrative: "cached", period });
 
   return NextResponse.json({
     weekLabel: recap.week.label,

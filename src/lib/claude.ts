@@ -362,7 +362,7 @@ function spread<T>(items: T[], max: number): T[] {
   return Array.from({ length: max }, (_, i) => items[Math.floor(i * step)]);
 }
 
-export async function summarizeWeek(entries: WeekEntry[]): Promise<Summary> {
+export async function summarizeWeek(entries: WeekEntry[], totalInPeriod = entries.length): Promise<Summary> {
   if (!entries.length) return { text: null, error: null };
   if (!cleanKey(process.env.ANTHROPIC_API_KEY)) {
     return { text: null, error: "No ANTHROPIC_API_KEY is set on the server." };
@@ -393,8 +393,8 @@ Write two or three sentences on what actually stood out this week. Rules:
         {
           role: "user",
           content:
-            (sampled.length < entries.length
-              ? `${sampled.length} of the ${entries.length} feedback entries logged in this period, sampled evenly across it:\n\n`
+            (sampled.length < totalInPeriod
+              ? `${sampled.length} of the ${totalInPeriod} feedback entries logged in this period, sampled evenly across it:\n\n`
               : `This period's feedback entries:\n\n`) + body,
         },
       ],

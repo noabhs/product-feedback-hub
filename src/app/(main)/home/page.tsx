@@ -60,10 +60,10 @@ export default async function HomePage() {
       select: { id: true, oneLiner: true, productAreas: true, client: true, createdAt: true, createdBy: true },
     }),
     prisma.account.findMany({ select: { name: true, health: true, arr: true } }),
-    // withNarrative: false — a model call on every home page load would be slow
-    // and paid for repeatedly. The AI read is written once, when the recap is
-    // posted; the card shows the rule-picked entries instead.
-    buildWeeklyRecap(new Date(), { withNarrative: false }),
+    // Reads a stored brief, never writes one. Generation belongs to the cron:
+    // a page load must not be able to start a model call, which is how this
+    // ended up hanging on a spinner nobody could cancel.
+    buildWeeklyRecap(new Date(), { narrative: "cached" }),
     loadAccounts(),
   ]);
 
