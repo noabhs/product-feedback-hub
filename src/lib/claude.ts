@@ -308,3 +308,54 @@ ${iList}`,
   const raw = extractText(message.content).trim();
   return parseJSON(raw);
 }
+
+export interface WeekEntry {
+  oneLiner: string;
+  content: string;
+  client: string | null;
+  areas: string[];
+  persona: string | null;
+}
+
+/**
+ * Two or three sentences on what stood out in a week of feedback, for the Sunday
+ * recap.
+ *
+ * Returns null rather than throwing on any problem — no server key, a rate
+ * limit, a timeout. The recap is a weekly post to a Slack channel; it going out
+ * with rule-picked entries instead of prose is a small loss, and it not going
+ * out at all because a model call failed is a real one.
+ */
+export async function summarizeWeek(entries: WeekEntry[]): Promise<string | null> {
+  if (!entries.length) return null;
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) return null;
+
+  const body = entries
+    .map(
+      (e, i) =>
+        `${i + 1}. [${e.areas.join(", ") || "no area"}] ${e.client ?? "Unknown client"}` +
+        `${e.persona ? ` (${e.persona})` : ""}\n   ${e.oneLiner}\n   ${e.content}`,
+    )
+    .join("\n\n");
+
+  try {
+    const res = await getClient().messages.create({
+      model: QA_MODEL,
+      max_tokens: 400,
+      system: `You write the opening lines of a weekly product-feedback recap for Navina's product team, posted to Slack.
+
+Write two or three sentences on what actually stood out this week. Rules:
+- Name the pattern, not the volume. "Three clients independently asked for X" earns its place; "there was feedback about X" does not.
+- Only claim what the entries support. No projections, no recommendations, no invented client names.
+- Name clients and product areas where it sharpens the point.
+- Plain sentences. No bullet points, no headings, no emoji, no preamble like "This week".
+- If the week holds nothing beyond unrelated one-offs, say that plainly in one sentence. That is a useful thing for the team to read.`,
+      messages: [{ role: "user", content: `This week's feedback entries:\n\n${body}` }],
+    });
+
+    const text = res.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text?.trim();
+    return text || null;
+  } catch {
+    return null;
+  }
+}

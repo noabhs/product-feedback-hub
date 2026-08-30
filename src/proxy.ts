@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
 // Next.js 16 renamed the `middleware` file convention to `proxy`.
-// Gates every page and every API route; /api/auth/* and /signin are
-// excluded via the matcher below so sign-in itself stays reachable.
+// Gates every page and every API route; /api/auth/*, /signin and /api/cron/* are
+// excluded via the matcher below. Sign-in has to stay reachable, and a cron
+// request carries no session — it authenticates with CRON_SECRET inside the
+// route instead, which is checked before anything else happens there.
 export default auth((req) => {
   if (req.auth) return;
 
@@ -19,6 +21,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|signin|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp)$).*)",
+    "/((?!api/auth|api/cron|signin|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp)$).*)",
   ],
 };
