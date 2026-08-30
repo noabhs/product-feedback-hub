@@ -380,7 +380,15 @@ export async function summarizeWeek(entries: WeekEntry[], totalInPeriod = entrie
   try {
     const res = await getClient().messages.create({
       model: QA_MODEL,
-      max_tokens: 400,
+      // Adaptive thinking is on by default on Sonnet 5 and is billed against
+      // max_tokens. At 400 the thinking consumed the whole budget and the
+      // response came back with no text block at all — which surfaced as "the
+      // model returned nothing". The brief itself is ~200 tokens; the rest is
+      // headroom for the reasoning.
+      max_tokens: 4000,
+      // A three-sentence summary does not need deep reasoning, and low effort
+      // is both faster and cheaper.
+      output_config: { effort: "low" },
       system: `You write the opening lines of a weekly product-feedback recap for Navina's product team, posted to Slack.
 
 Write two or three sentences on what actually stood out this week. Rules:
@@ -401,7 +409,15 @@ Write two or three sentences on what actually stood out this week. Rules:
     });
 
     const text = res.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text?.trim();
-    return { text: text || null, error: text ? null : "The model returned nothing." };
+    if (text) return { text, error: null };
+
+    // Say which way it came back empty. "Returned nothing" was true and
+    // useless: a token-budget exhaustion and a refusal read identically.
+    const kinds = res.content.map((b) => b.type).join(", ") || "no blocks";
+    return {
+      text: null,
+      error: `The model returned no text (stop_reason: ${res.stop_reason}, blocks: ${kinds}).`,
+    };
   } catch (e) {
     const message = (e as Error).message ?? "unknown error";
     console.error("[recap] summarizeWeek failed:", message);
