@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Search, ThumbsDown, ThumbsUp } from "lucide-react";
 import { RateAnswer, type Rating } from "@/components/ask/RateAnswer";
+import { AnswerBody } from "@/components/ask/AnswerBody";
+import { plainAnswer } from "@/lib/answer-format";
 import { RowCount } from "@/components/ui/RowCount";
 import { shortName } from "@/lib/people";
 
@@ -151,7 +153,7 @@ export function AskLogList({ rows, showAskers }: { rows: AskRow[]; showAskers: b
                       )}
                     </div>
                     {!open && (
-                      <p className="text-[13px] text-brand-primary opacity-60 mt-1.5 line-clamp-1">{r.answer}</p>
+                      <p className="text-[13px] text-brand-primary opacity-60 mt-1.5 line-clamp-1">{plainAnswer(r.answer)}</p>
                     )}
                   </div>
                 </button>
@@ -167,9 +169,7 @@ export function AskLogList({ rows, showAskers }: { rows: AskRow[]; showAskers: b
 
               {open && (
                 <div className="px-5 pb-4 pl-12">
-                  <p className="text-[13.5px] text-brand-primary opacity-80 leading-relaxed whitespace-pre-line">
-                    {r.answer}
-                  </p>
+                  <AnswerBody answer={r.answer} sources={r.sources} tone="light" />
 
                   {r.sources.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-[rgba(50,43,95,0.06)]">
