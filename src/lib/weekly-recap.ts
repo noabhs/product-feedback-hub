@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { logEvent, ACTIONS } from "@/lib/events";
+import { ACTIONS } from "@/lib/events";
 import { areaLabel } from "@/lib/labels";
 import { summarizeWeek } from "@/lib/claude";
 import { matchAccount } from "@/lib/accounts";
@@ -213,7 +213,18 @@ export async function buildWeeklyRecap(
       narrative = summary.text;
       narrativeError = summary.error;
       if (summary.text) {
-        await logEvent(ACTIONS.recapNarrative, { target: cacheKey, label: summary.text });
+        // Written directly rather than through logEvent, which truncates its
+        // label to 200 characters for the analytics feed. A brief is two or
+        // three sentences — every cached one would have come back cut off
+        // mid-word, and it would have looked like the model's fault.
+        await prisma.event.create({
+          data: {
+            actor: "system",
+            action: ACTIONS.recapNarrative,
+            target: cacheKey,
+            label: summary.text,
+          },
+        });
       }
     }
   }

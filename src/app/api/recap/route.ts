@@ -38,3 +38,24 @@ export async function GET(req: NextRequest) {
     markdown: recapMarkdown(recap),
   });
 }
+
+/**
+ * Write the brief for a period, now.
+ *
+ * Separate from the Slack endpoint on purpose: generation and posting are
+ * different things, and bundling them meant a missing webhook reported itself
+ * as the only problem while the brief's own outcome went unmentioned.
+ */
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
+  const recap = await buildWeeklyRecap(new Date(), { narrative: "generate", period });
+
+  return NextResponse.json({
+    narrative: recap.narrative,
+    narrativeError: recap.narrativeError,
+    entries: recap.entries,
+  });
+}

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Send, Check, Copy, Stethoscope } from "lucide-react";
+import { Send, Check, Copy, Stethoscope, Sparkles } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
 
 export interface RecapView {
@@ -39,6 +39,7 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
   const [error, setError] = useState<string | null>(null);
   const [diagnosis, setDiagnosis] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [writing, setWriting] = useState(false);
 
   /**
    * Turns the probe's raw result into a sentence and, where there is one, the
@@ -69,6 +70,26 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
       setDiagnosis(`Couldn't run the test: ${(e as Error).message}`);
     } finally {
       setTesting(false);
+    }
+  }
+
+  /** Generation, on demand and not bundled with the Slack post. */
+  async function writeNow() {
+    setWriting(true);
+    setDiagnosis(null);
+    try {
+      const res = await fetch(`/api/recap?period=${period}`, { method: "POST" });
+      const d = await res.json().catch(() => null);
+      if (!res.ok || !d) throw new Error(d?.error ?? `Failed with ${res.status}`);
+      if (d.narrative) {
+        setRecap((r) => ({ ...r, narrative: d.narrative, narrativeError: null }));
+      } else {
+        setDiagnosis(d.narrativeError ?? "Claude returned no text for this period.");
+      }
+    } catch (e) {
+      setDiagnosis(`Couldn't write the brief: ${(e as Error).message}`);
+    } finally {
+      setWriting(false);
     }
   }
 
@@ -216,6 +237,14 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
                 {recap.narrativeError && (
                   <span className="text-[11px] text-brand-primary opacity-35">{recap.narrativeError}</span>
                 )}
+                <button
+                  onClick={writeNow}
+                  disabled={writing}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-secondary-600 hover:underline disabled:opacity-40"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {writing ? "Writing… (up to a minute)" : "Write it now"}
+                </button>
                 <button
                   onClick={testAi}
                   disabled={testing}
