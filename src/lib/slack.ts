@@ -55,8 +55,8 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
         `From *${recap.clients.length}* client${recap.clients.length === 1 ? "" : "s"}: ${list(recap.clients)}`,
       );
     }
-    if (recap.newClients.length) {
-      numbers.push(`:tada: First feedback ever from *${list(recap.newClients)}*`);
+    if (recap.newClients.length && !recap.mostClientsAreNew) {
+      numbers.push(`:tada: First feedback ever from *${list(recap.newClients, 4)}*`);
     }
     if (recap.topAreas.length) {
       numbers.push(`Areas: ${recap.topAreas.map((a) => `${a.label} (${a.count})`).join(" · ")}`);
@@ -74,6 +74,22 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
       blocks.push({
         type: "section",
         text: { type: "mrkdwn", text: `*What stood out*\n${recap.narrative}` },
+      });
+    } else if (recap.themes.length) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text:
+            `*Raised by more than one client*\n` +
+            recap.themes
+              .map(
+                (t) =>
+                  `• *${t.label}* — ${t.clients.length} clients: ${list(t.clients, 3)}\n` +
+                  `   <${HUB_URL}/insights?open=${t.example.id}|${t.example.oneLiner}>`,
+              )
+              .join("\n"),
+        },
       });
     } else if (recap.picks.length) {
       blocks.push({
@@ -120,7 +136,9 @@ export function recapMarkdown(recap: WeeklyRecap): string {
     if (recap.clients.length) {
       lines.push(`From *${recap.clients.length}* client${recap.clients.length === 1 ? "" : "s"}: ${list(recap.clients, 6)}`);
     }
-    if (recap.newClients.length) lines.push(`:tada: First feedback ever from *${list(recap.newClients, 6)}*`);
+    if (recap.newClients.length && !recap.mostClientsAreNew) {
+      lines.push(`:tada: First feedback ever from *${list(recap.newClients, 4)}*`);
+    }
     if (recap.topAreas.length) {
       lines.push(`Areas: ${recap.topAreas.map((a) => `${a.label} (${a.count})`).join(" · ")}`);
     }
@@ -131,6 +149,12 @@ export function recapMarkdown(recap: WeeklyRecap): string {
 
     if (recap.narrative) {
       lines.push("", "*What stood out*", recap.narrative);
+    } else if (recap.themes.length) {
+      lines.push("", "*Raised by more than one client*");
+      for (const t of recap.themes) {
+        lines.push(`• *${t.label}* — ${t.clients.length} clients: ${list(t.clients, 3)}`);
+        lines.push(`   <${HUB_URL}/insights?open=${t.example.id}|${t.example.oneLiner}>`);
+      }
     } else if (recap.picks.length) {
       lines.push("", "*Highlights*");
       for (const p of recap.picks) {

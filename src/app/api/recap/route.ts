@@ -28,7 +28,9 @@ export async function GET(req: NextRequest) {
     questions: recap.questions,
     asks: recap.asks,
     narrative: recap.narrative,
+    themes: recap.themes,
     picks: recap.picks,
+    mostClientsAreNew: recap.mostClientsAreNew,
     markdown: recapMarkdown(recap),
   });
 }

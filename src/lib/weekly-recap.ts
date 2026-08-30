@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { areaLabel } from "@/lib/labels";
 import { summarizeWeek } from "@/lib/claude";
+import { matchAccount } from "@/lib/accounts";
+import { loadAccounts } from "@/lib/accounts-db";
+import { crossClientThemes, themeLabel, type RecapTheme } from "@/lib/themes";
 import {
   lastCompleteWeek, previousWeek, monthToDate, previousMonth,
   type WeekWindow, type PeriodKind,
@@ -31,8 +34,15 @@ export interface WeeklyRecap {
    * call failed — the recap still goes out, using `picks` instead.
    */
   narrative: string | null;
-  /** Entries worth quoting: commented-on first, then newest. */
+  /** What several clients said the same thing about — the real highlight. */
+  themes: { label: string; clients: string[]; entries: number; example: RecapPick }[];
+  /** Entries worth quoting, used only when no theme spans two accounts. */
   picks: RecapPick[];
+  /**
+   * True when nearly every client in the period is "new" — which happens on a
+   * bulk import and makes the first-ever line noise rather than news.
+   */
+  mostClientsAreNew: boolean;
 }
 
 /**
@@ -51,7 +61,7 @@ export async function buildWeeklyRecap(
   const prev = period === "month" ? previousMonth(week) : previousWeek(week);
   const inWeek = { gte: week.start, lt: week.end };
 
-  const [entries, entriesPrev, questions, asks] = await Promise.all([
+  const [entries, entriesPrev, questions, asks, accounts] = await Promise.all([
     prisma.insight.findMany({
       where: { createdAt: inWeek },
       orderBy: { createdAt: "desc" },
@@ -68,9 +78,15 @@ export async function buildWeeklyRecap(
     prisma.insight.count({ where: { createdAt: { gte: prev.start, lt: prev.end } } }),
     prisma.discoveryQuestion.count({ where: { createdAt: inWeek } }),
     prisma.askLog.count({ where: { createdAt: inWeek } }),
+    loadAccounts(),
   ]);
 
-  const clients = [...new Set(entries.map((e) => e.client).filter((c): c is string => !!c))].sort();
+  // The stored client may still be raw ("NOMS — Dr. Bower"), so it is resolved
+  // here for counting and grouping. Without this a single account shows up as
+  // half a dozen "clients" and every theme looks corroborated when it isn't.
+  const canonical = (raw: string | null) => (raw ? matchAccount(raw, accounts) ?? raw : null);
+
+  const clients = [...new Set(entries.map((e) => canonical(e.client)).filter((c): c is string => !!c))].sort();
 
   // "First time" means nothing on file before this week — the interesting case,
   // and worth a name-check in the post.
@@ -80,6 +96,8 @@ export async function buildWeeklyRecap(
     ),
   );
   const newClients = clients.filter((_, i) => priorCounts[i] === 0);
+  // On the first import everything is "first ever", which is true and useless.
+  const mostClientsAreNew = clients.length > 6 && newClients.length > clients.length * 0.6;
 
   const areaCounts = new Map<string, number>();
   for (const e of entries) {
@@ -96,6 +114,24 @@ export async function buildWeeklyRecap(
     .sort((a, b) => b._count.comments - a._count.comments)
     .slice(0, period === "month" ? 5 : 3)
     .map((e) => ({ id: e.id, oneLiner: e.oneLiner, client: e.client, areas: e.productAreas.map(areaLabel) }));
+
+  const themes = crossClientThemes(
+    entries.map((e) => ({ id: e.id, oneLiner: e.oneLiner, client: canonical(e.client) })),
+    { limit: period === "month" ? 4 : 3 },
+  ).map((t: RecapTheme) => ({
+    label: themeLabel(t.phrase),
+    clients: t.clients,
+    entries: t.entries,
+    example: (() => {
+      const src = entries.find((e) => e.id === t.example.id);
+      return {
+        id: t.example.id,
+        oneLiner: t.example.oneLiner,
+        client: canonical(src?.client ?? null),
+        areas: src?.productAreas.map(areaLabel) ?? [],
+      };
+    })(),
+  }));
 
   const narrative =
     withNarrative && entries.length
@@ -121,6 +157,8 @@ export async function buildWeeklyRecap(
     questions,
     asks,
     narrative,
+    themes,
     picks,
+    mostClientsAreNew,
   };
 }

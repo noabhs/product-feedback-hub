@@ -15,7 +15,9 @@ export interface RecapView {
   questions: number;
   asks: number;
   narrative: string | null;
+  themes: { label: string; clients: string[]; entries: number; example: RecapPick }[];
   picks: RecapPick[];
+  mostClientsAreNew: boolean;
   /** Slack-flavoured text, for the clipboard. Fetched with the period. */
   markdown?: string;
 }
@@ -185,10 +187,13 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             )}
           </div>
 
-          {recap.newClients.length > 0 && (
+          {recap.newClients.length > 0 && !recap.mostClientsAreNew && (
             <p className="text-[12px] text-brand-primary mt-3">
               🎉 First feedback ever from{" "}
-              <span className="font-semibold">{recap.newClients.join(", ")}</span>
+              <span className="font-semibold">{recap.newClients.slice(0, 4).join(", ")}</span>
+              {recap.newClients.length > 4 && (
+                <span className="opacity-50"> +{recap.newClients.length - 4} more</span>
+              )}
             </p>
           )}
 
@@ -198,6 +203,31 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
                 What stood out
               </p>
               <p className="text-[13.5px] text-brand-primary/80 leading-relaxed">{recap.narrative}</p>
+            </div>
+          ) : recap.themes.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-2">
+                Raised by more than one client
+              </p>
+              <div className="space-y-2.5">
+                {recap.themes.map((t) => (
+                  <div key={t.label}>
+                    <p className="text-[13px] text-brand-primary">
+                      <span className="font-semibold">{t.label}</span>
+                      <span className="opacity-50">
+                        {" "}— {t.clients.length} clients: {t.clients.slice(0, 3).join(", ")}
+                        {t.clients.length > 3 && ` +${t.clients.length - 3}`}
+                      </span>
+                    </p>
+                    <Link
+                      href={`/insights?open=${t.example.id}`}
+                      className="text-[12px] text-brand-primary opacity-60 hover:opacity-100 hover:text-brand-secondary-600 transition-colors leading-snug"
+                    >
+                      {t.example.oneLiner}
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             recap.picks.length > 0 && (
