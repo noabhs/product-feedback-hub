@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Send, Check, Copy } from "lucide-react";
+import { Send, Check, Copy, Sparkles } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
 
 export interface RecapView {
@@ -39,35 +39,38 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
   const [error, setError] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
 
-  // The brief is fetched after the page paints rather than blocking it. Cached
-  // server-side per period, so this is instant on every load but the first.
-  useEffect(() => {
-    if (recap.narrative || recap.narrativeError) return;
-    let cancelled = false;
-    // Bounded: a hung or timed-out request used to leave "Reading the week…" on
-    // screen indefinitely, which reads as broken rather than as unavailable.
+  /**
+   * Deliberately not fetched on mount. A page load that silently kicks off a
+   * model call gave no way to tell "still working" from "wedged", and that is
+   * exactly how it failed. The brief arrives from the Sunday cron, or from this
+   * button — a request nobody started cannot hang.
+   */
+  async function writeBrief() {
+    setWriting(true);
+    setError(null);
     const abort = new AbortController();
-    const timer = setTimeout(() => abort.abort(), 45_000);
-
-    (async () => {
-      setWriting(true);
-      try {
-        const res = await fetch(`/api/recap?period=${period}&narrative=1`, { signal: abort.signal });
-        const data = await res.json();
-        if (cancelled) return;
-        if (res.ok) setRecap(data);
-        else setRecap((r) => ({ ...r, narrativeError: data.error ?? `The brief request failed (${res.status}).` }));
-      } catch {
-        if (!cancelled) {
-          setRecap((r) => ({ ...r, narrativeError: "The brief took too long and was cancelled." }));
-        }
-      } finally {
-        clearTimeout(timer);
-        if (!cancelled) setWriting(false);
+    const timer = setTimeout(() => abort.abort(), 60_000);
+    try {
+      const res = await fetch(`/api/recap?period=${period}&narrative=1`, { signal: abort.signal });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        throw new Error(data?.error ?? `The brief request failed (${res.status}).`);
       }
-    })();
-    return () => { cancelled = true; clearTimeout(timer); abort.abort(); };
-  }, [period, recap.narrative, recap.narrativeError]);
+      setRecap(data);
+      if (!data.narrative) {
+        setError(data.narrativeError ?? "Claude returned no brief for this period.");
+      }
+    } catch (e) {
+      setError(
+        (e as Error).name === "AbortError"
+          ? "The brief took over 60s and was cancelled."
+          : (e as Error).message,
+      );
+    } finally {
+      clearTimeout(timer);
+      setWriting(false);
+    }
+  }
 
   async function pick(next: "week" | "month") {
     if (next === period) return;
@@ -184,86 +187,68 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             </p>
           )}
 
-          {writing ? (
-            <div className="mt-3">
-              <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-1.5">
-                What stood out
-              </p>
-              <p className="text-[13.5px] text-brand-primary opacity-40">Reading the week…</p>
-            </div>
-          ) : recap.narrative ? (
+          {recap.narrative ? (
             <div className="mt-3">
               <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-1.5">
                 What stood out
               </p>
               <p className="text-[13.5px] text-brand-primary/80 leading-relaxed">{recap.narrative}</p>
             </div>
-          ) : recap.themes.length > 0 ? (
-            <div className="mt-3">
-              {recap.narrativeError && (
-                <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-                  <p className="text-[12px] text-amber-800">
-                    AI brief unavailable — {recap.narrativeError} Showing recurring wording instead.
-                  </p>
-                </div>
-              )}
-              <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide">
-                Came up across clients
-              </p>
-              {/* Says what the block is. Without it the bold phrase reads as a
-                  product area, which it is not — it is a phrase found in the
-                  feedback itself. */}
-              <p className="text-[11px] text-brand-primary opacity-35 mb-3">
-                Wording that appears in feedback from several different accounts
-              </p>
-              <div className="space-y-3">
-                {recap.themes.map((t) => (
-                  <div key={t.label}>
-                    <p className="text-[13px] text-brand-primary">
-                      <span className="font-semibold">{t.clients.length} clients</span> mentioned{" "}
-                      <span className="font-semibold">“{t.label.toLowerCase()}”</span>
-                      <span className="opacity-45">
-                        {" "}— {t.clients.slice(0, 3).join(", ")}
-                        {t.clients.length > 3 && ` +${t.clients.length - 3}`}
-                      </span>
-                    </p>
-                    <Link
-                      href={`/insights?open=${t.example.id}`}
-                      className="block text-[12px] text-brand-primary opacity-55 hover:opacity-100 hover:text-brand-secondary-600 transition-colors leading-snug mt-0.5 pl-3 border-l-2 border-[rgba(50,43,95,0.12)]"
-                    >
-                      one of them: “{t.example.oneLiner}”
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
           ) : (
-            recap.picks.length > 0 && (
-              <div className="mt-3">
-                <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-1.5">
-                  Highlights
-                </p>
-                <div className="space-y-1.5">
-                  {recap.picks.map((p) => (
-                    <div key={p.id}>
-                      <Link
-                        href={`/insights?open=${p.id}`}
-                        className="text-[13px] text-brand-primary hover:text-brand-secondary-600 transition-colors leading-snug"
-                      >
-                        {p.oneLiner}
-                      </Link>
-                      <p className="text-[11px] text-brand-primary opacity-40">
-                        {p.client ?? "No client"}
-                        {p.areas.length > 0 && ` · ${p.areas.join(", ")}`}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+            <div className="mt-3">
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  onClick={writeBrief}
+                  disabled={writing}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-secondary-600 border border-[rgba(93,7,226,0.25)] rounded-sm px-2.5 py-1.5 hover:bg-[rgba(93,7,226,0.05)] disabled:opacity-40 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {writing ? "Writing the brief…" : "Write the AI brief"}
+                </button>
+                <span className="text-[11px] text-brand-primary opacity-35">
+                  {writing ? "up to a minute" : "one Claude call, then cached"}
+                </span>
               </div>
-            )
+              {recap.themes.length > 0 && <ThemeList themes={recap.themes} />}
+            </div>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function ThemeList({ themes }: { themes: RecapView["themes"] }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide">
+        Came up across clients
+      </p>
+      {/* Says what the block is. Without it the bold phrase reads as a product
+          area, which it is not — it is wording found in the feedback itself. */}
+      <p className="text-[11px] text-brand-primary opacity-35 mb-3">
+        Wording that appears in feedback from several different accounts
+      </p>
+      <div className="space-y-3">
+        {themes.map((t) => (
+          <div key={t.label}>
+            <p className="text-[13px] text-brand-primary">
+              <span className="font-semibold">{t.clients.length} clients</span> mentioned{" "}
+              <span className="font-semibold">“{t.label.toLowerCase()}”</span>
+              <span className="opacity-45">
+                {" "}— {t.clients.slice(0, 3).join(", ")}
+                {t.clients.length > 3 && ` +${t.clients.length - 3}`}
+              </span>
+            </p>
+            <Link
+              href={`/insights?open=${t.example.id}`}
+              className="block text-[12px] text-brand-primary opacity-55 hover:opacity-100 hover:text-brand-secondary-600 transition-colors leading-snug mt-0.5 pl-3 border-l-2 border-[rgba(50,43,95,0.12)]"
+            >
+              one of them: “{t.example.oneLiner}”
+            </Link>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
