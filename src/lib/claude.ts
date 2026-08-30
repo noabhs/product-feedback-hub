@@ -332,13 +332,31 @@ export interface Summary {
  * than swallowed, so the page can say "unavailable" instead of quietly
  * pretending the keyword fallback was the intended output.
  */
+/**
+ * A month of this hub is now ~1,000 entries. Sending every one with its full
+ * body was a ~97,000-token prompt: slow enough that the card sat on "Reading
+ * the week…" for the best part of a minute, and priced accordingly.
+ *
+ * Sampled evenly across the period rather than taking the most recent, so a
+ * busy final week can't crowd out the rest of the month.
+ */
+const MAX_ENTRIES = 150;
+const MAX_CONTENT = 240;
+
+function spread<T>(items: T[], max: number): T[] {
+  if (items.length <= max) return items;
+  const step = items.length / max;
+  return Array.from({ length: max }, (_, i) => items[Math.floor(i * step)]);
+}
+
 export async function summarizeWeek(entries: WeekEntry[]): Promise<Summary> {
   if (!entries.length) return { text: null, error: null };
   if (!process.env.ANTHROPIC_API_KEY?.trim()) {
     return { text: null, error: "No ANTHROPIC_API_KEY is set on the server." };
   }
 
-  const body = entries
+  const sampled = spread(entries, MAX_ENTRIES);
+  const body = sampled
     .map(
       (e, i) =>
         `${i + 1}. [${e.areas.join(", ") || "no area"}] ${e.client ?? "Unknown client"}` +
@@ -358,7 +376,15 @@ Write two or three sentences on what actually stood out this week. Rules:
 - Name clients and product areas where it sharpens the point.
 - Plain sentences. No bullet points, no headings, no emoji, no preamble like "This week".
 - If the week holds nothing beyond unrelated one-offs, say that plainly in one sentence. That is a useful thing for the team to read.`,
-      messages: [{ role: "user", content: `This week's feedback entries:\n\n${body}` }],
+      messages: [
+        {
+          role: "user",
+          content:
+            (sampled.length < entries.length
+              ? `${sampled.length} of the ${entries.length} feedback entries logged in this period, sampled evenly across it:\n\n`
+              : `This period's feedback entries:\n\n`) + body,
+        },
+      ],
     });
 
     const text = res.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text?.trim();

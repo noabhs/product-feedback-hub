@@ -44,6 +44,12 @@ async function send(force: boolean, period: "week" | "month" = "week") {
     return NextResponse.json({ error: result.error, week: recap.week.key }, { status: 502 });
   }
 
+  // Warm the month brief while we are here. Nothing else schedules it, so
+  // without this the first person to open the month view pays for the call.
+  if (period === "week") {
+    void buildWeeklyRecap(new Date(), { period: "month" }).catch(() => {});
+  }
+
   void logEvent(ACTIONS.recapPosted, {
     target: recap.week.key,
     label: `${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label} — ${recap.entries} entries`,
