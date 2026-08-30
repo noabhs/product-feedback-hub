@@ -155,7 +155,15 @@ function rangeLabel(start: Date, endExclusive: Date): string {
   const last = onBoundary ? new Date(endExclusive.getTime() - 86_400_000) : endExclusive;
   const opts = { timeZone: RECAP_TIMEZONE, month: "short", day: "numeric" } as const;
   const from = new Intl.DateTimeFormat("en-US", opts).format(start);
-  const sameMonth = zonedParts(start, RECAP_TIMEZONE).month === zonedParts(last, RECAP_TIMEZONE).month;
+  const startParts = zonedParts(start, RECAP_TIMEZONE);
+  const lastParts = zonedParts(last, RECAP_TIMEZONE);
+
+  // A month on its first day is one day, and "Sep 1–1" reads as a mistake.
+  if (startParts.year === lastParts.year && startParts.month === lastParts.month && startParts.day === lastParts.day) {
+    return from;
+  }
+
+  const sameMonth = startParts.month === lastParts.month;
   const to = sameMonth
     ? new Intl.DateTimeFormat("en-US", { timeZone: RECAP_TIMEZONE, day: "numeric" }).format(last)
     : new Intl.DateTimeFormat("en-US", opts).format(last);
