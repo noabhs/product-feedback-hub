@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Send, Check, Copy } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
@@ -15,6 +15,7 @@ export interface RecapView {
   questions: number;
   asks: number;
   narrative: string | null;
+  narrativeError?: string | null;
   themes: { label: string; clients: string[]; entries: number; example: RecapPick }[];
   picks: RecapPick[];
   mostClientsAreNew: boolean;
@@ -36,6 +37,27 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
   const [sent, setSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [writing, setWriting] = useState(false);
+
+  // The brief is fetched after the page paints rather than blocking it. Cached
+  // server-side per period, so this is instant on every load but the first.
+  useEffect(() => {
+    if (recap.narrative || recap.narrativeError) return;
+    let cancelled = false;
+    (async () => {
+      setWriting(true);
+      try {
+        const res = await fetch(`/api/recap?period=${period}&narrative=1`);
+        const data = await res.json();
+        if (!cancelled && res.ok) setRecap(data);
+      } catch {
+        /* the themes below still stand in */
+      } finally {
+        if (!cancelled) setWriting(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [period, recap.narrative, recap.narrativeError]);
 
   async function pick(next: "week" | "month") {
     if (next === period) return;
@@ -45,7 +67,7 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/recap?period=${next}`);
+      const res = await fetch(`/api/recap?period=${next}&narrative=1`);
       if (!res.ok) throw new Error(`Couldn't load the ${next}`);
       setRecap(await res.json());
     } catch (e) {
@@ -152,7 +174,14 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             </p>
           )}
 
-          {recap.narrative ? (
+          {writing ? (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-1.5">
+                What stood out
+              </p>
+              <p className="text-[13.5px] text-brand-primary opacity-40">Reading the week…</p>
+            </div>
+          ) : recap.narrative ? (
             <div className="mt-3">
               <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-1.5">
                 What stood out
@@ -161,6 +190,13 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             </div>
           ) : recap.themes.length > 0 ? (
             <div className="mt-3">
+              {recap.narrativeError && (
+                <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-[12px] text-amber-800">
+                    AI brief unavailable — {recap.narrativeError} Showing recurring wording instead.
+                  </p>
+                </div>
+              )}
               <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide">
                 Came up across clients
               </p>

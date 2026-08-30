@@ -317,18 +317,26 @@ export interface WeekEntry {
   persona: string | null;
 }
 
+export interface Summary {
+  text: string | null;
+  /** Why there is no text. Surfaced in the UI — a silently missing AI brief
+   *  looks identical to one that was never wanted. */
+  error: string | null;
+}
+
 /**
- * Two or three sentences on what stood out in a week of feedback, for the Sunday
- * recap.
+ * Two or three sentences on what stood out in a period of feedback.
  *
- * Returns null rather than throwing on any problem — no server key, a rate
- * limit, a timeout. The recap is a weekly post to a Slack channel; it going out
- * with rule-picked entries instead of prose is a small loss, and it not going
- * out at all because a model call failed is a real one.
+ * Never throws: the recap going out plainer is a small loss, it not going out
+ * because a model call failed is a real one. But the reason is returned rather
+ * than swallowed, so the page can say "unavailable" instead of quietly
+ * pretending the keyword fallback was the intended output.
  */
-export async function summarizeWeek(entries: WeekEntry[]): Promise<string | null> {
-  if (!entries.length) return null;
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) return null;
+export async function summarizeWeek(entries: WeekEntry[]): Promise<Summary> {
+  if (!entries.length) return { text: null, error: null };
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+    return { text: null, error: "No ANTHROPIC_API_KEY is set on the server." };
+  }
 
   const body = entries
     .map(
@@ -354,8 +362,12 @@ Write two or three sentences on what actually stood out this week. Rules:
     });
 
     const text = res.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text?.trim();
-    return text || null;
-  } catch {
-    return null;
+    return { text: text || null, error: text ? null : "The model returned nothing." };
+  } catch (e) {
+    const message = (e as Error).message ?? "unknown error";
+    console.error("[recap] summarizeWeek failed:", message);
+    return { text: null, error: /401|authentication/i.test(message)
+      ? "The Anthropic API key was rejected (401)."
+      : `Couldn't reach Claude: ${message.slice(0, 120)}` };
   }
 }

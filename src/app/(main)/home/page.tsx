@@ -142,6 +142,7 @@ export default async function HomePage() {
             questions: recap.questions,
             asks: recap.asks,
             narrative: recap.narrative,
+            narrativeError: recap.narrativeError,
             themes: recap.themes,
             picks: recap.picks,
             mostClientsAreNew: recap.mostClientsAreNew,

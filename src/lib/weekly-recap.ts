@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logEvent, ACTIONS } from "@/lib/events";
 import { areaLabel } from "@/lib/labels";
 import { summarizeWeek } from "@/lib/claude";
 import { matchAccount } from "@/lib/accounts";
@@ -35,11 +36,10 @@ export interface WeeklyRecap {
   topAreas: { area: string; label: string; count: number }[];
   questions: number;
   asks: number;
-  /**
-   * Claude's read of the week. Null when no server-side key is configured or the
-   * call failed — the recap still goes out, using `picks` instead.
-   */
+  /** Claude's read of the period. */
   narrative: string | null;
+  /** Why there is no narrative, when one was asked for. Shown to the user. */
+  narrativeError: string | null;
   /** What several clients said the same thing about — the real highlight. */
   themes: { label: string; clients: string[]; entries: number; example: RecapPick }[];
   /** Entries worth quoting, used only when no theme spans two accounts. */
@@ -141,18 +141,39 @@ export async function buildWeeklyRecap(
     })(),
   }));
 
-  const narrative =
-    withNarrative && entries.length
-      ? await summarizeWeek(
-          entries.map((e) => ({
-            oneLiner: e.oneLiner,
-            content: e.content,
-            client: e.client,
-            areas: e.productAreas.map(areaLabel),
-            persona: e.persona,
-          })),
-        )
-      : null;
+  // Cached per period *and* entry count, so a month still gaining entries gets
+  // rewritten while a settled week is written once. Stored on the event log
+  // rather than a new table — same reasoning as the already-posted check.
+  const cacheKey = `${week.kind}:${week.key}:${entries.length}`;
+  let narrative: string | null = null;
+  let narrativeError: string | null = null;
+
+  if (withNarrative && entries.length) {
+    const cached = await prisma.event.findFirst({
+      where: { action: ACTIONS.recapNarrative, target: cacheKey },
+      select: { label: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (cached?.label) {
+      narrative = cached.label;
+    } else {
+      const summary = await summarizeWeek(
+        entries.map((e) => ({
+          oneLiner: e.oneLiner,
+          content: e.content,
+          client: e.client,
+          areas: e.productAreas.map(areaLabel),
+          persona: e.persona,
+        })),
+      );
+      narrative = summary.text;
+      narrativeError = summary.error;
+      if (summary.text) {
+        await logEvent(ACTIONS.recapNarrative, { target: cacheKey, label: summary.text });
+      }
+    }
+  }
 
   return {
     week,
@@ -165,6 +186,7 @@ export async function buildWeeklyRecap(
     questions,
     asks,
     narrative,
+    narrativeError,
     themes,
     picks,
     mostClientsAreNew,

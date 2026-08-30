@@ -4,18 +4,19 @@ import { buildWeeklyRecap } from "@/lib/weekly-recap";
 import { recapMarkdown } from "@/lib/slack";
 
 /**
- * The recap for a period, for the home page's toggle. Session-guarded: this is
- * hub data, and the page it feeds is already behind sign-in.
- *
- * withNarrative is off — the toggle would otherwise pay for a model call every
- * time someone flips between week and month.
+ * The recap for a period, for the home page. Session-guarded: this is hub data,
+ * and the page it feeds is already behind sign-in.
  */
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
-  const recap = await buildWeeklyRecap(new Date(), { withNarrative: false, period });
+  // The AI brief is opt-in per request: the page renders immediately without it
+  // and asks for it straight after, so a cache miss costs a spinner in one card
+  // rather than several seconds of blank page.
+  const withNarrative = req.nextUrl.searchParams.get("narrative") === "1";
+  const recap = await buildWeeklyRecap(new Date(), { withNarrative, period });
 
   return NextResponse.json({
     weekLabel: recap.week.label,
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
     questions: recap.questions,
     asks: recap.asks,
     narrative: recap.narrative,
+    narrativeError: recap.narrativeError,
     themes: recap.themes,
     picks: recap.picks,
     mostClientsAreNew: recap.mostClientsAreNew,
