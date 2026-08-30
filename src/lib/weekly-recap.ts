@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ACTIONS } from "@/lib/events";
 import { areaLabel } from "@/lib/labels";
-import { summarizeWeek } from "@/lib/claude";
+import { summarizeWeek, BRIEF_VERSION } from "@/lib/claude";
 import { matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
 import { crossClientThemes, themeLabel, type RecapTheme } from "@/lib/themes";
@@ -171,8 +171,8 @@ export async function buildWeeklyRecap(
   // instead of one per entry.
   const cacheKey =
     week.kind === "week"
-      ? `week:${week.key}`
-      : `month:${week.key}:${new Date().toISOString().slice(0, 10)}`;
+      ? `${BRIEF_VERSION}:week:${week.key}`
+      : `${BRIEF_VERSION}:month:${week.key}:${new Date().toISOString().slice(0, 10)}`;
 
   let narrative: string | null = null;
   let narrativeError: string | null = null;

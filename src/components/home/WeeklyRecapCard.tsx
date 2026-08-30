@@ -247,9 +247,20 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
 
           {recap.narrative ? (
             <div className="mt-3">
-              <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-1.5">
-                What stood out
-              </p>
+              <div className="flex items-center gap-2 mb-1.5">
+                <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide">
+                  What stood out
+                </p>
+                {/* Reachable with a brief already on screen. Without this the
+                    only way to get a new one was to have none. */}
+                <button
+                  onClick={() => writeNow()}
+                  disabled={writing}
+                  className="text-[11px] text-brand-secondary-600 hover:underline disabled:opacity-40"
+                >
+                  {writing ? "rewriting…" : "rewrite"}
+                </button>
+              </div>
               {/* One paragraph per topic. Rendering the whole brief in a single
                   <p> collapsed the blank lines the model writes between topics,
                   which is how three findings became one dense block. */}
