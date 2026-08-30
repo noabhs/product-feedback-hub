@@ -44,7 +44,19 @@ async function send(force: boolean, period: "week" | "month" = "week") {
 
   if (!result.ok) {
     // 502, not 500: the hub did its part and Slack (or its config) did not.
-    return NextResponse.json({ error: result.error, week: recap.week.key }, { status: 502 });
+    //
+    // The brief is written before the post is attempted, so report what
+    // happened to it either way. Returning only the Slack error hid the answer
+    // to the question this endpoint was being pressed to answer.
+    return NextResponse.json(
+      {
+        error: result.error,
+        week: recap.week.key,
+        narrative: Boolean(recap.narrative),
+        narrativeError: recap.narrativeError,
+      },
+      { status: 502 },
+    );
   }
 
   // The month brief has no schedule of its own, and page loads no longer
@@ -69,6 +81,7 @@ async function send(force: boolean, period: "week" | "month" = "week") {
     week: recap.week.key,
     entries: recap.entries,
     narrative: Boolean(recap.narrative),
+    narrativeError: recap.narrativeError,
   });
 }
 

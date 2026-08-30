@@ -70,8 +70,24 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
     setError(null);
     try {
       const res = await fetch(`/api/cron/weekly-recap?period=${period}`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `Failed with ${res.status}`);
+      const data = await res.json().catch(() => null);
+
+      // This is currently the only way to write a brief before Sunday, so
+      // whether that worked matters even when the Slack post did not. Pull the
+      // freshly cached brief in regardless of the post's outcome.
+      const refreshed = await fetch(`/api/recap?period=${period}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      if (refreshed) setRecap(refreshed);
+
+      if (!res.ok) {
+        const brief = data?.narrative
+          ? "The brief was written, though."
+          : data?.narrativeError
+            ? `The brief also failed: ${data.narrativeError}`
+            : "";
+        throw new Error([data?.error ?? `Failed with ${res.status}`, brief].filter(Boolean).join(" "));
+      }
       setSent(true);
     } catch (e) {
       setError((e as Error).message);
