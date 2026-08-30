@@ -81,12 +81,12 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
         text: {
           type: "mrkdwn",
           text:
-            `*Raised by more than one client*\n` +
+            `*Came up across clients*  _wording several different accounts used_\n` +
             recap.themes
               .map(
                 (t) =>
-                  `• *${t.label}* — ${t.clients.length} clients: ${list(t.clients, 3)}\n` +
-                  `   <${HUB_URL}/insights?open=${t.example.id}|${t.example.oneLiner}>`,
+                  `• *${t.clients.length} clients* mentioned *“${t.label.toLowerCase()}”* — ${list(t.clients, 3)}\n` +
+                  `   one of them: <${HUB_URL}/insights?open=${t.example.id}|“${t.example.oneLiner}”>`,
               )
               .join("\n"),
         },
@@ -150,10 +150,10 @@ export function recapMarkdown(recap: WeeklyRecap): string {
     if (recap.narrative) {
       lines.push("", "*What stood out*", recap.narrative);
     } else if (recap.themes.length) {
-      lines.push("", "*Raised by more than one client*");
+      lines.push("", "*Came up across clients*  _wording several different accounts used_");
       for (const t of recap.themes) {
-        lines.push(`• *${t.label}* — ${t.clients.length} clients: ${list(t.clients, 3)}`);
-        lines.push(`   <${HUB_URL}/insights?open=${t.example.id}|${t.example.oneLiner}>`);
+        lines.push(`• *${t.clients.length} clients* mentioned *“${t.label.toLowerCase()}”* — ${list(t.clients, 3)}`);
+        lines.push(`   one of them: <${HUB_URL}/insights?open=${t.example.id}|“${t.example.oneLiner}”>`);
       }
     } else if (recap.picks.length) {
       lines.push("", "*Highlights*");

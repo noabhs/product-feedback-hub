@@ -161,24 +161,31 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             </div>
           ) : recap.themes.length > 0 ? (
             <div className="mt-3">
-              <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-2">
-                Raised by more than one client
+              <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide">
+                Came up across clients
               </p>
-              <div className="space-y-2.5">
+              {/* Says what the block is. Without it the bold phrase reads as a
+                  product area, which it is not — it is a phrase found in the
+                  feedback itself. */}
+              <p className="text-[11px] text-brand-primary opacity-35 mb-3">
+                Wording that appears in feedback from several different accounts
+              </p>
+              <div className="space-y-3">
                 {recap.themes.map((t) => (
                   <div key={t.label}>
                     <p className="text-[13px] text-brand-primary">
-                      <span className="font-semibold">{t.label}</span>
-                      <span className="opacity-50">
-                        {" "}— {t.clients.length} clients: {t.clients.slice(0, 3).join(", ")}
+                      <span className="font-semibold">{t.clients.length} clients</span> mentioned{" "}
+                      <span className="font-semibold">“{t.label.toLowerCase()}”</span>
+                      <span className="opacity-45">
+                        {" "}— {t.clients.slice(0, 3).join(", ")}
                         {t.clients.length > 3 && ` +${t.clients.length - 3}`}
                       </span>
                     </p>
                     <Link
                       href={`/insights?open=${t.example.id}`}
-                      className="text-[12px] text-brand-primary opacity-60 hover:opacity-100 hover:text-brand-secondary-600 transition-colors leading-snug"
+                      className="block text-[12px] text-brand-primary opacity-55 hover:opacity-100 hover:text-brand-secondary-600 transition-colors leading-snug mt-0.5 pl-3 border-l-2 border-[rgba(50,43,95,0.12)]"
                     >
-                      {t.example.oneLiner}
+                      one of them: “{t.example.oneLiner}”
                     </Link>
                   </div>
                 ))}
