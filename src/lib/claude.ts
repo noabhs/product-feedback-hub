@@ -382,7 +382,11 @@ function spread<T>(items: T[], max: number): T[] {
   return Array.from({ length: max }, (_, i) => items[Math.floor(i * step)]);
 }
 
-export async function summarizeWeek(entries: WeekEntry[], totalInPeriod = entries.length): Promise<Summary> {
+export async function summarizeWeek(
+  entries: WeekEntry[],
+  totalInPeriod = entries.length,
+  periodLabel = "this period",
+): Promise<Summary> {
   if (!entries.length) return { text: null, error: null };
   if (!cleanKey(process.env.ANTHROPIC_API_KEY)) {
     return { text: null, error: "No ANTHROPIC_API_KEY is set on the server." };
@@ -409,14 +413,26 @@ export async function summarizeWeek(entries: WeekEntry[], totalInPeriod = entrie
       // A three-sentence summary does not need deep reasoning, and low effort
       // is both faster and cheaper.
       output_config: { effort: "low" },
-      system: `You write the opening lines of a weekly product-feedback recap for Navina's product team, posted to Slack.
+      system: `You write the brief at the top of Navina's product-feedback recap, read by the product team and posted to Slack.
 
-Write two or three sentences on what actually stood out this week. Rules:
-- Name the pattern, not the volume. "Three clients independently asked for X" earns its place; "there was feedback about X" does not.
-- Only claim what the entries support. No projections, no recommendations, no invented client names.
+The feedback below is everything logged in ${periodLabel}.
+
+Write two or three short paragraphs. Rules:
+- One topic per paragraph, separated by a blank line. Never run two topics
+  together in one block — this is read in a wide card and a single dense
+  paragraph does not get read.
+- Two or three sentences per paragraph. If a topic needs more, it is two topics.
+- Name the pattern, not the volume. "Three clients independently asked for X"
+  earns its place; "there was feedback about X" does not.
+- Only claim what the entries support. No projections, no recommendations, no
+  invented client names.
 - Name clients and product areas where it sharpens the point.
-- Plain sentences. No bullet points, no headings, no emoji, no preamble like "This week".
-- If the week holds nothing beyond unrelated one-offs, say that plainly in one sentence. That is a useful thing for the team to read.`,
+- Plain sentences. No bullet points, no headings, no bold, no emoji, and no
+  preamble like "This period".
+- Refer to the timeframe as ${periodLabel} if you refer to it at all. Do not call
+  a month a week.
+- If it holds nothing beyond unrelated one-offs, say that plainly in one
+  sentence. That is a useful thing for the team to read.`,
       messages: [
         {
           role: "user",

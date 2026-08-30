@@ -250,7 +250,20 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
               <p className="text-[11px] font-semibold text-brand-primary opacity-45 uppercase tracking-wide mb-1.5">
                 What stood out
               </p>
-              <p className="text-[13.5px] text-brand-primary/80 leading-relaxed">{recap.narrative}</p>
+              {/* One paragraph per topic. Rendering the whole brief in a single
+                  <p> collapsed the blank lines the model writes between topics,
+                  which is how three findings became one dense block. */}
+              <div className="space-y-2.5">
+                {recap.narrative
+                  .split(/\n{2,}/)
+                  .map((para) => para.trim())
+                  .filter(Boolean)
+                  .map((para, i) => (
+                    <p key={i} className="text-[13.5px] text-brand-primary/80 leading-relaxed">
+                      {para}
+                    </p>
+                  ))}
+              </div>
             </div>
           ) : (
             <div className="mt-3">

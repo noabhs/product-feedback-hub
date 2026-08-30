@@ -75,11 +75,13 @@ export async function buildWeeklyRecap(
     period = "week",
   }: {
     /**
-     * "generate" writes one if there isn't a cached one — only the cron does
-     * this. "cached" reads without ever calling the model, which is what every
-     * page request uses. "off" skips it entirely.
+     * "generate" writes one if there isn't a cached one — the cron and the
+     * period toggle. "regenerate" ignores the cache and rewrites, which is what
+     * the explicit button does: pressing "write it now" and being handed
+     * yesterday's copy is not what the words say. "cached" reads without ever
+     * calling the model, which is what every page render uses. "off" skips it.
      */
-    narrative?: "generate" | "cached" | "off";
+    narrative?: "generate" | "regenerate" | "cached" | "off";
     period?: PeriodKind;
   } = {},
 ): Promise<WeeklyRecap> {
@@ -176,11 +178,14 @@ export async function buildWeeklyRecap(
   let narrativeError: string | null = null;
 
   if (narrativeMode !== "off" && entries.length) {
-    const cached = await prisma.event.findFirst({
-      where: { action: ACTIONS.recapNarrative, target: cacheKey },
-      select: { label: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const cached =
+      narrativeMode === "regenerate"
+        ? null
+        : await prisma.event.findFirst({
+            where: { action: ACTIONS.recapNarrative, target: cacheKey },
+            select: { label: true },
+            orderBy: { createdAt: "desc" },
+          });
 
     if (cached?.label) {
       narrative = cached.label;
@@ -209,6 +214,7 @@ export async function buildWeeklyRecap(
           persona: e.persona,
         })),
         entries.length,
+        week.kind === "month" ? `${week.label} (this month so far)` : `the week of ${week.label}`,
       );
       narrative = summary.text;
       narrativeError = summary.error;

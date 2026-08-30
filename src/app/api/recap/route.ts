@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
-  const recap = await buildWeeklyRecap(new Date(), { narrative: "generate", period });
+  const recap = await buildWeeklyRecap(new Date(), { narrative: "regenerate", period });
 
   return NextResponse.json({
     narrative: recap.narrative,
