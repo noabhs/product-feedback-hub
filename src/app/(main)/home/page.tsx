@@ -5,6 +5,7 @@ import { ArrowRight, MessageSquare, Users, FileQuestion, Sparkles, Building2 } f
 import { SectionHeading, KpiCard, MeterCard, ChartCard, BarRow } from "@/components/home/cards";
 import { WeeklyRecapCard } from "@/components/home/WeeklyRecapCard";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
+import { recapMarkdown } from "@/lib/slack";
 import { prisma } from "@/lib/prisma";
 import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
 import { shortName } from "@/lib/people";
@@ -122,6 +123,7 @@ export default async function HomePage() {
         <WeeklyRecapCard
           recap={{
             weekLabel: recap.week.label,
+            kind: recap.week.kind,
             entries: recap.entries,
             entriesPrev: recap.entriesPrev,
             clients: recap.clients,
@@ -131,6 +133,7 @@ export default async function HomePage() {
             asks: recap.asks,
             narrative: recap.narrative,
             picks: recap.picks,
+            markdown: recapMarkdown(recap),
           }}
         />
 

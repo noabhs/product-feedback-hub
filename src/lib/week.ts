@@ -76,6 +76,8 @@ function zonedParts(at: Date, timeZone: string) {
   };
 }
 
+export type PeriodKind = "week" | "month";
+
 export interface WeekWindow {
   /** Inclusive start: Sunday 00:00 Israel, as a UTC instant. */
   start: Date;
@@ -83,8 +85,9 @@ export interface WeekWindow {
   end: Date;
   /** "Aug 10–16" — the range a reader recognises. */
   label: string;
-  /** "2026-08-10", the idempotency key for "did we already post this week?". */
+  /** "2026-08-10", the idempotency key for "did we already post this?". */
   key: string;
+  kind: PeriodKind;
 }
 
 /**
@@ -109,7 +112,30 @@ function weekStartingOn({ year, month, day }: { year: number; month: number; day
   const start = zonedMidnight(year, month, day, RECAP_TIMEZONE);
   const next = addDays(year, month, day, 7);
   const end = zonedMidnight(next.year, next.month, next.day, RECAP_TIMEZONE);
-  return { start, end, label: rangeLabel(start, end), key: dateKey(start) };
+  return { start, end, label: rangeLabel(start, end), key: dateKey(start), kind: "week" };
+}
+
+/**
+ * The calendar month containing `now`, ending at `now` when the month is still
+ * running — so "August" on the 30th means the 1st through the 30th, not a month
+ * with two empty days tacked on the end.
+ */
+export function monthToDate(now: Date = new Date()): WeekWindow {
+  const { year, month } = zonedParts(now, RECAP_TIMEZONE);
+  const start = zonedMidnight(year, month, 1, RECAP_TIMEZONE);
+  const nextMonth = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+  const monthEnd = zonedMidnight(nextMonth.year, nextMonth.month, 1, RECAP_TIMEZONE);
+  const end = now < monthEnd ? now : monthEnd;
+  return { start, end, label: rangeLabel(start, end), key: `${year}-${String(month).padStart(2, "0")}`, kind: "month" };
+}
+
+/** The month before a period's start, whole — the comparison for a month recap. */
+export function previousMonth(period: WeekWindow): WeekWindow {
+  const { year, month } = zonedParts(period.start, RECAP_TIMEZONE);
+  const prev = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+  const start = zonedMidnight(prev.year, prev.month, 1, RECAP_TIMEZONE);
+  const end = zonedMidnight(year, month, 1, RECAP_TIMEZONE);
+  return { start, end, label: rangeLabel(start, end), key: `${prev.year}-${String(prev.month).padStart(2, "0")}`, kind: "month" };
 }
 
 function dateKey(d: Date): string {
@@ -119,7 +145,14 @@ function dateKey(d: Date): string {
 
 /** "Aug 10–16", or "Aug 30 – Sep 5" when the week straddles a month. */
 function rangeLabel(start: Date, endExclusive: Date): string {
-  const last = new Date(endExclusive.getTime() - 86_400_000);
+  // Step back a day to name the last day *inside* the range. For a partial month
+  // the end is "now" rather than a midnight boundary, so step back to that day
+  // only when the end actually sits on midnight.
+  const endParts = zonedParts(endExclusive, RECAP_TIMEZONE);
+  const onBoundary =
+    zonedMidnight(endParts.year, endParts.month, endParts.day, RECAP_TIMEZONE).getTime() ===
+    endExclusive.getTime();
+  const last = onBoundary ? new Date(endExclusive.getTime() - 86_400_000) : endExclusive;
   const opts = { timeZone: RECAP_TIMEZONE, month: "short", day: "numeric" } as const;
   const from = new Intl.DateTimeFormat("en-US", opts).format(start);
   const sameMonth = zonedParts(start, RECAP_TIMEZONE).month === zonedParts(last, RECAP_TIMEZONE).month;

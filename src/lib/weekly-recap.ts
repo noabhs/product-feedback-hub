@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { areaLabel } from "@/lib/labels";
 import { summarizeWeek } from "@/lib/claude";
-import { lastCompleteWeek, previousWeek, type WeekWindow } from "@/lib/week";
+import {
+  lastCompleteWeek, previousWeek, monthToDate, previousMonth,
+  type WeekWindow, type PeriodKind,
+} from "@/lib/week";
 
 export interface RecapPick {
   id: string;
@@ -11,6 +14,7 @@ export interface RecapPick {
 }
 
 export interface WeeklyRecap {
+  /** The period the numbers cover — a week, or a month to date. */
   week: WeekWindow;
   previousLabel: string;
   entries: number;
@@ -31,14 +35,20 @@ export interface WeeklyRecap {
   picks: RecapPick[];
 }
 
-/** Counted by createdAt, not the feedback's own date: this is a recap of what
- *  landed in the hub this week, not of when the conversations happened. */
+/**
+ * Counted by createdAt, not the feedback's own date: this is a recap of what
+ * landed in the hub during the period, not of when the conversations happened.
+ *
+ * `period` is "week" — the last complete Sunday–Saturday — or "month", the
+ * calendar month so far. The month view exists because a weekly cadence started
+ * cold reports on one week and ignores everything already in the hub.
+ */
 export async function buildWeeklyRecap(
   now: Date = new Date(),
-  { withNarrative = true }: { withNarrative?: boolean } = {},
+  { withNarrative = true, period = "week" }: { withNarrative?: boolean; period?: PeriodKind } = {},
 ): Promise<WeeklyRecap> {
-  const week = lastCompleteWeek(now);
-  const prev = previousWeek(week);
+  const week = period === "month" ? monthToDate(now) : lastCompleteWeek(now);
+  const prev = period === "month" ? previousMonth(week) : previousWeek(week);
   const inWeek = { gte: week.start, lt: week.end };
 
   const [entries, entriesPrev, questions, asks] = await Promise.all([
@@ -78,13 +88,13 @@ export async function buildWeeklyRecap(
   const topAreas = [...areaCounts.entries()]
     .map(([area, count]) => ({ area, label: areaLabel(area), count }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
-    .slice(0, 3);
+    .slice(0, period === "month" ? 5 : 3);
 
   const picks: RecapPick[] = [...entries]
     // A comment means somebody engaged with it, which is the closest thing to a
     // signal of importance the data actually holds.
     .sort((a, b) => b._count.comments - a._count.comments)
-    .slice(0, 3)
+    .slice(0, period === "month" ? 5 : 3)
     .map((e) => ({ id: e.id, oneLiner: e.oneLiner, client: e.client, areas: e.productAreas.map(areaLabel) }));
 
   const narrative =

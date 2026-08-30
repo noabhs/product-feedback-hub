@@ -3,14 +3,16 @@ import type { WeeklyRecap } from "@/lib/weekly-recap";
 const HUB_URL = "https://product-feedback-hub-topaz.vercel.app";
 
 /** "12 entries (5 the week before)" — with the direction called out only when
- *  there is one, so a flat week doesn't get a misleading arrow. */
-function trend(now: number, before: number): string {
+ *  there is one, so a flat period doesn't get a misleading arrow. The period
+ *  noun is passed in: a month recap comparing itself to "the week before" was
+ *  wrong in a way a reader would trust. */
+function trend(now: number, before: number, period: "week" | "month"): string {
   const noun = now === 1 ? "entry" : "entries";
   if (before === 0) return `*${now}* new feedback ${noun}`;
-  if (now === before) return `*${now}* new feedback ${noun} — same as the week before`;
+  if (now === before) return `*${now}* new feedback ${noun} — same as the ${period} before`;
   const delta = now - before;
   const arrow = delta > 0 ? "▲" : "▼";
-  return `*${now}* new feedback ${noun} ${arrow} ${Math.abs(delta)} vs the week before (${before})`;
+  return `*${now}* new feedback ${noun} ${arrow} ${Math.abs(delta)} vs the ${period} before (${before})`;
 }
 
 function list(names: string[], max = 4): string {
@@ -26,7 +28,11 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
   const blocks: unknown[] = [
     {
       type: "header",
-      text: { type: "plain_text", text: `📊  Week of ${recap.week.label}`, emoji: true },
+      text: {
+        type: "plain_text",
+        text: `📊  ${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label}`,
+        emoji: true,
+      },
     },
   ];
 
@@ -36,13 +42,13 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
       text: {
         type: "mrkdwn",
         text:
-          `No new feedback landed in the hub this week` +
+          `No new feedback landed in the hub` +
           (recap.entriesPrev ? ` (${recap.entriesPrev} the week before).` : ".") +
           (recap.asks ? ` The team did ask it *${recap.asks}* question${recap.asks === 1 ? "" : "s"}.` : ""),
       },
     });
   } else {
-    const numbers = [trend(recap.entries, recap.entriesPrev)];
+    const numbers = [trend(recap.entries, recap.entriesPrev, recap.week.kind)];
 
     if (recap.clients.length) {
       numbers.push(
@@ -93,6 +99,49 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
   });
 
   return blocks;
+}
+
+/**
+ * The same recap as Slack-flavoured markdown in one string.
+ *
+ * Two jobs: the notification preview Slack shows before rendering blocks, and
+ * the clipboard — which is what makes this usable while the webhook is still
+ * waiting on an admin's approval. Paste it into a channel and it renders.
+ */
+export function recapMarkdown(recap: WeeklyRecap): string {
+  const lines: string[] = [`*📊 ${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label}*`, ""];
+
+  if (recap.entries === 0) {
+    lines.push(
+      `No new feedback landed in the hub${recap.entriesPrev ? ` (${recap.entriesPrev} in the previous period)` : ""}.`,
+    );
+  } else {
+    lines.push(trend(recap.entries, recap.entriesPrev, recap.week.kind));
+    if (recap.clients.length) {
+      lines.push(`From *${recap.clients.length}* client${recap.clients.length === 1 ? "" : "s"}: ${list(recap.clients, 6)}`);
+    }
+    if (recap.newClients.length) lines.push(`:tada: First feedback ever from *${list(recap.newClients, 6)}*`);
+    if (recap.topAreas.length) {
+      lines.push(`Areas: ${recap.topAreas.map((a) => `${a.label} (${a.count})`).join(" · ")}`);
+    }
+    const aside: string[] = [];
+    if (recap.questions) aside.push(`*${recap.questions}* discovery question${recap.questions === 1 ? "" : "s"} added`);
+    if (recap.asks) aside.push(`*${recap.asks}* question${recap.asks === 1 ? "" : "s"} asked of the hub`);
+    if (aside.length) lines.push(aside.join("  ·  "));
+
+    if (recap.narrative) {
+      lines.push("", "*What stood out*", recap.narrative);
+    } else if (recap.picks.length) {
+      lines.push("", "*Highlights*");
+      for (const p of recap.picks) {
+        lines.push(`• <${HUB_URL}/insights?open=${p.id}|${p.oneLiner}>`);
+        lines.push(`   _${p.client ?? "No client"}${p.areas.length ? ` · ${p.areas.join(", ")}` : ""}_`);
+      }
+    }
+  }
+
+  lines.push("", `<${HUB_URL}/home|Open the Insights Hub>`);
+  return lines.join("\n");
 }
 
 export interface SlackResult {

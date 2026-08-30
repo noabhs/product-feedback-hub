@@ -27,8 +27,8 @@ async function alreadyPosted(weekKey: string): Promise<boolean> {
   return Boolean(seen);
 }
 
-async function send(force: boolean) {
-  const recap = await buildWeeklyRecap();
+async function send(force: boolean, period: "week" | "month" = "week") {
+  const recap = await buildWeeklyRecap(new Date(), { period });
 
   if (!force && (await alreadyPosted(recap.week.key))) {
     return NextResponse.json({ skipped: "already posted", week: recap.week.key });
@@ -36,7 +36,7 @@ async function send(force: boolean) {
 
   const result = await postToSlack(
     weeklyRecapBlocks(recap),
-    `Week of ${recap.week.label}: ${recap.entries} new feedback entries`,
+    `${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label}: ${recap.entries} new feedback entries`,
   );
 
   if (!result.ok) {
@@ -46,7 +46,7 @@ async function send(force: boolean) {
 
   void logEvent(ACTIONS.recapPosted, {
     target: recap.week.key,
-    label: `Week of ${recap.week.label} — ${recap.entries} entries`,
+    label: `${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label} — ${recap.entries} entries`,
   });
 
   return NextResponse.json({
@@ -68,10 +68,11 @@ export async function GET(req: NextRequest) {
   return send(false);
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return send(true);
+  const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
+  return send(true, period);
 }
