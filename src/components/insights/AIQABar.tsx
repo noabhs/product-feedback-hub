@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Sparkles, ChevronRight, Copy, Check } from "lucide-react";
+import { Sparkles, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { RateAnswer } from "@/components/ask/RateAnswer";
+import { AnswerBody } from "@/components/ask/AnswerBody";
+import { plainAnswer } from "@/lib/answer-format";
 
 interface Source {
   id: string;
@@ -65,7 +67,7 @@ export function AIQABar() {
    * match and includes every source, not just the five shown here.
    */
   async function copyAnswer() {
-    const lines = [asked, "", answer];
+    const lines = [asked, "", plainAnswer(answer)];
     if (sources.length > 0) {
       lines.push("", "Sources:");
       sources.forEach((s, i) =>
@@ -106,8 +108,7 @@ export function AIQABar() {
 
       {answer && (
         <div className="mt-4">
-          <div className="flex items-start justify-between gap-4 mb-3">
-            <p className="text-[14px] text-white/90 leading-relaxed">{answer}</p>
+          <div className="flex justify-end mb-2">
             <button
               onClick={copyAnswer}
               title="Copy the answer and its sources"
@@ -126,9 +127,10 @@ export function AIQABar() {
               )}
             </button>
           </div>
-          {copyError && <p className="text-[12px] text-amber-200 mb-3">{copyError}</p>}
+          <AnswerBody answer={answer} sources={sources} tone="dark" />
+          {copyError && <p className="text-[12px] text-amber-200 mt-3">{copyError}</p>}
           {askId && (
-            <div className="flex items-start gap-3 mb-3">
+            <div className="flex items-start gap-3 mt-4 mb-3">
               {/* Keyed so a new answer starts unrated rather than inheriting the
                   previous verdict. */}
               <RateAnswer key={askId} askId={askId} rating={null} note={null} tone="dark" />
@@ -145,10 +147,13 @@ export function AIQABar() {
           {sources.length > 0 && (
             <div className="border-t border-white/10 pt-3">
               <p className="text-[11px] text-white/40 uppercase tracking-wide mb-2">Sources</p>
+              {/* Numbered to match the [n] citations in the answer, and all of
+                  them: showing the first five left a cited [8] with nowhere to
+                  go. */}
               <div className="flex flex-col gap-1">
-                {sources.slice(0, 5).map((s) => (
+                {sources.map((s, i) => (
                   <Link key={s.id} href={`/insights/${s.id}`} className="flex items-center gap-1.5 text-[12px] text-teal hover:text-mint-200 transition-colors">
-                    <ChevronRight className="w-3 h-3 shrink-0" />
+                    <span className="shrink-0 w-5 text-right text-white/40 tabular-nums">{i + 1}</span>
                     <span className="truncate">{s.client ? `${s.client} — ` : ""}{s.oneLiner}</span>
                   </Link>
                 ))}

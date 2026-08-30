@@ -47,7 +47,7 @@ function extractText(content: Anthropic.ContentBlock[]): string {
  * prompt that earned it, and the ratings stop being usable as an eval set.
  */
 export const QA_MODEL = "claude-sonnet-5";
-export const QA_PROMPT_VERSION = "qa-3";
+export const QA_PROMPT_VERSION = "qa-4";
 
 export interface QaInsight {
   oneLiner: string;
@@ -74,7 +74,16 @@ Answer from whichever context fits the question:
 Rules that hold either way:
 - Never infer a value that isn't in the table. A blank cell means the accounts report didn't cover that client; it means unknown, not zero and not average.
 - The table is a snapshot, not live. For anything time-sensitive, prefer the "Days to renewal" column over doing date arithmetic yourself.
-- Be concise. Two to five sentences for a question of judgement; for a counting question, lead with the number.`;
+- Be concise. Cut the preamble: no "Based on the feedback entries", no restating the question. Open with the answer itself, and for a counting question lead with the number.
+
+Shape of the answer. It is read in a narrow box on a dashboard, so it has to be scannable at a glance:
+- Write Markdown. Separate every block with a blank line.
+- Lead with one or two sentences that answer the question outright. That paragraph stands alone.
+- When the answer has more than one theme, put each on its own line as a Markdown bullet ("- "), opening with a short bold label, then an em dash, then at most two sentences. Never number themes inside a paragraph — one theme per line, always.
+- Three to five bullets at most. Merge or drop the rest rather than writing a sixth.
+- Bold only the labels and the figures that carry the point. No headings, no tables, no nested bullets, no bold sentences.
+- If the account table changes what to do first, close with a single line starting "**So what:**".
+- Put each [n] citation at the end of the clause it supports, not in a pile at the end.`;
 
 /**
  * Everything sent to the model for one question, assembled without calling it.
