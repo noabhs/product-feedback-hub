@@ -3,6 +3,8 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { ArrowRight, MessageSquare, Users, FileQuestion, Sparkles, Building2 } from "lucide-react";
 import { SectionHeading, KpiCard, MeterCard, ChartCard, BarRow } from "@/components/home/cards";
+import { WeeklyRecapCard } from "@/components/home/WeeklyRecapCard";
+import { buildWeeklyRecap } from "@/lib/weekly-recap";
 import { prisma } from "@/lib/prisma";
 import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
 import { shortName } from "@/lib/people";
@@ -30,6 +32,7 @@ export default async function HomePage() {
     feedbackByClient,
     recentRaw,
     accounts,
+    recap,
   ] = await Promise.all([
     prisma.insight.count(),
     prisma.discoveryQuestion.count(),
@@ -54,6 +57,10 @@ export default async function HomePage() {
       select: { id: true, oneLiner: true, productAreas: true, client: true, createdAt: true, createdBy: true },
     }),
     prisma.account.findMany({ select: { name: true, health: true, arr: true } }),
+    // withNarrative: false — a model call on every home page load would be slow
+    // and paid for repeatedly. The AI read is written once, when the recap is
+    // posted; the card shows the rule-picked entries instead.
+    buildWeeklyRecap(new Date(), { withNarrative: false }),
   ]);
 
   const entriesByClient = new Map(feedbackByClient.map((r) => [r.client as string, r._count.id]));
@@ -110,6 +117,22 @@ export default async function HomePage() {
             across clients, sharpen discovery, and turn scattered signals into product decisions.
           </p>
         </div>
+
+        {/* ── Last week ──────────────────────────────────────────────────── */}
+        <WeeklyRecapCard
+          recap={{
+            weekLabel: recap.week.label,
+            entries: recap.entries,
+            entriesPrev: recap.entriesPrev,
+            clients: recap.clients,
+            newClients: recap.newClients,
+            topAreas: recap.topAreas,
+            questions: recap.questions,
+            asks: recap.asks,
+            narrative: recap.narrative,
+            picks: recap.picks,
+          }}
+        />
 
         {/* ── Overview ───────────────────────────────────────────────────── */}
         <SectionHeading title="Overview" />
