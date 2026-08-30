@@ -9,7 +9,8 @@ import { recapMarkdown } from "@/lib/slack";
 import { prisma } from "@/lib/prisma";
 import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
 import { shortName } from "@/lib/people";
-import { ADVISORS, HEALTH_ORDER, REPORT_AS_OF } from "@/lib/accounts";
+import { ADVISORS, HEALTH_ORDER, REPORT_AS_OF, matchAccount } from "@/lib/accounts";
+import { loadAccounts } from "@/lib/accounts-db";
 import { fmtDay } from "@/lib/format";
 
 /** Health is a traffic light, so it gets traffic-light colours rather than brand ones. */
@@ -34,6 +35,7 @@ export default async function HomePage() {
     recentRaw,
     accounts,
     recap,
+    matchable,
   ] = await Promise.all([
     prisma.insight.count(),
     prisma.discoveryQuestion.count(),
@@ -62,9 +64,17 @@ export default async function HomePage() {
     // and paid for repeatedly. The AI read is written once, when the recap is
     // posted; the card shows the rule-picked entries instead.
     buildWeeklyRecap(new Date(), { withNarrative: false }),
+    loadAccounts(),
   ]);
 
-  const entriesByClient = new Map(feedbackByClient.map((r) => [r.client as string, r._count.id]));
+  // Keyed by the account each stored value resolves to, not by the raw string:
+  // entries filed as "NOMS — Dr. Bower" belong to NOMS, and keying on the raw
+  // value left those accounts reading as never heard from.
+  const entriesByClient = new Map<string, number>();
+  for (const row of feedbackByClient) {
+    const name = matchAccount(row.client, matchable);
+    if (name) entriesByClient.set(name, (entriesByClient.get(name) ?? 0) + row._count.id);
+  }
 
   // Advisors is the internal advisory panel, not a client — it would otherwise
   // inflate every coverage figure below with feedback from our own people.
@@ -135,6 +145,7 @@ export default async function HomePage() {
             themes: recap.themes,
             picks: recap.picks,
             mostClientsAreNew: recap.mostClientsAreNew,
+            unrecognisedClients: recap.unrecognisedClients,
             markdown: recapMarkdown(recap),
           }}
         />

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Send, Check, TrendingUp, TrendingDown, Copy } from "lucide-react";
+import { Send, Check, Copy } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
 
 export interface RecapView {
@@ -18,17 +18,9 @@ export interface RecapView {
   themes: { label: string; clients: string[]; entries: number; example: RecapPick }[];
   picks: RecapPick[];
   mostClientsAreNew: boolean;
+  unrecognisedClients?: number;
   /** Slack-flavoured text, for the clipboard. Fetched with the period. */
   markdown?: string;
-}
-
-function Figure({ value, label }: { value: number | string; label: string }) {
-  return (
-    <div>
-      <p className="text-[22px] font-extrabold text-brand-primary leading-none tabular-nums">{value}</p>
-      <p className="text-[11px] text-brand-primary opacity-45 mt-1">{label}</p>
-    </div>
-  );
 }
 
 /**
@@ -44,8 +36,6 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
   const [sent, setSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const delta = recap.entries - recap.entriesPrev;
 
   async function pick(next: "week" | "month") {
     if (next === period) return;
@@ -98,9 +88,9 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             {loading && <span className="ml-2 text-[12px] font-normal opacity-40">loading…</span>}
           </h2>
           <p className="text-[11px] text-brand-primary opacity-45 mt-0.5">
-            {period === "month"
-              ? "Everything logged this month so far"
-              : "The recap posted to Slack on Sunday"}
+            {recap.entries} {recap.entries === 1 ? "entry" : "entries"}
+            {period === "month" ? " logged this month so far" : " logged — this is the Sunday Slack post"}
+            {recap.clients.length > 0 && ` · ${recap.clients.length} clients`}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -152,41 +142,6 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap items-start gap-x-10 gap-y-4 pb-4 border-b border-[rgba(50,43,95,0.06)]">
-            <div>
-              <div className="flex items-baseline gap-1.5">
-                <p className="text-[22px] font-extrabold text-brand-primary leading-none tabular-nums">
-                  {recap.entries}
-                </p>
-                {delta !== 0 && (
-                  <span
-                    className={`inline-flex items-center gap-0.5 text-[11px] font-medium ${
-                      delta > 0 ? "text-positive-strong" : "text-negative-strong"
-                    }`}
-                    title={`${recap.entriesPrev} the week before`}
-                  >
-                    {delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {Math.abs(delta)}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-brand-primary opacity-45 mt-1">
-                new entries <span className="opacity-70">· {recap.entriesPrev} prior {period}</span>
-              </p>
-            </div>
-            <Figure value={recap.clients.length} label="clients heard from" />
-            <Figure value={recap.questions} label="questions added" />
-            <Figure value={recap.asks} label="asked of the hub" />
-            {recap.topAreas.length > 0 && (
-              <div>
-                <p className="text-[13px] text-brand-primary leading-snug">
-                  {recap.topAreas.map((a) => `${a.label} (${a.count})`).join(" · ")}
-                </p>
-                <p className="text-[11px] text-brand-primary opacity-45 mt-1">top areas</p>
-              </div>
-            )}
-          </div>
-
           {recap.newClients.length > 0 && !recap.mostClientsAreNew && (
             <p className="text-[12px] text-brand-primary mt-3">
               🎉 First feedback ever from{" "}

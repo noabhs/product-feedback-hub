@@ -22,8 +22,14 @@ export interface WeeklyRecap {
   previousLabel: string;
   entries: number;
   entriesPrev: number;
-  /** Clients heard from during the week. */
+  /**
+   * Accounts heard from. Only values that resolve to a real account — an entry
+   * filed against "All providers (Sep 25)" is not a client, and counting it as
+   * one made this disagree with the same figure on the rest of the page.
+   */
   clients: string[];
+  /** Entries whose client matches no account, so the gap is visible not hidden. */
+  unrecognisedClients: number;
   /** Of those, the ones with no feedback on file before this week. */
   newClients: string[];
   topAreas: { area: string; label: string; count: number }[];
@@ -84,9 +90,11 @@ export async function buildWeeklyRecap(
   // The stored client may still be raw ("NOMS — Dr. Bower"), so it is resolved
   // here for counting and grouping. Without this a single account shows up as
   // half a dozen "clients" and every theme looks corroborated when it isn't.
-  const canonical = (raw: string | null) => (raw ? matchAccount(raw, accounts) ?? raw : null);
+  // Null when the value matches no account. Callers decide whether that counts.
+  const canonical = (raw: string | null) => (raw ? matchAccount(raw, accounts) : null);
 
   const clients = [...new Set(entries.map((e) => canonical(e.client)).filter((c): c is string => !!c))].sort();
+  const unrecognisedClients = entries.filter((e) => e.client && !canonical(e.client)).length;
 
   // "First time" means nothing on file before this week — the interesting case,
   // and worth a name-check in the post.
@@ -160,5 +168,6 @@ export async function buildWeeklyRecap(
     themes,
     picks,
     mostClientsAreNew,
+    unrecognisedClients,
   };
 }

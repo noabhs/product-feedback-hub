@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     themes: recap.themes,
     picks: recap.picks,
     mostClientsAreNew: recap.mostClientsAreNew,
+    unrecognisedClients: recap.unrecognisedClients,
     markdown: recapMarkdown(recap),
   });
 }
