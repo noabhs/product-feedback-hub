@@ -173,7 +173,7 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-[15px] font-bold text-brand-primary">
-            {period === "month" ? "Month" : "Week"} of {recap.weekLabel}
+            {period === "month" ? "Monthly" : "Weekly"} brief · {recap.weekLabel}
             {(loading || writing) && (
               <span className="ml-2 text-[12px] font-normal opacity-40">
                 {writing ? "writing the brief…" : "loading…"}

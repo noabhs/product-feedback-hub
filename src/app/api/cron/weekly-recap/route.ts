@@ -39,7 +39,7 @@ async function send(force: boolean, period: "week" | "month" = "week") {
 
   const result = await postToSlack(
     weeklyRecapBlocks(recap),
-    `${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label}: ${recap.entries} new feedback entries`,
+    `${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}: ${recap.entries} new feedback entries`,
   );
 
   if (!result.ok) {
@@ -73,7 +73,7 @@ async function send(force: boolean, period: "week" | "month" = "week") {
 
   void logEvent(ACTIONS.recapPosted, {
     target: recap.week.key,
-    label: `${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label} — ${recap.entries} entries`,
+    label: `${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label} — ${recap.entries} entries`,
   });
 
   return NextResponse.json({

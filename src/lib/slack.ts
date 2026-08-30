@@ -30,7 +30,7 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
       type: "header",
       text: {
         type: "plain_text",
-        text: `📊  ${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label}`,
+        text: `📊  ${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}`,
         emoji: true,
       },
     },
@@ -125,7 +125,10 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
  * waiting on an admin's approval. Paste it into a channel and it renders.
  */
 export function recapMarkdown(recap: WeeklyRecap): string {
-  const lines: string[] = [`*📊 ${recap.week.kind === "month" ? "Month" : "Week"} of ${recap.week.label}*`, ""];
+  const lines: string[] = [
+    `*📊 ${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}*`,
+    "",
+  ];
 
   if (recap.entries === 0) {
     lines.push(
