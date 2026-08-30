@@ -73,12 +73,17 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
     }
   }
 
-  /** Generation, on demand and not bundled with the Slack post. */
-  async function writeNow() {
+  /**
+   * Generation, on demand and not bundled with the Slack post. Takes the period
+   * explicitly because the toggle calls it before its own state has settled.
+   */
+  async function writeNow(forPeriod: "week" | "month" = period) {
     setWriting(true);
     setDiagnosis(null);
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 90_000);
     try {
-      const res = await fetch(`/api/recap?period=${period}`, { method: "POST" });
+      const res = await fetch(`/api/recap?period=${forPeriod}`, { method: "POST", signal: abort.signal });
       const d = await res.json().catch(() => null);
       if (!res.ok || !d) throw new Error(d?.error ?? `Failed with ${res.status}`);
       if (d.narrative) {
@@ -87,8 +92,13 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
         setDiagnosis(d.narrativeError ?? "Claude returned no text for this period.");
       }
     } catch (e) {
-      setDiagnosis(`Couldn't write the brief: ${(e as Error).message}`);
+      setDiagnosis(
+        (e as Error).name === "AbortError"
+          ? "The brief took over 90 seconds and was cancelled. Press “Write it now” to retry."
+          : `Couldn't write the brief: ${(e as Error).message}`,
+      );
     } finally {
+      clearTimeout(timer);
       setWriting(false);
     }
   }
@@ -99,11 +109,18 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
     setSent(false);
     setCopied(false);
     setError(null);
+    setDiagnosis(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/recap?period=${next}&narrative=1`);
+      const res = await fetch(`/api/recap?period=${next}`);
       if (!res.ok) throw new Error(`Couldn't load the ${next}`);
-      setRecap(await res.json());
+      const data = await res.json();
+      setRecap(data);
+      // Switching period is an explicit request to see that period, so write
+      // the brief if it isn't written. A page load still doesn't: opening the
+      // home page isn't asking for anything, and a model call nobody asked for
+      // is what made this hang on a spinner for a day.
+      if (!data.narrative) await writeNow(next);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -157,7 +174,11 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
         <div>
           <h2 className="text-[15px] font-bold text-brand-primary">
             {period === "month" ? "Month" : "Week"} of {recap.weekLabel}
-            {loading && <span className="ml-2 text-[12px] font-normal opacity-40">loading…</span>}
+            {(loading || writing) && (
+              <span className="ml-2 text-[12px] font-normal opacity-40">
+                {writing ? "writing the brief…" : "loading…"}
+              </span>
+            )}
           </h2>
           <p className="text-[11px] text-brand-primary opacity-45 mt-0.5">
             {recap.entries} {recap.entries === 1 ? "entry" : "entries"}
@@ -238,7 +259,7 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
                   <span className="text-[11px] text-brand-primary opacity-35">{recap.narrativeError}</span>
                 )}
                 <button
-                  onClick={writeNow}
+                  onClick={() => writeNow()}
                   disabled={writing}
                   className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-secondary-600 hover:underline disabled:opacity-40"
                 >
