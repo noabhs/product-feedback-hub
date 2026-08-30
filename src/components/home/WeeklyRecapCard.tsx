@@ -44,19 +44,29 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
   useEffect(() => {
     if (recap.narrative || recap.narrativeError) return;
     let cancelled = false;
+    // Bounded: a hung or timed-out request used to leave "Reading the week…" on
+    // screen indefinitely, which reads as broken rather than as unavailable.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 45_000);
+
     (async () => {
       setWriting(true);
       try {
-        const res = await fetch(`/api/recap?period=${period}&narrative=1`);
+        const res = await fetch(`/api/recap?period=${period}&narrative=1`, { signal: abort.signal });
         const data = await res.json();
-        if (!cancelled && res.ok) setRecap(data);
+        if (cancelled) return;
+        if (res.ok) setRecap(data);
+        else setRecap((r) => ({ ...r, narrativeError: data.error ?? `The brief request failed (${res.status}).` }));
       } catch {
-        /* the themes below still stand in */
+        if (!cancelled) {
+          setRecap((r) => ({ ...r, narrativeError: "The brief took too long and was cancelled." }));
+        }
       } finally {
+        clearTimeout(timer);
         if (!cancelled) setWriting(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timer); abort.abort(); };
   }, [period, recap.narrative, recap.narrativeError]);
 
   async function pick(next: "week" | "month") {

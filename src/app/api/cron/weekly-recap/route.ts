@@ -5,6 +5,9 @@ import { logEvent, ACTIONS } from "@/lib/events";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
 import { weeklyRecapBlocks, postToSlack } from "@/lib/slack";
 
+/** The brief is a model call; the default function limit is too short for it. */
+export const maxDuration = 60;
+
 /**
  * The Sunday recap.
  *

@@ -67,24 +67,33 @@ export async function buildWeeklyRecap(
   const prev = period === "month" ? previousMonth(week) : previousWeek(week);
   const inWeek = { gte: week.start, lt: week.end };
 
-  const [entries, entriesPrev, questions, asks, accounts] = await Promise.all([
+  const [entries, entriesPrev, questions, asks, accounts, seenBefore] = await Promise.all([
     prisma.insight.findMany({
       where: { createdAt: inWeek },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
         oneLiner: true,
-        content: true,
         client: true,
         productAreas: true,
         persona: true,
-        _count: { select: { comments: true } },
+        // Bodies are only read by the model. Pulling them for a themes-only
+        // request meant shipping a megabyte of text nothing looked at, and the
+        // dropped per-row comments subquery was a correlated count over every
+        // row in the period.
+        content: withNarrative,
       },
     }),
     prisma.insight.count({ where: { createdAt: { gte: prev.start, lt: prev.end } } }),
     prisma.discoveryQuestion.count({ where: { createdAt: inWeek } }),
     prisma.askLog.count({ where: { createdAt: inWeek } }),
     loadAccounts(),
+    // One query for "which clients did we already know about", instead of a
+    // count per client — that was 55 round trips on the current data.
+    prisma.insight.groupBy({
+      by: ["client"],
+      where: { client: { not: null }, createdAt: { lt: week.start } },
+    }),
   ]);
 
   // The stored client may still be raw ("NOMS — Dr. Bower"), so it is resolved
@@ -98,12 +107,10 @@ export async function buildWeeklyRecap(
 
   // "First time" means nothing on file before this week — the interesting case,
   // and worth a name-check in the post.
-  const priorCounts = await Promise.all(
-    clients.map((client) =>
-      prisma.insight.count({ where: { client, createdAt: { lt: week.start } } }),
-    ),
+  const known = new Set(
+    seenBefore.map((r) => canonical(r.client)).filter((c): c is string => !!c),
   );
-  const newClients = clients.filter((_, i) => priorCounts[i] === 0);
+  const newClients = clients.filter((c) => !known.has(c));
   // On the first import everything is "first ever", which is true and useless.
   const mostClientsAreNew = clients.length > 6 && newClients.length > clients.length * 0.6;
 
@@ -116,10 +123,10 @@ export async function buildWeeklyRecap(
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
     .slice(0, period === "month" ? 5 : 3);
 
-  const picks: RecapPick[] = [...entries]
-    // A comment means somebody engaged with it, which is the closest thing to a
-    // signal of importance the data actually holds.
-    .sort((a, b) => b._count.comments - a._count.comments)
+  // Newest first, which they already are. This is the last-resort fallback —
+  // shown only when nothing was corroborated across clients — so it does not
+  // justify a comments count over every row.
+  const picks: RecapPick[] = entries
     .slice(0, period === "month" ? 5 : 3)
     .map((e) => ({ id: e.id, oneLiner: e.oneLiner, client: e.client, areas: e.productAreas.map(areaLabel) }));
 

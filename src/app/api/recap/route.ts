@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
 import { recapMarkdown } from "@/lib/slack";
 
+/** The brief is a model call; the default function limit is too short for it. */
+export const maxDuration = 60;
+
 /**
  * The recap for a period, for the home page. Session-guarded: this is hub data,
  * and the page it feeds is already behind sign-in.
