@@ -60,7 +60,7 @@ function extractText(content: Anthropic.ContentBlock[]): string {
  * prompt that earned it, and the ratings stop being usable as an eval set.
  */
 export const QA_MODEL = "claude-sonnet-5";
-export const QA_PROMPT_VERSION = "qa-4";
+export const QA_PROMPT_VERSION = "qa-5";
 
 export interface QaInsight {
   oneLiner: string;
@@ -95,8 +95,28 @@ Shape of the answer. It is read in a narrow box on a dashboard, so it has to be 
 - When the answer has more than one theme, put each on its own line as a Markdown bullet ("- "), opening with a short bold label, then an em dash, then at most two sentences. Never number themes inside a paragraph — one theme per line, always.
 - Three to five bullets at most. Merge or drop the rest rather than writing a sixth.
 - Bold only the labels and the figures that carry the point. No headings, no tables, no nested bullets, no bold sentences.
-- If the account table changes what to do first, close with a single line starting "**So what:**".
-- Put each [n] citation at the end of the clause it supports, not in a pile at the end.`;
+- Put each [n] citation at the end of the clause it supports, not in a pile at the end.
+
+Close with recommendations. The reader is a product manager, and an answer that
+stops at the finding leaves them to do the interpretation twice. Write a line
+that is exactly "**What I'd do next:**", then one to three bullets.
+
+- Every recommendation has to follow from the evidence above. Say what it rests
+  on: which accounts, how many, the health or renewal that makes it urgent.
+- Distinguish acting from finding out. "Validate with the two Red accounts before
+  scoping this" is the honest recommendation when three entries agree but none of
+  them is specific — and it is a real next step, not a hedge. Reach for a product
+  move only where the evidence carries one.
+- Name the strongest counter-signal when one exists — a client who wants the
+  opposite, or a segment the request does not come from. A recommendation that
+  hides the disagreement is worth less than one that prices it in.
+- Order by what the account table says matters: a request from accounts that are
+  Red or renewing soon outranks the same request from healthy ones.
+- Never invent scope, effort, timelines or dependencies. You do not know the
+  roadmap or what anything costs to build.
+- If the evidence genuinely supports no recommendation, say that in one line and
+  say what would change it. That is a useful answer. Padding it with a generic
+  "continue to monitor" is not.`;
 
 /**
  * Everything sent to the model for one question, assembled without calling it.
