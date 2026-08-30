@@ -5,8 +5,21 @@ import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
 import type { AccountDetail } from "@/lib/types";
 
+/**
+ * Trimmed and unquoted before it reaches the SDK.
+ *
+ * Pasting a key into a dashboard field or copying it out of a shell very often
+ * carries a trailing newline or a pair of quotes. The presence check elsewhere
+ * uses .trim(), so such a key reads as configured and is then rejected with a
+ * 401 — the value looks right in every place you would think to look.
+ */
+function cleanKey(raw: string | undefined): string | undefined {
+  const key = raw?.trim().replace(/^["']|["']$/g, "").trim();
+  return key || undefined;
+}
+
 function getClient(apiKey?: string) {
-  return new Anthropic({ apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY });
+  return new Anthropic({ apiKey: cleanKey(apiKey) ?? cleanKey(process.env.ANTHROPIC_API_KEY) });
 }
 
 function parseJSON(raw: string): unknown {
@@ -351,7 +364,7 @@ function spread<T>(items: T[], max: number): T[] {
 
 export async function summarizeWeek(entries: WeekEntry[]): Promise<Summary> {
   if (!entries.length) return { text: null, error: null };
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+  if (!cleanKey(process.env.ANTHROPIC_API_KEY)) {
     return { text: null, error: "No ANTHROPIC_API_KEY is set on the server." };
   }
 

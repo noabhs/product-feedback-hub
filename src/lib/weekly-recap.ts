@@ -148,10 +148,14 @@ export async function buildWeeklyRecap(
     })(),
   }));
 
-  // Cached per period *and* entry count, so a month still gaining entries gets
-  // rewritten while a settled week is written once. Stored on the event log
-  // rather than a new table — same reasoning as the already-posted check.
-  const cacheKey = `${week.kind}:${week.key}:${entries.length}`;
+  // A completed week never changes, so it is written once, ever. A month is
+  // still gaining entries, so it refreshes — but at most once a day rather than
+  // on every entry added, which bounds the spend at roughly one call a day
+  // instead of one per entry.
+  const cacheKey =
+    week.kind === "week"
+      ? `week:${week.key}`
+      : `month:${week.key}:${new Date().toISOString().slice(0, 10)}`;
   let narrative: string | null = null;
   let narrativeError: string | null = null;
 
