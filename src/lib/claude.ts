@@ -13,7 +13,7 @@ import type { AccountDetail } from "@/lib/types";
  * uses .trim(), so such a key reads as configured and is then rejected with a
  * 401 — the value looks right in every place you would think to look.
  */
-function cleanKey(raw: string | undefined): string | undefined {
+export function cleanKey(raw: string | undefined): string | undefined {
   const key = raw?.trim().replace(/^["']|["']$/g, "").trim();
   return key || undefined;
 }
