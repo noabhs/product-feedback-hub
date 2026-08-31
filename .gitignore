@@ -43,3 +43,6 @@ next-env.d.ts
 /src/generated/prisma
 navina.db
 prisma/seed-sources.ts
+
+# local feedback-extraction state (client feedback - keep out of git)
+.feedback-state/
