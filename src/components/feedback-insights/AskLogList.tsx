@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Search, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { RateAnswer, type Rating } from "@/components/ask/RateAnswer";
 import { AnswerBody } from "@/components/ask/AnswerBody";
 import { plainAnswer } from "@/lib/answer-format";
@@ -40,11 +40,21 @@ function fmtWhen(iso: string) {
   return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-export function AskLogList({ rows, showAskers }: { rows: AskRow[]; showAskers: boolean }) {
+export function AskLogList({
+  rows,
+  showAskers,
+  canDelete = false,
+}: {
+  rows: AskRow[];
+  showAskers: boolean;
+  /** Owner only. The server checks this too — see api/ask-log/[id]. */
+  canDelete?: boolean;
+}) {
   const [items, setItems] = useState(rows);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [asker, setAsker] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const askers = useMemo(
@@ -72,8 +82,27 @@ export function AskLogList({ rows, showAskers }: { rows: AskRow[]; showAskers: b
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, rating, ratingNote: note } : r)));
   }
 
+  async function remove(id: string, question: string) {
+    if (!confirm(`Delete this question and its answer?\n\n${question}`)) return;
+    const snapshot = items;
+    setDeleteError(null);
+    setItems((prev) => prev.filter((r) => r.id !== id));
+    try {
+      const res = await fetch(`/api/ask-log/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        throw new Error(d?.error ?? `Server returned ${res.status}`);
+      }
+    } catch (e) {
+      // Rolled back, because a delete that failed but looks successful is worse
+      // than one that visibly didn't happen.
+      setItems(snapshot);
+      setDeleteError(`Couldn't delete that — ${(e as Error).message}. It's still there.`);
+    }
+  }
+
   if (items.length === 0) {
-    return (
+  return (
       <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-8 text-center">
         <p className="text-[14px] text-brand-primary opacity-60">
           Nothing here yet. Ask a question from the bar at the top of{" "}
@@ -123,6 +152,18 @@ export function AskLogList({ rows, showAskers }: { rows: AskRow[]; showAskers: b
         <RowCount shown={visible.length} total={items.length} noun="questions" />
       </div>
 
+      {deleteError && (
+        <div className="mx-5 mb-3 flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3">
+          <p className="text-[13px] text-red-700">{deleteError}</p>
+          <button
+            onClick={() => setDeleteError(null)}
+            className="text-[13px] text-red-700 opacity-60 hover:opacity-100 shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="border-t border-[rgba(50,43,95,0.08)]">
         {visible.map((r) => {
           const open = expanded === r.id;
@@ -157,6 +198,15 @@ export function AskLogList({ rows, showAskers }: { rows: AskRow[]; showAskers: b
                     )}
                   </div>
                 </button>
+                {canDelete && (
+                  <button
+                    onClick={() => remove(r.id, r.question)}
+                    title="Delete this question and answer"
+                    className="shrink-0 mt-0.5 p-1 rounded text-brand-primary opacity-20 hover:opacity-100 hover:text-red-600 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 {r.rating && !open && (
                   <span
                     className={`shrink-0 mt-0.5 ${r.rating === "up" ? "text-emerald-600" : "text-red-600"}`}

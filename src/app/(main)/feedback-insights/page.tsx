@@ -90,7 +90,8 @@ export default async function FeedbackInsightsPage() {
           <Kpi value={bad} label="Rated bad" sub={`${missed} found no sources`} Icon={ThumbsDown} />
         </div>
 
-        <AskLogList rows={items} showAskers={showAskers} />
+        {/* Same gate as the asker names, and enforced again in the DELETE route. */}
+        <AskLogList rows={items} showAskers={showAskers} canDelete={showAskers} />
       </div>
     </div>
   );
