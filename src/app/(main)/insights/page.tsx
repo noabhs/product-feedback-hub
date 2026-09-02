@@ -157,8 +157,10 @@ function Feedback() {
     for (const v of theme) params.append("theme", v);
     for (const v of client) params.append("client", v);
     // Sorting and search are client-side, so every row is loaded up front.
-    // Kept well above the current row count; revisit if this grows past ~2k.
-    params.set("limit", "2000");
+    // Must stay "all" rather than a number: a numeric ceiling silently drops
+    // the overflow, and because the row count compares against a true total the
+    // page then reads "filtered" with no filter set to explain it.
+    params.set("limit", "all");
     const res = await fetch(`/api/insights?${params}`);
     const data = await res.json();
     setItems(data.insights ?? []);

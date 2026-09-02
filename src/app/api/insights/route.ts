@@ -9,7 +9,16 @@ import { resolveClientForEdit } from "@/lib/accounts-db";
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "20");
+  const limitParam = searchParams.get("limit") ?? "20";
+
+  // `limit=all` returns every matching row, for callers that sort and search
+  // client-side and so need the whole set. The insights page used to ask for a
+  // number chosen to sit "well above" the table size; when the table outgrew it
+  // the page dropped the overflow silently and the row count read
+  // "2,000/2,192 entries filtered" — with no filter the user could clear.
+  // A cap that doubles as "everything" fails quietly, so don't reintroduce one.
+  const unbounded = limitParam === "all";
+  const limit = unbounded ? null : Math.max(1, parseInt(limitParam) || 20);
 
   const where = insightWhere(searchParams);
 
@@ -17,8 +26,7 @@ export async function GET(req: NextRequest) {
     prisma.insight.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...(limit === null ? {} : { skip: (page - 1) * limit, take: limit }),
       include: { _count: { select: { comments: true } } },
     }),
     prisma.insight.count({ where }),
@@ -31,7 +39,7 @@ export async function GET(req: NextRequest) {
     commentCount: _count.comments,
   }));
 
-  return NextResponse.json({ insights, total, grandTotal, page, limit });
+  return NextResponse.json({ insights, total, grandTotal, page, limit: limit ?? total });
 }
 
 export async function POST(req: NextRequest) {
