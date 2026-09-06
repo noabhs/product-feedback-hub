@@ -37,6 +37,36 @@ async function send(force: boolean, period: "week" | "month" = "week") {
     return NextResponse.json({ skipped: "already posted", week: recap.week.key });
   }
 
+  // The month brief has no schedule of its own, and page loads no longer
+  // generate anything, so this is the only thing that ever writes it. Awaited,
+  // not fired and forgotten: a serverless function stops executing the moment
+  // it responds, so a floating promise here would simply never finish.
+  if (period === "week") {
+    try {
+      await buildWeeklyRecap(new Date(), { period: "month" });
+    } catch (e) {
+      console.error("[recap] month brief failed:", (e as Error).message);
+    }
+  }
+
+  // No webhook configured means posting is somebody else's job — a scheduled
+  // task reading /api/cron/recap-text, in the current setup. Generation still
+  // happened above, so this is a success, not the weekly failure it used to
+  // report.
+  if (!process.env.SLACK_WEBHOOK_URL?.trim()) {
+    void logEvent(ACTIONS.recapPosted, {
+      target: recap.week.key,
+      label: `${recap.week.label} — brief written, no webhook so nothing posted`,
+    });
+    return NextResponse.json({
+      posted: false,
+      reason: "No SLACK_WEBHOOK_URL — brief written and cached; posting is handled elsewhere.",
+      week: recap.week.key,
+      narrative: Boolean(recap.narrative),
+      narrativeError: recap.narrativeError,
+    });
+  }
+
   const result = await postToSlack(
     weeklyRecapBlocks(recap),
     `${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}: ${recap.entries} new feedback entries`,
@@ -57,18 +87,6 @@ async function send(force: boolean, period: "week" | "month" = "week") {
       },
       { status: 502 },
     );
-  }
-
-  // The month brief has no schedule of its own, and page loads no longer
-  // generate anything, so this is the only thing that ever writes it. Awaited,
-  // not fired and forgotten: a serverless function stops executing the moment
-  // it responds, so a floating promise here would simply never finish.
-  if (period === "week") {
-    try {
-      await buildWeeklyRecap(new Date(), { period: "month" });
-    } catch (e) {
-      console.error("[recap] month brief failed:", (e as Error).message);
-    }
   }
 
   void logEvent(ACTIONS.recapPosted, {
