@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
-import { recapMarkdown } from "@/lib/slack";
+import { recapMarkdown, toStandardMarkdown } from "@/lib/slack";
 
 export const maxDuration = 30;
 
@@ -31,6 +31,9 @@ export async function GET(req: NextRequest) {
   }
 
   const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
+  // "slack" is webhook mrkdwn; "standard" is what a client posting through the
+  // Slack API's markdown mode needs.
+  const standard = req.nextUrl.searchParams.get("format") === "standard";
   const recap = await buildWeeklyRecap(new Date(), { narrative: "cached", period });
 
   return NextResponse.json({
@@ -39,6 +42,6 @@ export async function GET(req: NextRequest) {
     entries: recap.entries,
     clients: recap.clients.length,
     hasBrief: Boolean(recap.narrative),
-    markdown: recapMarkdown(recap),
+    markdown: standard ? toStandardMarkdown(recapMarkdown(recap)) : recapMarkdown(recap),
   });
 }

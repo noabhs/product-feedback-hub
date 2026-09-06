@@ -171,6 +171,21 @@ export function recapMarkdown(recap: WeeklyRecap): string {
   return lines.join("\n");
 }
 
+/**
+ * Slack's own mrkdwn into standard Markdown.
+ *
+ * A webhook wants `*bold*` and `<url|label>`; a client posting through the Slack
+ * API's markdown mode wants `**bold**` and `[label](url)`. Same recap, two
+ * dialects — sending the first through the second shows the asterisks.
+ */
+export function toStandardMarkdown(mrkdwn: string): string {
+  return mrkdwn
+    .replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, "[$2]($1)")
+    // Bold only where an asterisk opens a run at a boundary, so a stray one in
+    // prose is left alone.
+    .replace(/(^|[\s(])\*([^*\n]+)\*/gm, "$1**$2**");
+}
+
 export interface SlackResult {
   ok: boolean;
   error?: string;
