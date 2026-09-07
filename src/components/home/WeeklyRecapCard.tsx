@@ -261,20 +261,10 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
                   {writing ? "rewriting…" : "rewrite"}
                 </button>
               </div>
-              {/* One paragraph per topic. Rendering the whole brief in a single
-                  <p> collapsed the blank lines the model writes between topics,
-                  which is how three findings became one dense block. */}
-              <div className="space-y-2.5">
-                {recap.narrative
-                  .split(/\n{2,}/)
-                  .map((para) => para.trim())
-                  .filter(Boolean)
-                  .map((para, i) => (
-                    <p key={i} className="text-[13.5px] text-brand-primary/80 leading-relaxed">
-                      {para}
-                    </p>
-                  ))}
-              </div>
+              {/* First topic visible, rest behind a native <details>. One
+                  paragraph per topic: a single <p> collapsed the blank lines the
+                  model writes between them. */}
+              <Brief text={recap.narrative} />
             </div>
           ) : (
             <div className="mt-3">
@@ -310,6 +300,31 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
         </>
       )}
     </div>
+  );
+}
+
+const P = "text-[13.5px] text-brand-primary/80 leading-relaxed";
+
+function Brief({ text }: { text: string }) {
+  const [first, ...rest] = text.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+  return (
+    <>
+      <p className={P}>{first}</p>
+      {rest.length > 0 && (
+        <details className="mt-2 group">
+          <summary className="text-[12px] text-brand-secondary-600 cursor-pointer hover:underline marker:content-none">
+            {rest.length} more {rest.length === 1 ? "topic" : "topics"}
+            <span className="group-open:hidden"> ▾</span>
+            <span className="hidden group-open:inline"> ▴</span>
+          </summary>
+          <div className="space-y-2.5 mt-2">
+            {rest.map((para, i) => (
+              <p key={i} className={P}>{para}</p>
+            ))}
+          </div>
+        </details>
+      )}
+    </>
   );
 }
 
