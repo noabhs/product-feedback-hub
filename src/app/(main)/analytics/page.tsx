@@ -227,7 +227,7 @@ export default async function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {people.slice(0, 10).map((p) => (
+                  {people.map((p) => (
                     <tr key={p.actor} className="border-t border-[rgba(50,43,95,0.06)]">
                       <td className="py-2 text-[13px] font-medium text-brand-primary" title={p.actor}>
                         {shortName(p.actor)}
