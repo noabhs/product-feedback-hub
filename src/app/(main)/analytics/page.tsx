@@ -6,6 +6,7 @@ import { ACTION_LABELS, AI_ACTIONS, ACTIONS, EVENT_LOG_LIMIT } from "@/lib/event
 import { shortName } from "@/lib/people";
 import { EventLog, type EventRow } from "@/components/analytics/EventLog";
 import { ActivityChart } from "@/components/analytics/ActivityChart";
+import { Paged } from "@/components/ui/Paged";
 
 const WINDOW_DAYS = 30;
 const TREND_DAYS = 14;
@@ -226,7 +227,7 @@ export default async function AnalyticsPage() {
                     <th className="text-right font-semibold pb-1.5">Last seen</th>
                   </tr>
                 </thead>
-                <tbody>
+                <Paged noun="people" colSpan={5}>
                   {people.map((p) => (
                     <tr key={p.actor} className="border-t border-[rgba(50,43,95,0.06)]">
                       <td className="py-2 text-[13px] font-medium text-brand-primary" title={p.actor}>
@@ -246,7 +247,7 @@ export default async function AnalyticsPage() {
                       </td>
                     </tr>
                   ))}
-                </tbody>
+                </Paged>
               </table>
             )}
           </Card>
@@ -256,15 +257,17 @@ export default async function AnalyticsPage() {
             {topActions.length === 0 ? (
               <Empty />
             ) : (
-              topActions.map(([action, n]) => (
-                <Bar
-                  key={action}
-                  label={ACTION_LABELS[action] ?? action}
-                  count={n}
-                  pct={n / maxAction}
-                  color={AI_ACTIONS.includes(action) ? "#00c2b2" : "#5d07e2"}
-                />
-              ))
+              <Paged noun="actions">
+                {topActions.map(([action, n]) => (
+                  <Bar
+                    key={action}
+                    label={ACTION_LABELS[action] ?? action}
+                    count={n}
+                    pct={n / maxAction}
+                    color={AI_ACTIONS.includes(action) ? "#00c2b2" : "#5d07e2"}
+                  />
+                ))}
+              </Paged>
             )}
           </Card>
         </div>
