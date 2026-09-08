@@ -142,6 +142,28 @@ model Event {
   @@index([action])
 }
 
+/// A feature idea reported by someone inside the org — distinct from Insight,
+/// which is feedback gathered from clients. Status is a plain string, like every
+/// other status-shaped field in this schema, with the valid set documented in
+/// src/lib/feature-request-status.ts rather than as a Postgres enum.
+model FeatureRequest {
+  id          String   @id @default(cuid())
+  title       String
+  /// Markdown. May contain [text](url) links and ![alt](url) images — rendered,
+  /// never as raw HTML, so a pasted link can't inject markup.
+  description String
+  painToSolve String
+  /// Email of whoever filed it. Only this address, or the hub owner
+  /// (src/lib/people.ts), may edit or delete the row.
+  reporter    String
+  status      String   @default("New")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([reporter])
+  @@index([status])
+}
+
 /// One question asked of "Ask the feedback", with the answer it got.
 ///
 /// Deliberately not an Event row: an Event is a fire-and-forget line in a log

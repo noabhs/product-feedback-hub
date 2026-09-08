@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, BarChart3, Building2, MessageSquare, LogOut } from "lucide-react";
+import { Home, Search, BookOpen, Upload, BarChart3, Building2, MessageSquare, LogOut, Lightbulb } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -22,7 +22,10 @@ const NAV_GROUPS = [
     { href: "/discovery", label: "Discovery", icon: BookOpen },
     { href: "/clients", label: "Clients", icon: Building2 },
   ],
-  [{ href: "/analytics", label: "Analytics", icon: BarChart3 }],
+  [
+    { href: "/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/feature-requests", label: "Feature Requests", icon: Lightbulb },
+  ],
 ];
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {

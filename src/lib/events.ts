@@ -33,6 +33,9 @@ export const ACTIONS = {
   askDeleted: "ask.deleted",
   aiGenerateDoc: "ai.generate_doc",
   pageView: "page.view",
+  featureRequestCreated: "feature_request.created",
+  featureRequestUpdated: "feature_request.updated",
+  featureRequestDeleted: "feature_request.deleted",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
@@ -62,6 +65,9 @@ export const ACTION_LABELS: Record<string, string> = {
   "ask.deleted": "Deleted a logged answer",
   "ai.generate_doc": "Generated a discovery doc",
   "page.view": "Viewed a page",
+  "feature_request.created": "Filed a feature request",
+  "feature_request.updated": "Edited a feature request",
+  "feature_request.deleted": "Deleted a feature request",
 };
 
 /** Actions that consume Anthropic credits — used for the AI usage panel. */
