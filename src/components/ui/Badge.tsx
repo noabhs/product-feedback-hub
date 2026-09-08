@@ -29,8 +29,18 @@ const HEALTH_CLASSES: Record<string, { pill: string; dot: string }> = {
   Green:  { pill: "bg-emerald-50 text-emerald-800 border border-emerald-200", dot: "bg-emerald-500" },
 };
 
+/** Feature request status, roughly in workflow order. */
+const STATUS_CLASSES: Record<string, string> = {
+  New:           "bg-lavender text-brand-primary",
+  "Under Review": "bg-amber-50 text-amber-800 border border-amber-200",
+  Planned:       "bg-mint-100 text-brand-primary",
+  "In Progress": "bg-brand-secondary-500 text-white",
+  Done:          "bg-emerald-50 text-emerald-800 border border-emerald-200",
+  Rejected:      "bg-red-50 text-red-800 border border-red-200",
+};
+
 interface BadgeProps {
-  type: "area" | "theme" | "source" | "health";
+  type: "area" | "theme" | "source" | "health" | "status";
   value: string;
   className?: string;
 }
@@ -48,6 +58,13 @@ export function Badge({ type, value, className }: BadgeProps) {
     return (
       <span className={clsx("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill text-xs font-semibold", c?.pill ?? "bg-surface-app text-brand-primary border border-black/10", className)}>
         <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", c?.dot ?? "bg-brand-primary/30")} />
+        {value}
+      </span>
+    );
+  }
+  if (type === "status") {
+    return (
+      <span className={clsx("inline-flex items-center px-2.5 py-0.5 rounded-pill text-xs font-semibold", STATUS_CLASSES[value] ?? "bg-surface-app text-brand-primary border border-black/10", className)}>
         {value}
       </span>
     );

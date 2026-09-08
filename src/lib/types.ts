@@ -48,6 +48,18 @@ export interface Source {
   createdBy: string | null;
 }
 
+export interface FeatureRequestItem {
+  id: string;
+  title: string;
+  /** Markdown — may contain [text](url) links and ![alt](url) images. */
+  description: string;
+  painToSolve: string;
+  reporter: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /**
  * A client row on /clients: the canonical account plus its Salesforce report
  * snapshot. Every report field is nullable — the report covered active direct
