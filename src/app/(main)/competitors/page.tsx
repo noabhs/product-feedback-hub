@@ -1,7 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState, Suspense } from "react";
+import { Search } from "lucide-react";
 import { COMPETITOR_CATEGORIES, COMPETITOR_SUBGROUPS } from "@/lib/competitor-categories";
 import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
+import { CompetitorIcon } from "@/components/competitors/CompetitorIcon";
+import { Input } from "@/components/ui/Input";
 import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import type { CompetitorItem } from "@/lib/types";
 
@@ -31,6 +34,7 @@ function Competitors() {
   const [competitors, setCompetitors] = useState<CompetitorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(url.str("open") || null);
+  const [search, setSearch] = useState(url.str("search"));
 
   useEffect(() => {
     let cancelled = false;
@@ -45,13 +49,18 @@ function Competitors() {
     return () => { cancelled = true; };
   }, []);
 
-  useUrlState({ open: openId });
+  useUrlState({ open: openId, search });
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? competitors.filter((c) => c.name.toLowerCase().includes(q)) : competitors;
+  }, [competitors, search]);
 
   const sections = useMemo(
-    () => COMPETITOR_CATEGORIES.map((category) => ({ category, groups: groupsFor(category, competitors) })).filter(
+    () => COMPETITOR_CATEGORIES.map((category) => ({ category, groups: groupsFor(category, filtered) })).filter(
       (s) => s.groups.length > 0,
     ),
-    [competitors],
+    [filtered],
   );
 
   const openCompetitor = openId ? competitors.find((c) => c.id === openId) ?? null : null;
@@ -67,6 +76,16 @@ function Competitors() {
           </p>
         </div>
 
+        <div className="mb-5">
+          <Input
+            icon={<Search className="w-4 h-4" />}
+            placeholder="Search competitors…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-60"
+          />
+        </div>
+
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -75,7 +94,9 @@ function Competitors() {
           </div>
         ) : sections.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-brand-primary opacity-40 text-[15px]">No competitors yet</p>
+            <p className="text-brand-primary opacity-40 text-[15px]">
+              {search ? `No competitors match "${search}"` : "No competitors yet"}
+            </p>
           </div>
         ) : (
           <div className="space-y-8">
@@ -92,19 +113,22 @@ function Competitors() {
                           {subgroup}
                         </h3>
                       )}
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {rows.map((c) => (
                           <button
                             key={c.id}
                             onClick={() => setOpenId(c.id)}
-                            className="text-left bg-white rounded-md border border-[rgba(50,43,95,0.08)] hover:bg-[rgba(93,7,226,0.03)] transition-colors px-4 py-3"
+                            className="flex items-center gap-2 text-left bg-white rounded-md border border-[rgba(50,43,95,0.08)] hover:bg-[rgba(93,7,226,0.03)] transition-colors px-3 py-2.5 min-w-0"
                           >
-                            <p className="text-[14px] font-medium text-brand-primary">{c.name}</p>
-                            <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
-                              {c.sources.length
-                                ? `${c.sources.length} source${c.sources.length === 1 ? "" : "s"}`
-                                : "No sources yet"}
-                            </p>
+                            <CompetitorIcon name={c.name} website={c.website} />
+                            <div className="min-w-0">
+                              <p className="text-[14px] font-medium text-brand-primary truncate">{c.name}</p>
+                              <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
+                                {c.sources.length
+                                  ? `${c.sources.length} source${c.sources.length === 1 ? "" : "s"}`
+                                  : "No sources yet"}
+                              </p>
+                            </div>
                           </button>
                         ))}
                       </div>
