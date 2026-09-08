@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
+import { SEED_COMPETITORS } from "./competitors-seed-data";
 
 const prisma = new PrismaClient();
 
@@ -355,6 +356,52 @@ async function main() {
   console.log(`  ✓ ${iCount} client feedback entries`);
 
   console.log(`\nDone! Seeded ${qCount} questions + ${iCount} insights.`);
+
+  console.log("Seeding competitors...");
+  let cCount = 0;
+  for (const row of SEED_COMPETITORS) {
+    const competitor = await prisma.competitor.upsert({
+      where: { name: row.name },
+      create: {
+        name: row.name,
+        category: row.category,
+        subgroup: row.subgroup,
+        positioning: row.positioning,
+        website: row.website,
+        overview: row.overview,
+        keyFacts: row.keyFacts,
+        differentiation: row.differentiation,
+        lastUpdated: row.lastUpdated ? new Date(row.lastUpdated) : null,
+        sortOrder: row.sortOrder,
+      },
+      update: {
+        category: row.category,
+        subgroup: row.subgroup,
+        positioning: row.positioning,
+        website: row.website,
+        overview: row.overview,
+        keyFacts: row.keyFacts,
+        differentiation: row.differentiation,
+        lastUpdated: row.lastUpdated ? new Date(row.lastUpdated) : null,
+        sortOrder: row.sortOrder,
+      },
+    });
+    // Sources have no stable id of their own in the source data, so each
+    // seed run replaces the full set rather than trying to diff it.
+    await prisma.competitorSource.deleteMany({ where: { competitorId: competitor.id } });
+    if (row.sources.length) {
+      await prisma.competitorSource.createMany({
+        data: row.sources.map((s) => ({
+          competitorId: competitor.id,
+          label: s.label,
+          url: s.url,
+          type: s.type,
+        })),
+      });
+    }
+    cCount++;
+  }
+  console.log(`  ✓ ${cCount} competitors`);
 }
 
 main()

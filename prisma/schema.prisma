@@ -164,6 +164,59 @@ model FeatureRequest {
   @@index([status])
 }
 
+/// One tracked competitor, sourced from the "CI Launcher" tool's public data
+/// (its own UI requires a Navina Google login, but the underlying data was
+/// served to any browser regardless — flagged to that tool's owner separately).
+model Competitor {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  /// Top-level grouping, matching CI Launcher's own sidebar. Validated
+  /// against COMPETITOR_CATEGORIES in src/lib/competitor-categories.ts,
+  /// not a Postgres enum — same convention as Account.health, FeatureRequest.status.
+  category  String
+  /// Second-level grouping, only used inside "HCC / Risk Adj." ("Pop Health",
+  /// "Ambient Scribes"). Null for every other category and for the direct,
+  /// ungrouped entries inside HCC / Risk Adj. itself.
+  subgroup  String?
+  /// CI Launcher's own free-text positioning line, e.g. "Ambient AI / Clinical
+  /// Documentation" — more granular than `category`, shown as a subtitle.
+  positioning     String?
+  website         String?
+  /// A paragraph description. From CI Launcher's data, not written here.
+  overview        String?
+  /// Bullet-point facts (funding, headcount, product angle). Markdown-ish
+  /// plain text with leading "– " bullets, rendered as-is.
+  keyFacts        String?
+  /// How CI Launcher's own notes frame this competitor against Navina.
+  differentiation String?
+  /// When CI Launcher's own data was last updated, not when we imported it.
+  lastUpdated     DateTime?
+  /// Mirrors CI Launcher's own ordering within a category/subgroup; null sorts last.
+  sortOrder Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sources CompetitorSource[]
+
+  @@index([category])
+}
+
+/// A link (Drive/Notion/etc.) pulled from CI Launcher for one competitor.
+/// `type` comes straight from that tool's own data (e.g. "notion", "folder",
+/// "battlecard") rather than being re-derived from the URL.
+model CompetitorSource {
+  id           String   @id @default(cuid())
+  competitorId String
+  label        String
+  url          String
+  type         String
+  createdAt    DateTime @default(now())
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId])
+}
+
 /// One question asked of "Ask the feedback", with the answer it got.
 ///
 /// Deliberately not an Event row: an Event is a fire-and-forget line in a log

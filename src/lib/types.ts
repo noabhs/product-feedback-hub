@@ -87,3 +87,25 @@ export interface AccountDetail {
   /** Feedback entries filed against this account. */
   feedbackCount: number;
 }
+
+export interface CompetitorSourceItem {
+  id: string;
+  label: string;
+  url: string;
+  type: string;
+}
+
+/** A tracked competitor, sourced from the CI Launcher tool (see schema.prisma). */
+export interface CompetitorItem {
+  id: string;
+  name: string;
+  category: string;
+  subgroup: string | null;
+  positioning: string | null;
+  website: string | null;
+  overview: string | null;
+  keyFacts: string | null;
+  differentiation: string | null;
+  lastUpdated: string | null;
+  sources: CompetitorSourceItem[];
+}
