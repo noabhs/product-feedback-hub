@@ -61,6 +61,11 @@ export default async function HomePage() {
           </p>
         </div>
 
+        {/* ── Ask (coming soon) ──────────────────────────────────────────── */}
+        <div className="mb-8">
+          <AskBox />
+        </div>
+
         {/* ── Last week ──────────────────────────────────────────────────── */}
         <WeeklyRecapCard
           recap={{
@@ -85,15 +90,12 @@ export default async function HomePage() {
 
         {/* ── Overview ───────────────────────────────────────────────────── */}
         <SectionHeading title="Overview" />
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-4 gap-4">
           <KpiCard value={totalFeedback} label="Feedback entries" sub="across every source" Icon={MessageSquare} href="/insights" />
           <KpiCard value={heardFrom.length} label="Clients heard from" sub={`of ${clients.length} accounts`} Icon={Users} href="/clients" />
           <KpiCard value={totalQuestions} label="Discovery questions" sub="in the library" Icon={FileQuestion} href="/discovery" />
           <KpiCard value={totalAsks} label="Questions asked" sub="of the feedback, by the team" Icon={Sparkles} href="/feedback-insights" />
         </div>
-
-        {/* ── Ask (coming soon) ──────────────────────────────────────────── */}
-        <AskBox />
       </div>
     </div>
   );
