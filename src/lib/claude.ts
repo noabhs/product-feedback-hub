@@ -43,11 +43,11 @@ const THEMES_FOR_PROMPT = THEMES.map((t) => `"${t}"`).join(" | ");
 
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] };
 
-function jsonFormat(schema: Record<string, unknown>): Anthropic.JSONOutputFormat {
+export function jsonFormat(schema: Record<string, unknown>): Anthropic.JSONOutputFormat {
   return { type: "json_schema", schema };
 }
 
-function extractText(content: Anthropic.ContentBlock[]): string {
+export function extractText(content: Anthropic.ContentBlock[]): string {
   const block = content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!block) throw new Error("No text block in Claude response");
   return block.text;
