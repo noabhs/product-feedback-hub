@@ -104,6 +104,16 @@ async function locate(
     }
 
     if (target.kind === "notion-page") {
+      if (!notionConfigured()) {
+        outcomes.push({
+          competitor: competitorName,
+          title: source.label,
+          origin: "notion",
+          status: "skipped",
+          note: "no NOTION_TOKEN — Notion links not read on this run",
+        });
+        continue;
+      }
       pending.push({
         externalId: target.id,
         origin: "notion",
@@ -111,6 +121,17 @@ async function locate(
         url: source.url,
         sourceId: source.id,
         sourceUpdatedAt: null,
+      });
+      continue;
+    }
+
+    if (!driveConfigured()) {
+      outcomes.push({
+        competitor: competitorName,
+        title: source.label,
+        origin: "drive",
+        status: "skipped",
+        note: "no GOOGLE_SERVICE_ACCOUNT_JSON — Drive links not read on this run",
       });
       continue;
     }
@@ -189,8 +210,16 @@ function message(e: unknown): string {
 export async function ingestCompetitors(options: IngestOptions = {}): Promise<IngestReport> {
   const { only, dryRun = false, force = false, limit } = options;
 
-  if (!driveConfigured()) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not set — Drive links cannot be read");
-  if (!notionConfigured()) throw new Error("NOTION_TOKEN is not set — Notion links cannot be read");
+  // Either credential alone is enough to make progress. Requiring both meant a
+  // wait on one blocked the other, and the two are not the same size: 73 of the
+  // 99 links are Drive, 26 are Notion. Whichever is missing has its links
+  // recorded as skipped with the reason, so the coverage number stays honest and
+  // a later run picks them up.
+  if (!driveConfigured() && !notionConfigured()) {
+    throw new Error(
+      "Neither GOOGLE_SERVICE_ACCOUNT_JSON nor NOTION_TOKEN is set — there is nothing this can read",
+    );
+  }
 
   const competitors = await prisma.competitor.findMany({
     include: { sources: true },
