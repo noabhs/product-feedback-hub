@@ -177,7 +177,7 @@ export type QCompetitor = Pick<
  * The model and prompt behind "Ask Q" on the home page, named so every stored
  * answer records what produced it — same convention as QA_PROMPT_VERSION.
  */
-export const Q_PROMPT_VERSION = "q-1";
+export const Q_PROMPT_VERSION = "q-2";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
@@ -216,7 +216,12 @@ Output shape — this is read in a narrow box, so it has to be scannable at a gl
 - No headings. No tables, unless the question is a genuine multi-column comparison (e.g. "compare X and Y on pricing and EHR support"). No nested bullets.
 - No marketing language: never call anything transformative, innovative, robust, cutting-edge, game-changing, or best-in-class — describe what it does instead.
 - Put each [n] citation at the end of the clause it supports, not piled at the end.
-- Never add a closing summary, recommendation, or sign-off line. Stop at the last bullet.`;
+- Stop at the last bullet for a lookup, count, or fact question — no summary, no sign-off.
+
+When it's relevant — the question is a decision, a prioritization call, or an open strategic question, not just a lookup — close with one line reading exactly "**What's next:**", then one to three short bullets:
+- Every bullet has to follow from the sources cited above. Say what it rests on: which clients, which competitor fact, which feature request's status.
+- Never invent scope, effort, timelines, or a roadmap commitment Q doesn't have evidence for.
+- Skip "What's next" entirely rather than padding it with a generic "keep monitoring" — a lookup question gets no such section at all.`;
 
 /**
  * Everything sent to the model for one question on Q — the numbered, citable

@@ -7,7 +7,6 @@ import { InsightRow } from "@/components/insights/InsightRow";
 import { EditFeedbackModal } from "@/components/insights/EditFeedbackModal";
 import { FeedbackPanel } from "@/components/insights/FeedbackPanel";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
-import { AIQABar } from "@/components/insights/AIQABar";
 import { Button } from "@/components/ui/Button";
 import { RowCount } from "@/components/ui/RowCount";
 import { Pagination } from "@/components/ui/Pagination";
@@ -339,8 +338,6 @@ function Feedback() {
             </Button>
           </div>
         </div>
-
-        <AIQABar />
 
         {deleteError && (
           <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3">

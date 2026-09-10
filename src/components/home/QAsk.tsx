@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { MessageSquare, Building2, Lightbulb, Copy, Check } from "lucide-react";
+import { MessageSquare, Building2, Lightbulb, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { useApiKey } from "@/hooks/useApiKey";
@@ -38,6 +38,10 @@ const KIND_LABEL: Record<SourceKind, string> = {
   "feature-request": "Feature request",
 };
 
+/** Past this many, the rest collapse behind "Show more" — a long tail of
+ *  matched feedback shouldn't push the sources list taller than the answer. */
+const VISIBLE_SOURCES = 5;
+
 /**
  * The home page's ask box — "Q" over the whole hub (feedback, competitors,
  * feature requests, the client table), not just feedback. Structurally the
@@ -54,6 +58,7 @@ export function QAsk() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
+  const [showAllSources, setShowAllSources] = useState(false);
   const { aiHeaders } = useApiKey();
 
   useEffect(() => {
@@ -70,6 +75,7 @@ export function QAsk() {
     setAskId(null);
     setCopied(false);
     setCopyError("");
+    setShowAllSources(false);
     try {
       const res = await fetch("/api/ai/ask", {
         method: "POST",
@@ -175,7 +181,7 @@ export function QAsk() {
             <div className="border-t border-[rgba(50,43,95,0.08)] pt-3">
               <p className="text-[11px] text-brand-primary/40 uppercase tracking-wide mb-2">Sources</p>
               <div className="flex flex-col gap-1">
-                {sources.map((s, i) => {
+                {(showAllSources ? sources : sources.slice(0, VISIBLE_SOURCES)).map((s, i) => {
                   const Icon = KIND_ICON[s.kind];
                   return (
                     <Link
@@ -193,6 +199,24 @@ export function QAsk() {
                   );
                 })}
               </div>
+              {sources.length > VISIBLE_SOURCES && (
+                <button
+                  onClick={() => setShowAllSources((v) => !v)}
+                  className="flex items-center gap-1 mt-2 text-[12px] font-medium text-brand-secondary-600 hover:text-brand-secondary-500 transition-colors"
+                >
+                  {showAllSources ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                      Show fewer
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      Show {sources.length - VISIBLE_SOURCES} more {sources.length - VISIBLE_SOURCES === 1 ? "source" : "sources"}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           )}
         </div>
