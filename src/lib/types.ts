@@ -109,10 +109,10 @@ export interface CompetitorItem {
   lastUpdated: string | null;
   sources: CompetitorSourceItem[];
   /**
-   * How much of this competitor's material the hub has actually read. A rollup
-   * rather than the documents themselves: the summaries run to a few kilobytes
-   * each and there are a couple of hundred of them, which is far too much to
-   * ship with a list of 36 rows. The panel fetches the real text on open.
+   * How much of this competitor's material the hub has read, and how many claims
+   * came out of it. A rollup rather than the content itself: the claims run to a
+   * few hundred rows of prose, far too much to ship with a list of 36. The panel
+   * fetches them on open.
    */
   coverage: CompetitorCoverage;
 }
@@ -122,6 +122,8 @@ export interface CompetitorCoverage {
   empty: number;
   skipped: number;
   failed: number;
+  /** Claims drawn out of those documents — what the hub actually knows. */
+  claims: number;
   /**
    * The newest "last modified" any source reported, which is the honest
    * freshness date. Competitor.lastUpdated is CI Launcher's own and can lag it
@@ -139,14 +141,34 @@ export interface CompetitorDocumentItem {
   url: string;
   /** "notion" | "drive" */
   origin: string;
-  summary: string | null;
-  /** "internal" | "external" | null */
-  sensitivity: string | null;
-  sensitivityReason: string | null;
   /** "ok" | "empty" | "skipped" | "failed" */
   status: string;
   note: string | null;
   truncated: boolean;
   sourceUpdatedAt: string | null;
   fetchedAt: string;
+  /** How many claims were drawn from it. Zero for a miss. */
+  claimCount: number;
+}
+
+/** One discrete claim about a competitor. See prisma CompetitorInsight. */
+export interface CompetitorInsightItem {
+  id: string;
+  competitorId: string;
+  /** Denormalised so the cross-competitor table can show it without a join. */
+  competitorName: string;
+  documentId: string | null;
+  /** Title and link of the document it came from, for provenance in one hop. */
+  documentTitle: string | null;
+  documentUrl: string | null;
+  oneLiner: string;
+  content: string;
+  topics: string[];
+  productAreas: string[];
+  /** "VERIFIED" | "REPORTED" | "CLAIMED" */
+  confidence: string;
+  /** "internal" | "external" */
+  sensitivity: string;
+  sensitivityReason: string | null;
+  asOf: string | null;
 }

@@ -1,8 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { X, Globe } from "lucide-react";
 import { CompetitorSources } from "@/components/competitors/CompetitorSources";
-import type { CompetitorItem } from "@/lib/types";
+import { CompetitorClaims } from "@/components/competitors/CompetitorClaims";
+import type { CompetitorItem, CompetitorDocumentItem, CompetitorInsightItem } from "@/lib/types";
 
 interface CompetitorPanelProps {
   competitor: CompetitorItem;
@@ -63,6 +64,37 @@ function Freshness({ competitor }: { competitor: CompetitorItem }) {
 }
 
 export function CompetitorPanel({ competitor, onClose }: CompetitorPanelProps) {
+  const [documents, setDocuments] = useState<CompetitorDocumentItem[]>([]);
+  const [insights, setInsights] = useState<CompetitorInsightItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // One request for both halves: the panel shows the claims and the source list
+  // together, and two round trips for one click is a visible stagger.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/competitors/${competitor.id}/detail`);
+        const data = await res.json();
+        if (cancelled) return;
+        setDocuments(data.documents ?? []);
+        setInsights(data.insights ?? []);
+      } catch {
+        // The links and CI Launcher's own notes still render — a failed fetch of
+        // what we read shouldn't empty the panel.
+        if (!cancelled) {
+          setDocuments([]);
+          setInsights([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [competitor.id]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -143,8 +175,12 @@ export function CompetitorPanel({ competitor, onClose }: CompetitorPanelProps) {
             </Section>
           )}
 
+          <Section title={`What we know${insights.length ? ` (${insights.length})` : ""}`}>
+            <CompetitorClaims insights={insights} loading={loading} />
+          </Section>
+
           <Section title="Sources">
-            <CompetitorSources competitor={competitor} />
+            <CompetitorSources competitor={competitor} documents={documents} loading={loading} />
           </Section>
 
           <Freshness competitor={competitor} />

@@ -49,6 +49,61 @@ export const THEME_LABELS: Record<string, string> = {
  */
 export const THEME_OPTIONS = Object.entries(THEME_LABELS).map(([value, label]) => ({ value, label }));
 
+/**
+ * Topics for competitor claims — the competitive equivalent of AREA_LABELS.
+ *
+ * A competitor document yields discrete claims rather than one summary, and this
+ * is what they are filed under. Deliberately a separate vocabulary from
+ * AREA_LABELS: "what part of Navina's product does this bear on" and "what kind
+ * of competitive fact is this" are different questions, and a claim about a
+ * competitor's funding belongs to neither Pop health nor Quality.
+ *
+ * A TypeScript constant rather than a DB enum, same as the two above, so adding
+ * a topic is a one-line change everywhere it is offered.
+ */
+export const COMPETITOR_TOPIC_LABELS: Record<string, string> = {
+  PRICING: "Pricing",
+  PACKAGING: "Packaging",
+  CAPABILITIES: "Capabilities",
+  INTEGRATIONS: "Integrations",
+  POSITIONING: "Positioning",
+  CUSTOMERS: "Customers",
+  FUNDING: "Funding",
+  ORG_AND_PEOPLE: "Org and people",
+  DELIVERY: "Delivery",
+  WEAKNESSES: "Weaknesses",
+  STRATEGY: "Strategy",
+  VS_NAVINA: "vs Navina",
+};
+
+export const COMPETITOR_TOPIC_OPTIONS = Object.entries(COMPETITOR_TOPIC_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+/**
+ * How much weight a claim carries. Not invented here — the Innovaccer dossier
+ * already tags its own statements this way, and keeping the vocabulary means a
+ * claim read out of that document arrives with its own author's confidence
+ * intact rather than flattened into assertion.
+ */
+export const CONFIDENCE_LABELS: Record<string, string> = {
+  VERIFIED: "Verified",
+  REPORTED: "Reported",
+  CLAIMED: "Claimed",
+};
+
+export const CONFIDENCE_OPTIONS = Object.entries(CONFIDENCE_LABELS).map(([value, label]) => ({ value, label }));
+
+export function competitorTopicLabel(topic: string): string {
+  return COMPETITOR_TOPIC_LABELS[topic] ?? prettify(topic);
+}
+
+export function confidenceLabel(c: string): string {
+  return CONFIDENCE_LABELS[c] ?? prettify(c);
+}
+
+
 export const AREA_COLORS: Record<string, string> = {
   POP_HEALTH: "#5d07e2",
   QUALITY: "#322B5F",

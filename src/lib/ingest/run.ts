@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { parseSourceUrl, isSkippedSourceType } from "@/lib/ingest/source-url";
 import { fetchNotionPage, notionConfigured } from "@/lib/ingest/notion";
 import { getFile, walkFolder, readContent, driveConfigured, type DriveFile } from "@/lib/ingest/drive";
-import { condense, CONDENSE_VERSION } from "@/lib/ingest/condense";
+import { extractClaims, EXTRACT_VERSION, type ExtractedClaim } from "@/lib/ingest/extract";
 
 /**
  * Walks every competitor's links, reads what it can, and records what it could
@@ -23,7 +23,8 @@ export interface Outcome {
   origin: "notion" | "drive" | "-";
   status: Status;
   note?: string;
-  sensitivity?: string;
+  /** How many claims the document yielded. Undefined for misses. */
+  claims?: number;
   chars?: number;
 }
 
@@ -265,7 +266,7 @@ export async function ingestCompetitors(options: IngestOptions = {}): Promise<In
       // the condense prompt has moved on — a new prompt means a new summary.
       const current =
         existing?.status === "ok" &&
-        existing.condenseVersion === CONDENSE_VERSION &&
+        existing.extractVersion === EXTRACT_VERSION &&
         (!doc.sourceUpdatedAt || existing.fetchedAt > doc.sourceUpdatedAt);
       if (current && !force) {
         outcomes.push({
@@ -274,7 +275,7 @@ export async function ingestCompetitors(options: IngestOptions = {}): Promise<In
           origin: doc.origin,
           status: "ok",
           note: "unchanged since last read",
-          sensitivity: existing.sensitivity ?? undefined,
+          claims: await prisma.competitorInsight.count({ where: { documentId: existing.id } }),
         });
         continue;
       }
@@ -361,25 +362,22 @@ export async function ingestCompetitors(options: IngestOptions = {}): Promise<In
           continue;
         }
 
-        const condensed = await condense({
+        const extracted = await extractClaims({
           competitor: competitor.name,
           title,
           text: text || undefined,
           pdfBase64,
         });
 
-        const note = [...notes, condensed.empty ? "nothing substantive about the competitor" : ""]
-          .filter(Boolean)
-          .join("; ");
+        const empty = extracted.empty || extracted.claims.length === 0;
+        const note = [...notes, empty ? "no claims worth keeping" : ""].filter(Boolean).join("; ");
 
         await record(competitor.id, doc, {
-          status: condensed.empty ? "empty" : "ok",
+          status: empty ? "empty" : "ok",
           note: note || undefined,
           title,
           text,
-          summary: condensed.summary,
-          sensitivity: condensed.sensitivity,
-          sensitivityReason: condensed.sensitivityReason || undefined,
+          claims: extracted.claims,
           truncated,
           sourceUpdatedAt,
           dryRun,
@@ -389,9 +387,9 @@ export async function ingestCompetitors(options: IngestOptions = {}): Promise<In
           competitor: competitor.name,
           title,
           origin: doc.origin,
-          status: condensed.empty ? "empty" : "ok",
+          status: empty ? "empty" : "ok",
           note: note || undefined,
-          sensitivity: condensed.sensitivity,
+          claims: extracted.claims.length,
           chars: text.length || undefined,
         });
       } catch (e) {
@@ -425,9 +423,7 @@ interface RecordFields {
   note?: string;
   title: string;
   text?: string;
-  summary?: string;
-  sensitivity?: string;
-  sensitivityReason?: string;
+  claims?: ExtractedClaim[];
   truncated?: boolean;
   sourceUpdatedAt: Date | null;
   dryRun: boolean;
@@ -443,20 +439,41 @@ async function record(competitorId: string, doc: Pending, f: RecordFields): Prom
     url: doc.url,
     mimeType: doc.mimeType ?? null,
     text: f.text ?? null,
-    summary: f.summary ?? null,
-    sensitivity: f.sensitivity ?? null,
-    sensitivityReason: f.sensitivityReason ?? null,
     status: f.status,
     note: f.note ?? null,
     truncated: f.truncated ?? false,
     sourceUpdatedAt: f.sourceUpdatedAt,
     fetchedAt: new Date(),
-    condenseVersion: f.summary ? CONDENSE_VERSION : null,
+    extractVersion: f.claims ? EXTRACT_VERSION : null,
   };
 
-  await prisma.competitorDocument.upsert({
+  const document = await prisma.competitorDocument.upsert({
     where: { competitorId_externalId: { competitorId, externalId: doc.externalId } },
     create: { competitorId, externalId: doc.externalId, ...data },
     update: data,
+  });
+
+  if (!f.claims) return;
+
+  // Replaced wholesale rather than merged. A re-read of a changed document is a
+  // fresh reading of it, and matching old claims to new ones would need an
+  // identity they do not have — leaving stale claims beside corrected ones is
+  // the worse failure.
+  await prisma.competitorInsight.deleteMany({ where: { documentId: document.id } });
+  if (f.claims.length === 0) return;
+
+  await prisma.competitorInsight.createMany({
+    data: f.claims.map((c) => ({
+      competitorId,
+      documentId: document.id,
+      oneLiner: c.oneLiner,
+      content: c.content,
+      topics: c.topics,
+      productAreas: c.productAreas,
+      confidence: c.confidence,
+      sensitivity: c.sensitivity,
+      sensitivityReason: c.sensitivityReason || null,
+      asOf: f.sourceUpdatedAt,
+    })),
   });
 }

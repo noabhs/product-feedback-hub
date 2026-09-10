@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { MessageSquare, Users, FileQuestion, Sparkles } from "lucide-react";
 import { SectionHeading, KpiCard } from "@/components/home/cards";
 import { WeeklyRecapCard } from "@/components/home/WeeklyRecapCard";
-import { AskBox } from "@/components/home/AskBox";
+import { QAsk } from "@/components/home/QAsk";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
 import { recapMarkdown } from "@/lib/slack";
 import { prisma } from "@/lib/prisma";
@@ -61,9 +61,9 @@ export default async function HomePage() {
           </p>
         </div>
 
-        {/* ── Ask (coming soon) ──────────────────────────────────────────── */}
+        {/* ── Ask ─────────────────────────────────────────────────────────── */}
         <div className="mb-8">
-          <AskBox />
+          <QAsk />
         </div>
 
         {/* ── Last week ──────────────────────────────────────────────────── */}

@@ -52,7 +52,11 @@ async function main(): Promise<void> {
       console.log(`\n${o.competitor}`);
       lastCompetitor = o.competitor;
     }
-    const tags = [o.sensitivity, o.chars ? `${Math.round(o.chars / 1000)}k chars` : null, o.note]
+    const tags = [
+      o.claims !== undefined ? `${o.claims} claim${o.claims === 1 ? "" : "s"}` : null,
+      o.chars ? `${Math.round(o.chars / 1000)}k chars` : null,
+      o.note,
+    ]
       .filter(Boolean)
       .join(" · ");
     console.log(`  [${ICON[o.status]}] ${o.title}${tags ? `  — ${tags}` : ""}`);
@@ -60,15 +64,17 @@ async function main(): Promise<void> {
 
   const { ok, empty, skipped, failed } = report.counts;
   const total = ok + empty + skipped + failed;
+  const claims = report.outcomes.reduce((n, o) => n + (o.claims ?? 0), 0);
   console.log(
     `\n${report.competitorsVisited} competitors · ${total} documents · ` +
-      `${ok} read, ${empty} empty, ${skipped} skipped, ${failed} failed`,
+      `${ok} read, ${empty} empty, ${skipped} skipped, ${failed} failed` +
+      (claims ? ` · ${claims} claims extracted` : ""),
   );
 
   if (report.dryRun) {
     const tokens = Math.round(report.charsRead / 4);
     console.log(
-      `Dry run — nothing condensed or stored. A real run would condense ` +
+      `Dry run — nothing extracted or stored. A real run would read ` +
         `~${tokens.toLocaleString()} tokens, roughly $${((tokens / 1e6) * USD_PER_MILLION_INPUT).toFixed(2)} of input.`,
     );
   }

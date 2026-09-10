@@ -168,16 +168,16 @@ model FeatureRequest {
 /// (its own UI requires a Navina Google login, but the underlying data was
 /// served to any browser regardless — flagged to that tool's owner separately).
 model Competitor {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id              String    @id @default(cuid())
+  name            String    @unique
   /// Top-level grouping, matching CI Launcher's own sidebar. Validated
   /// against COMPETITOR_CATEGORIES in src/lib/competitor-categories.ts,
   /// not a Postgres enum — same convention as Account.health, FeatureRequest.status.
-  category  String
+  category        String
   /// Second-level grouping, only used inside "HCC / Risk Adj." ("Pop Health",
   /// "Ambient Scribes"). Null for every other category and for the direct,
   /// ungrouped entries inside HCC / Risk Adj. itself.
-  subgroup  String?
+  subgroup        String?
   /// CI Launcher's own free-text positioning line, e.g. "Ambient AI / Clinical
   /// Documentation" — more granular than `category`, shown as a subtitle.
   positioning     String?
@@ -192,12 +192,13 @@ model Competitor {
   /// When CI Launcher's own data was last updated, not when we imported it.
   lastUpdated     DateTime?
   /// Mirrors CI Launcher's own ordering within a category/subgroup; null sorts last.
-  sortOrder Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sortOrder       Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   sources   CompetitorSource[]
   documents CompetitorDocument[]
+  insights  CompetitorInsight[]
 
   @@index([category])
 }
@@ -243,29 +244,18 @@ model CompetitorDocument {
   url          String
   mimeType     String?
 
-  /// Cleaned but otherwise verbatim, with expiring image URLs stripped. Kept as
-  /// the audit trail behind `summary` — when someone disputes an answer, this is
-  /// what the summary was made from.
-  text    String?
-  /// Condensed prose written for the ask to read. See lib/ingest/condense.ts for
-  /// why the raw text is not what gets quoted.
-  summary String?
-
-  /// "internal" when the document carries Navina sales strategy, privately
-  /// gathered competitor pricing, named clients or personnel notes; "external"
-  /// when it only describes the competitor. Decides what may leave the hub in a
-  /// briefing pack. Recorded on ingest so that decision never needs a re-read.
-  sensitivity       String?
-  /// One phrase naming what made it internal. Null when external.
-  sensitivityReason String?
+  /// Cleaned but otherwise verbatim, with expiring image URLs stripped. The
+  /// audit trail behind the claims drawn from it — when someone disputes a
+  /// claim, this is the text it came out of.
+  text String?
 
   /// "ok" | "empty" | "skipped" | "failed"
-  status String
+  status    String
   /// Why it failed or was skipped, and what a partial read missed. Null on a
   /// clean success.
-  note   String?
+  note      String?
   /// The origin reported content it would not expand — an embedded deck, a
-  /// synced block. The summary is real but incomplete.
+  /// synced block. What was read is real but incomplete.
   truncated Boolean @default(false)
 
   /// Last modified at the origin, when it reports one. Not when we read it:
@@ -273,17 +263,77 @@ model CompetitorDocument {
   /// edited three weeks ago, and only the origin's date reveals that.
   sourceUpdatedAt DateTime?
   fetchedAt       DateTime  @default(now())
-  /// The condense prompt version behind `summary`, so a bad batch is traceable.
-  condenseVersion String?
+  /// The extraction prompt version behind this document's claims, so a bad
+  /// batch is traceable to the prompt that produced it.
+  extractVersion  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  competitor Competitor          @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  insights   CompetitorInsight[]
 
   @@unique([competitorId, externalId])
   @@index([competitorId])
   @@index([status])
+}
+
+/// One discrete claim about a competitor, read out of a CompetitorDocument.
+///
+/// The first design stored a prose summary per document. That could not be
+/// filtered, could not be cited to a single statement, and forced one
+/// sensitivity tag onto documents that mix freely shareable product facts with
+/// pricing that must not leave the building. So documents yield claims, filed
+/// by topic, exactly as feedback yields Insight rows.
+///
+/// It also makes disagreement visible. Innovaccer's talk track puts InNote at
+/// 16c PMPM; the dossier estimates ~$0.25 from a different basis. As two prose
+/// blobs those never meet. As two claims on the same topic, the contradiction is
+/// on screen — and that is the useful part.
+model CompetitorInsight {
+  id           String  @id @default(cuid())
+  competitorId String
+  /// The document this was read out of. Null only for a claim entered by hand.
+  documentId   String?
+
+  /// The claim itself, short enough to scan in a list.
+  oneLiner String
+  /// The detail, with figures carried exactly as the source gave them.
+  content  String
+
+  /// One claim often touches two topics — a "Lego model" statement is both
+  /// pricing and packaging — so an array, same reasoning as Insight.productAreas.
+  /// Values from COMPETITOR_TOPIC_LABELS in lib/labels.ts.
+  topics       String[]
+  /// Which parts of Navina's own product this bears on, from AREA_LABELS, so a
+  /// competitor claim and a piece of client feedback filter by one vocabulary.
+  productAreas String[]
+
+  /// "VERIFIED" | "REPORTED" | "CLAIMED", from CONFIDENCE_LABELS. The dossier
+  /// tags its own statements this way; keeping it means a marketing claim never
+  /// reads with the same authority as a corroborated fact.
+  confidence String
+
+  /// "internal" | "external" — per claim, not per document, which is the whole
+  /// point. Decides what may leave the hub in a briefing pack.
+  sensitivity       String
+  /// One phrase naming what makes it internal. Null when external.
+  sensitivityReason String?
+
+  /// The date the claim is true as of, taken from the source document rather
+  /// than from when we read it. Competitive facts go stale silently.
+  asOf DateTime?
+  tags String    @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competitor Competitor          @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  document   CompetitorDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([competitorId])
+  @@index([documentId])
+  @@index([confidence])
   @@index([sensitivity])
 }
 
