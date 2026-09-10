@@ -10,7 +10,7 @@ interface AnswerBodyProps {
    * given: [3] in the prose is sources[2]. A citation past the end of the list
    * still renders, just without a link.
    */
-  sources?: { id: string }[];
+  sources?: { id: string; href?: string }[];
   /** "dark" sits on the purple ask bar, "light" on the Feedback insights log page. */
   tone?: "dark" | "light";
 }
@@ -22,7 +22,7 @@ const INLINE = /\*\*(.+?)\*\*|\[(\d{1,2})\]/g;
  * reason this isn't a plain string: they name a specific insight, and reading
  * an answer means being able to go and check it.
  */
-function renderInline(text: string, sources: { id: string }[], dark: boolean): ReactNode[] {
+function renderInline(text: string, sources: { id: string; href?: string }[], dark: boolean): ReactNode[] {
   const out: ReactNode[] = [];
   let cursor = 0;
 
@@ -51,7 +51,7 @@ function renderInline(text: string, sources: { id: string }[], dark: boolean): R
 
     out.push(
       source ? (
-        <Link key={at} href={`/insights/${source.id}`} title="Open the source this cites" className={chip}>
+        <Link key={at} href={source.href ?? `/insights/${source.id}`} title="Open the source this cites" className={chip}>
           {n}
         </Link>
       ) : (

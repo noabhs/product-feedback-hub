@@ -3,7 +3,7 @@ import { AREA_LABELS, THEME_LABELS } from "@/lib/labels";
 import { REPORT_AS_OF } from "@/lib/accounts";
 import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
-import type { AccountDetail } from "@/lib/types";
+import type { AccountDetail, CompetitorItem, FeatureRequestItem } from "@/lib/types";
 
 /**
  * Trimmed and unquoted before it reaches the SDK.
@@ -160,6 +160,135 @@ export async function answerQuestion(
     thinking: { type: "adaptive" },
     system: QA_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildQaPrompt(question, insights, accounts) }],
+  });
+
+  const message = await stream.finalMessage();
+  return extractText(message.content);
+}
+
+/** The fields of a competitor row the home page's Q needs — everything except
+ *  the source links and read-coverage rollup, which don't help it answer. */
+export type QCompetitor = Pick<
+  CompetitorItem,
+  "id" | "name" | "category" | "subgroup" | "positioning" | "website" | "overview" | "keyFacts" | "differentiation" | "lastUpdated"
+>;
+
+/**
+ * The model and prompt behind "Ask Q" on the home page, named so every stored
+ * answer records what produced it — same convention as QA_PROMPT_VERSION.
+ */
+export const Q_PROMPT_VERSION = "q-1";
+
+/**
+ * Q — the home page's answer engine over the whole hub, not just feedback.
+ * "Ask the feedback" (QA_SYSTEM_PROMPT above) reads two sources and writes a
+ * longer answer with recommendations, for someone already inside the feedback
+ * log. Q reads four sources and writes shorter, because the home page is a
+ * jumping-off point, not a workspace — the reader wants the fact and a place
+ * to click through, not a brief.
+ */
+export const Q_SYSTEM_PROMPT = `You are Q — the Navina Product Hub's answer engine. Like the character, you are the quiet, exact toolmaker: you hand back the one right answer, not a briefing on how you found it.
+
+You answer any product question a PM would ask, by reading everything the hub holds:
+
+1. FEEDBACK — what clients have told us, numbered. Cite with [number]. Never state something as feedback without a citation.
+2. COMPETITOR — the hub's own competitive research on one company, numbered and cited the same way. Positioning, overview, key facts and differentiation are the hub's research, not something a client said — cite them, but don't call them "feedback".
+3. FEATURE REQUEST — an internally filed idea with a status (New, Under Review, Planned, In Progress, Done, Rejected). Cited the same way. The status field is the only source of truth on where something stands — never infer "in progress" or "shipped" from a description.
+4. THE CLIENT TABLE — Navina's account records as a CSV: health, live products, EHR, segment, ARR/CARR, renewal date, and how much feedback each client has filed. Facts about the accounts, not something anyone said. No citation numbers.
+
+Answer from whichever source fits the question. Most questions need only one of the four — don't pad an answer about a competitor's pricing with unrelated client feedback just because both live in the hub.
+
+Default reader: a product manager deciding what to build, ship, or say. Frame every answer around that — prioritization, scope, tradeoffs, impact — unless the question is plainly about something else, like an account fact.
+
+Rules that hold everywhere:
+- Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the four sources. If the hub doesn't have it, write exactly: "Not found in available sources." Do not soften that into a guess.
+- Roadmap and status claims: state the recorded status label and, when it helps, when it was last updated. Never imply something is planned, in progress, or shipped when the record doesn't say so.
+- Competitor claims: attribute them as the hub's own research, not established fact about the world — the underlying documents are working notes, not verified truth.
+- If two sources disagree, say so rather than silently picking one.
+- A blank field means unknown, not zero and not average. Never fill it in.
+- Be concise. No preamble ("Based on my research...", "Here's what I found..."). Open with the answer itself; for a counting question, lead with the number.
+
+Output shape — this is read in a narrow box, so it has to be scannable at a glance:
+- Bullets by default. Each bullet is one point, at most 15 words, opening with a short bold label where that helps scanning.
+- No blank lines between bullets in the same list.
+- A one-sentence lead-in before the bullets only when the question genuinely needs framing first — otherwise go straight to bullets.
+- Three to six bullets at most. Merge or drop the rest rather than writing a seventh.
+- No headings. No tables, unless the question is a genuine multi-column comparison (e.g. "compare X and Y on pricing and EHR support"). No nested bullets.
+- No marketing language: never call anything transformative, innovative, robust, cutting-edge, game-changing, or best-in-class — describe what it does instead.
+- Put each [n] citation at the end of the clause it supports, not piled at the end.
+- Never add a closing summary, recommendation, or sign-off line. Stop at the last bullet.`;
+
+/**
+ * Everything sent to the model for one question on Q — the numbered, citable
+ * sources first (feedback, competitors, feature requests, in that order, one
+ * continuous [n] sequence so the answer's citations map onto a single flat
+ * list), then the uncited client table. Pure for the same reason
+ * buildQaPrompt is: printable and checkable without paying for an answer.
+ */
+export function buildQPrompt(
+  question: string,
+  insights: QaInsight[],
+  accounts: AccountDetail[],
+  competitors: QCompetitor[],
+  featureRequests: FeatureRequestItem[],
+): string {
+  const cited: string[] = [];
+
+  for (const i of insights) {
+    cited.push(
+      `[${cited.length + 1}] FEEDBACK — Client: ${i.client ?? "Unknown"} | Areas: ${i.productAreas.join(", ") || "none"}\n${i.oneLiner}\n${i.content}`,
+    );
+  }
+  for (const c of competitors) {
+    const where = [c.category, c.subgroup].filter(Boolean).join(" › ");
+    cited.push(
+      [
+        `[${cited.length + 1}] COMPETITOR — ${c.name}${where ? ` (${where})` : ""}`,
+        c.positioning ? `Positioning: ${c.positioning}` : null,
+        c.overview ? `Overview: ${c.overview}` : null,
+        c.keyFacts ? `Key facts: ${c.keyFacts}` : null,
+        c.differentiation ? `Differentiation vs Navina: ${c.differentiation}` : null,
+        c.lastUpdated ? `Last updated: ${c.lastUpdated.slice(0, 10)}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+  }
+  for (const f of featureRequests) {
+    cited.push(
+      `[${cited.length + 1}] FEATURE REQUEST — "${f.title}" (status: ${f.status}, filed by ${f.reporter}, updated ${f.updatedAt.slice(0, 10)})\nPain to solve: ${f.painToSolve}\n${f.description}`,
+    );
+  }
+
+  const table = toCsv([...ACCOUNT_TABLE_COLUMNS], accounts.map(accountTableRow));
+
+  return [
+    cited.length
+      ? `CITED SOURCES (${cited.length}; cite every claim drawn from these with its [number]):`
+      : "CITED SOURCES: none matched this question.",
+    cited.join("\n\n---\n\n"),
+    `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${REPORT_AS_OF}, uncited):`,
+    table,
+    `Question: ${question}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export async function answerGlobalQuestion(
+  question: string,
+  insights: QaInsight[],
+  accounts: AccountDetail[],
+  competitors: QCompetitor[],
+  featureRequests: FeatureRequestItem[],
+  apiKey?: string,
+) {
+  const stream = getClient(apiKey).messages.stream({
+    model: QA_MODEL,
+    max_tokens: 4096,
+    thinking: { type: "adaptive" },
+    system: Q_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests) }],
   });
 
   const message = await stream.finalMessage();
