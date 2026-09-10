@@ -12,10 +12,12 @@ export async function GET() {
   const rows = await prisma.competitor.findMany({
     include: {
       sources: { orderBy: { createdAt: "asc" } },
-      // Status and dates only. The summaries are the bulk of a document and
-      // there are a couple of hundred of them across these 36 rows, so they are
-      // fetched per competitor when a panel opens instead.
+      // Statuses and dates only, plus a claim count. The claims themselves are a
+      // few hundred rows of prose across these 36 competitors, so they are
+      // fetched per competitor when a panel opens, or in full by the claims
+      // table on the same page.
       documents: { select: { status: true, sourceUpdatedAt: true } },
+      _count: { select: { insights: true } },
     },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
@@ -37,6 +39,7 @@ export async function GET() {
       empty: c.documents.filter((d) => d.status === "empty").length,
       skipped: c.documents.filter((d) => d.status === "skipped").length,
       failed: c.documents.filter((d) => d.status === "failed").length,
+      claims: c._count.insights,
       newestSourceAt: iso(
         c.documents.reduce<Date | null>(
           (newest, d) => (d.sourceUpdatedAt && (!newest || d.sourceUpdatedAt > newest) ? d.sourceUpdatedAt : newest),

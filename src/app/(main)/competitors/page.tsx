@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { COMPETITOR_CATEGORIES, COMPETITOR_SUBGROUPS } from "@/lib/competitor-categories";
 import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
 import { CompetitorIcon } from "@/components/competitors/CompetitorIcon";
+import { CompetitorInsightsTable } from "@/components/competitors/CompetitorInsightsTable";
 import { Input } from "@/components/ui/Input";
 import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import type { CompetitorItem } from "@/lib/types";
@@ -35,6 +36,9 @@ function Competitors() {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(url.str("open") || null);
   const [search, setSearch] = useState(url.str("search"));
+  // Kept in the URL like the other filters, so a link to the claims view lands
+  // there rather than on the grid.
+  const [view, setView] = useState(url.str("view") === "claims" ? "claims" : "competitors");
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +52,7 @@ function Competitors() {
         setCompetitors(
           (data.competitors ?? []).map((c: CompetitorItem) => ({
             ...c,
-            coverage: c.coverage ?? { read: 0, empty: 0, skipped: 0, failed: 0, newestSourceAt: null },
+            coverage: c.coverage ?? { read: 0, empty: 0, skipped: 0, failed: 0, claims: 0, newestSourceAt: null },
           })),
         );
         setLoading(false);
@@ -57,7 +61,7 @@ function Competitors() {
     return () => { cancelled = true; };
   }, []);
 
-  useUrlState({ open: openId, search });
+  useUrlState({ open: openId, search, view: view === "claims" ? "claims" : null });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -72,6 +76,8 @@ function Competitors() {
   );
 
   const openCompetitor = openId ? competitors.find((c) => c.id === openId) ?? null : null;
+
+  const claimTotal = useMemo(() => competitors.reduce((n, c) => n + c.coverage.claims, 0), [competitors]);
 
   /**
    * Across every competitor, not just the search results: this answers "can the
@@ -115,6 +121,31 @@ function Competitors() {
           )}
         </div>
 
+        {/* Two views over the same competitors: the roster, and every claim the
+            hub has read about any of them. */}
+        <div className="flex items-center gap-1 mb-5 border-b border-[rgba(50,43,95,0.1)]">
+          {([
+            { key: "competitors", label: `Competitors${competitors.length ? ` (${competitors.length})` : ""}` },
+            { key: "claims", label: `What we know${claimTotal ? ` (${claimTotal})` : ""}` },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setView(tab.key)}
+              className={`px-3 py-2 text-[13px] font-medium -mb-px border-b-2 transition-colors ${
+                view === tab.key
+                  ? "border-brand-secondary-500 text-brand-primary"
+                  : "border-transparent text-brand-primary opacity-45 hover:opacity-75"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {view === "claims" ? (
+          <CompetitorInsightsTable />
+        ) : (
+          <>
         <div className="mb-5">
           <Input
             icon={<Search className="w-4 h-4" />}
@@ -165,7 +196,7 @@ function Competitors() {
                               <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
                                 {c.sources.length
                                   ? `${c.sources.length} source${c.sources.length === 1 ? "" : "s"}` +
-                                    (c.coverage.read ? ` · ${c.coverage.read} read` : "")
+                                    (c.coverage.claims ? ` · ${c.coverage.claims} claims` : "")
                                   : "No sources yet"}
                               </p>
                             </div>
@@ -178,6 +209,8 @@ function Competitors() {
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
       </div>
 
