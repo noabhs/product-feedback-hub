@@ -196,7 +196,8 @@ model Competitor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sources CompetitorSource[]
+  sources   CompetitorSource[]
+  documents CompetitorDocument[]
 
   @@index([category])
 }
@@ -215,6 +216,75 @@ model CompetitorSource {
   competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
 
   @@index([competitorId])
+}
+
+/// The text behind a CompetitorSource link, read once and stored.
+///
+/// A CompetitorSource is only a URL — the hub knew a battlecard existed but not
+/// a word of what it said. This is what a fetch of that link produced, so the
+/// ask can quote competitor material without reaching out to Drive or Notion at
+/// question time.
+///
+/// Rows are written for failures and skips too, not just successes. Coverage is
+/// the point: a service account will reach some of these files and not others,
+/// and "we read 61 of 73" is only knowable if the 12 misses are recorded.
+model CompetitorDocument {
+  id           String  @id @default(cuid())
+  competitorId String
+  /// The link this was reached through. Null when the link was a folder and the
+  /// document was found inside it — those have no CompetitorSource of their own.
+  sourceId     String?
+  /// The id at the origin: a Drive file id or a Notion page id. A re-read
+  /// updates the row it wrote last time instead of adding a second copy.
+  externalId   String
+  /// "notion" | "drive"
+  origin       String
+  title        String
+  url          String
+  mimeType     String?
+
+  /// Cleaned but otherwise verbatim, with expiring image URLs stripped. Kept as
+  /// the audit trail behind `summary` — when someone disputes an answer, this is
+  /// what the summary was made from.
+  text    String?
+  /// Condensed prose written for the ask to read. See lib/ingest/condense.ts for
+  /// why the raw text is not what gets quoted.
+  summary String?
+
+  /// "internal" when the document carries Navina sales strategy, privately
+  /// gathered competitor pricing, named clients or personnel notes; "external"
+  /// when it only describes the competitor. Decides what may leave the hub in a
+  /// briefing pack. Recorded on ingest so that decision never needs a re-read.
+  sensitivity       String?
+  /// One phrase naming what made it internal. Null when external.
+  sensitivityReason String?
+
+  /// "ok" | "empty" | "skipped" | "failed"
+  status String
+  /// Why it failed or was skipped, and what a partial read missed. Null on a
+  /// clean success.
+  note   String?
+  /// The origin reported content it would not expand — an embedded deck, a
+  /// synced block. The summary is real but incomplete.
+  truncated Boolean @default(false)
+
+  /// Last modified at the origin, when it reports one. Not when we read it:
+  /// Innovaccer's hub record said June 2025 while its Notion page had been
+  /// edited three weeks ago, and only the origin's date reveals that.
+  sourceUpdatedAt DateTime?
+  fetchedAt       DateTime  @default(now())
+  /// The condense prompt version behind `summary`, so a bad batch is traceable.
+  condenseVersion String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@unique([competitorId, externalId])
+  @@index([competitorId])
+  @@index([status])
+  @@index([sensitivity])
 }
 
 /// One question asked of "Ask the feedback", with the answer it got.

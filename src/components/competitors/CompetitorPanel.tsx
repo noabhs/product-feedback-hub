@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
-import { X, ExternalLink, Globe } from "lucide-react";
-import { sourceTypeLabel, sourceTypeColor } from "@/lib/competitor-sources";
+import { X, Globe } from "lucide-react";
+import { CompetitorSources } from "@/components/competitors/CompetitorSources";
 import type { CompetitorItem } from "@/lib/types";
 
 interface CompetitorPanelProps {
@@ -27,6 +27,38 @@ function Pill({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center px-2.5 py-0.5 rounded-pill text-xs font-medium bg-secondary-50 text-brand-secondary-600">
       {children}
     </span>
+  );
+}
+
+const dayFormat = { month: "short", day: "numeric", year: "numeric" } as const;
+
+/**
+ * Both dates, because they disagree and the disagreement is the useful part.
+ *
+ * `lastUpdated` is CI Launcher's own stamp on its notes. `newestSourceAt` is the
+ * most recent change to any document actually behind the links. Innovaccer's
+ * notes read June 2025 while its Notion page had been edited three weeks ago —
+ * showing only the first would present year-old framing as current, and only the
+ * second would imply the notes had been revised when they hadn't.
+ */
+function Freshness({ competitor }: { competitor: CompetitorItem }) {
+  const notes = competitor.lastUpdated ? new Date(competitor.lastUpdated) : null;
+  const source = competitor.coverage.newestSourceAt ? new Date(competitor.coverage.newestSourceAt) : null;
+  if (!notes && !source) return null;
+
+  const lagDays = notes && source ? (source.getTime() - notes.getTime()) / 86_400_000 : 0;
+
+  return (
+    <div className="text-[11px] text-brand-primary opacity-40 text-center leading-relaxed pb-1">
+      {notes && <span>These notes: {notes.toLocaleDateString("en-US", dayFormat)}</span>}
+      {notes && source && <span> · </span>}
+      {source && <span>newest source: {source.toLocaleDateString("en-US", dayFormat)}</span>}
+      {lagDays > 90 && (
+        <span className="block text-amber-700 opacity-90 mt-0.5">
+          The source material has moved on since these notes were written.
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -111,44 +143,11 @@ export function CompetitorPanel({ competitor, onClose }: CompetitorPanelProps) {
             </Section>
           )}
 
-          {/*
-           * Future integration point: the "Ask" feature (src/app/api/ai/qa) could
-           * retrieve from Competitor rows the same way it already blends Insight
-           * feedback with the Account table. Not designed here.
-           */}
           <Section title="Sources">
-            {competitor.sources.length ? (
-              <div className="space-y-2">
-                {competitor.sources.map((s) => (
-                  <a
-                    key={s.id}
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-md border border-[rgba(50,43,95,0.08)] px-3 py-2 hover:bg-[rgba(93,7,226,0.03)] transition-colors"
-                  >
-                    <span
-                      className={`text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${sourceTypeColor(s.type)}`}
-                    >
-                      {sourceTypeLabel(s.type)}
-                    </span>
-                    <span className="text-[14px] text-brand-primary flex-1 truncate">{s.label}</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-brand-primary opacity-40 shrink-0" />
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[13px] text-brand-primary opacity-40">
-                No sources added yet — CI Launcher links are still being collected for this one.
-              </p>
-            )}
+            <CompetitorSources competitor={competitor} />
           </Section>
 
-          {competitor.lastUpdated && (
-            <p className="text-[11px] text-brand-primary opacity-30 text-center">
-              Last updated {new Date(competitor.lastUpdated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </p>
-          )}
+          <Freshness competitor={competitor} />
         </div>
       </aside>
     </div>

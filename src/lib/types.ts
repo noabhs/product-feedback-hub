@@ -108,4 +108,45 @@ export interface CompetitorItem {
   differentiation: string | null;
   lastUpdated: string | null;
   sources: CompetitorSourceItem[];
+  /**
+   * How much of this competitor's material the hub has actually read. A rollup
+   * rather than the documents themselves: the summaries run to a few kilobytes
+   * each and there are a couple of hundred of them, which is far too much to
+   * ship with a list of 36 rows. The panel fetches the real text on open.
+   */
+  coverage: CompetitorCoverage;
+}
+
+export interface CompetitorCoverage {
+  read: number;
+  empty: number;
+  skipped: number;
+  failed: number;
+  /**
+   * The newest "last modified" any source reported, which is the honest
+   * freshness date. Competitor.lastUpdated is CI Launcher's own and can lag it
+   * by a year.
+   */
+  newestSourceAt: string | null;
+}
+
+/** One document read out of a source link. See prisma CompetitorDocument. */
+export interface CompetitorDocumentItem {
+  id: string;
+  /** The source link it was reached through, for nesting under it. */
+  sourceId: string | null;
+  title: string;
+  url: string;
+  /** "notion" | "drive" */
+  origin: string;
+  summary: string | null;
+  /** "internal" | "external" | null */
+  sensitivity: string | null;
+  sensitivityReason: string | null;
+  /** "ok" | "empty" | "skipped" | "failed" */
+  status: string;
+  note: string | null;
+  truncated: boolean;
+  sourceUpdatedAt: string | null;
+  fetchedAt: string;
 }

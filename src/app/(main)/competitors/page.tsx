@@ -42,7 +42,15 @@ function Competitors() {
       const res = await fetch("/api/competitors");
       const data = await res.json();
       if (!cancelled) {
-        setCompetitors(data.competitors ?? []);
+        // Coverage is defaulted here rather than guarded at every read: this is
+        // the one untyped boundary in the page, and a response from before the
+        // field existed would otherwise crash the card subtitles.
+        setCompetitors(
+          (data.competitors ?? []).map((c: CompetitorItem) => ({
+            ...c,
+            coverage: c.coverage ?? { read: 0, empty: 0, skipped: 0, failed: 0, newestSourceAt: null },
+          })),
+        );
         setLoading(false);
       }
     })();
@@ -65,6 +73,25 @@ function Competitors() {
 
   const openCompetitor = openId ? competitors.find((c) => c.id === openId) ?? null : null;
 
+  /**
+   * Across every competitor, not just the search results: this answers "can the
+   * ask actually field a competitor question", which is a property of the whole
+   * corpus. The unreachable count is the half that matters — a service account
+   * reaches some of these Drive files and not others, and the misses are the
+   * list worth chasing.
+   */
+  const coverage = useMemo(() => {
+    const t = competitors.reduce(
+      (a, c) => ({
+        read: a.read + c.coverage.read,
+        other: a.other + c.coverage.empty + c.coverage.skipped,
+        failed: a.failed + c.coverage.failed,
+      }),
+      { read: 0, other: 0, failed: 0 },
+    );
+    return { ...t, total: t.read + t.other + t.failed };
+  }, [competitors]);
+
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
@@ -72,8 +99,20 @@ function Competitors() {
           <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Competitors</h1>
           <p className="text-[14px] text-brand-primary opacity-50 max-w-2xl">
             Who else our clients evaluate, grouped the same way as the CI Launcher tool this was
-            pulled from. Open any competitor for its overview and every source link we have on it.
+            pulled from. Open any competitor for its overview, every source link we have on it, and
+            what we&rsquo;ve read out of those links.
           </p>
+          {coverage.total > 0 && (
+            <p className="text-[12px] text-brand-primary opacity-50 mt-2">
+              Read {coverage.read} of {coverage.total} documents behind these links
+              {coverage.failed > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-red-700 opacity-90">{coverage.failed} unreachable</span>
+                </>
+              )}
+            </p>
+          )}
         </div>
 
         <div className="mb-5">
@@ -125,7 +164,8 @@ function Competitors() {
                               <p className="text-[14px] font-medium text-brand-primary truncate">{c.name}</p>
                               <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
                                 {c.sources.length
-                                  ? `${c.sources.length} source${c.sources.length === 1 ? "" : "s"}`
+                                  ? `${c.sources.length} source${c.sources.length === 1 ? "" : "s"}` +
+                                    (c.coverage.read ? ` · ${c.coverage.read} read` : "")
                                   : "No sources yet"}
                               </p>
                             </div>
