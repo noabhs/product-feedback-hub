@@ -1,4 +1,6 @@
+import crypto from "node:crypto";
 import type { WeeklyRecap } from "@/lib/weekly-recap";
+import type { QSource } from "@/lib/ask-q";
 
 const HUB_URL = "https://product-feedback-hub-topaz.vercel.app";
 
@@ -189,6 +191,112 @@ export function toStandardMarkdown(mrkdwn: string): string {
 export interface SlackResult {
   ok: boolean;
   error?: string;
+}
+
+/**
+ * Verifies a request actually came from Slack, per Slack's v0 signing spec:
+ * HMAC-SHA256 of "v0:{timestamp}:{raw body}" keyed by the app's signing
+ * secret, compared in constant time so the check itself can't leak the
+ * expected value through timing. A timestamp more than 5 minutes old is
+ * rejected too — Slack's own recommendation, so a captured request can't be
+ * replayed later.
+ *
+ * Takes the raw body rather than a parsed one: the signature is computed over
+ * the exact bytes Slack sent, and re-serializing parsed form data would not
+ * reliably reproduce them.
+ */
+export function verifySlackSignature(opts: {
+  rawBody: string;
+  timestamp: string | null;
+  signature: string | null;
+  signingSecret: string;
+}): boolean {
+  const { rawBody, timestamp, signature, signingSecret } = opts;
+  if (!timestamp || !signature) return false;
+
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > 60 * 5) return false;
+
+  const expected =
+    "v0=" + crypto.createHmac("sha256", signingSecret).update(`v0:${timestamp}:${rawBody}`).digest("hex");
+
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  // Buffers of different lengths would throw inside timingSafeEqual rather
+  // than just failing the check.
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/**
+ * Claude's Markdown, re-punctuated for Slack's mrkdwn dialect: **bold** loses
+ * a star, [text](url) becomes <url|text>, and a Markdown "- " bullet becomes
+ * the "• " Slack actually renders as one. The QA/Q system prompts never emit
+ * headings, nested lists, or tables, so this is the entire gap between the
+ * two dialects — the inverse of toStandardMarkdown above.
+ */
+export function markdownToSlackMrkdwn(md: string): string {
+  return md
+    .replace(/\*\*(.+?)\*\*/g, "*$1*")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "<$2|$1>")
+    .replace(/^- /gm, "• ");
+}
+
+/**
+ * A slash command has to ack within 3 seconds, which a Claude call routinely
+ * misses. The real answer goes here instead — response_url is good for up to
+ * 30 minutes and 5 uses; every caller here sends exactly one.
+ */
+export async function postToResponseUrl(responseUrl: string, payload: unknown): Promise<SlackResult> {
+  try {
+    const res = await fetch(responseUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      return { ok: false, error: `Slack returned ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/** Where a cited source's [n] can be read in full. Insights deep-link to the
+ *  exact row (the same ?open= pattern the weekly recap uses); competitors and
+ *  feature requests don't have a per-row route yet, so those link to the list. */
+function sourceLink(s: QSource): string {
+  const url =
+    s.kind === "insight"
+      ? `${HUB_URL}/insights?open=${s.id}`
+      : s.kind === "competitor"
+        ? `${HUB_URL}/competitors`
+        : `${HUB_URL}/feature-requests`;
+  return `<${url}|${s.label}>`;
+}
+
+/**
+ * Blocks for a Q answer posted to Slack: the question, the answer, and up to
+ * five cited sources as a compact footer so a [n] in the text has somewhere to
+ * click through to. Capped at five because most answers cite far more than
+ * that and a footer longer than the answer defeats the point of Slack's
+ * narrow-box reading; the rest are just uncounted, not hidden.
+ */
+export function qAnswerBlocks(question: string, answer: string, sources: QSource[]): unknown[] {
+  const blocks: unknown[] = [
+    { type: "section", text: { type: "mrkdwn", text: `*Q:* ${question}` } },
+    { type: "section", text: { type: "mrkdwn", text: markdownToSlackMrkdwn(answer) } },
+  ];
+
+  if (sources.length) {
+    const shown = sources.slice(0, 5);
+    const rest = sources.length - shown.length;
+    const footer =
+      shown.map((s, i) => `[${i + 1}] ${sourceLink(s)}`).join("  ·  ") + (rest > 0 ? `  +${rest} more` : "");
+    blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: footer }] });
+  }
+
+  return blocks;
 }
 
 /**

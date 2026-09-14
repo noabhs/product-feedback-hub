@@ -52,7 +52,16 @@ Sign in with your @navina.ai Google account.
 After signing in, go to **Admin** → **Run import**.
 This pulls all discovery questions and client feedback from the Google Sheet.
 
-## 7. Deploy to Vercel
+## 7. Slack `/ask` command
+
+1. In your Slack app's settings (the one the incoming webhook belongs to, or a
+   new one) → **Slash Commands** → **Create New Command**.
+2. Command: `/ask`. Request URL: `https://your-vercel-url.vercel.app/api/slack/command`.
+3. Short description: something like "Ask the Navina Insights Hub a question."
+4. Go to **Basic Information** → **App Credentials** → copy **Signing Secret** → `SLACK_SIGNING_SECRET`.
+5. Reinstall the app to the workspace if Slack asks you to.
+
+## 8. Deploy to Vercel
 
 ```bash
 git init
@@ -78,4 +87,5 @@ AUTH_GOOGLE_ID="..."
 AUTH_GOOGLE_SECRET="..."
 ANTHROPIC_API_KEY="..."
 GOOGLE_SHEET_ID="1tUGw9CDL-Obqf7SK1OaCtHsDaaEmRQBkrkA8ykpvCIQ"
+SLACK_SIGNING_SECRET="..."
 ```
