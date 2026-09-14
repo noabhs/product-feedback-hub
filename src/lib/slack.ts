@@ -286,6 +286,10 @@ export const SHARE_ACTION_ID = "q_share_to_channel";
  * that and a footer longer than the answer defeats the point of Slack's
  * narrow-box reading; the rest are just uncounted, not hidden.
  *
+ * Always closes with a "Sent from the Product Hub" line linking back to
+ * /home — an answer that gets shared to the channel should say where it came
+ * from, not just show up unattributed.
+ *
  * Ends with a "Share to channel" button when askId is present — the /ask
  * command answers ephemerally (only the asker sees it), and this is how they
  * choose to make one worth the whole channel seeing. No askId (the AskLog
@@ -304,6 +308,11 @@ export function qAnswerBlocks(question: string, answer: string, sources: QSource
       shown.map((s, i) => `[${i + 1}] ${sourceLink(s)}`).join("  ·  ") + (rest > 0 ? `  +${rest} more` : "");
     blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: footer }] });
   }
+
+  blocks.push({
+    type: "context",
+    elements: [{ type: "mrkdwn", text: `Sent from the <${HUB_URL}/home|Product Hub>` }],
+  });
 
   if (askId) {
     blocks.push({

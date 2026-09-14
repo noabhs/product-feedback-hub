@@ -88,3 +88,31 @@ export async function runQ(question: string, actor: string, apiKey?: string): Pr
 
   return { answer, sources, askId };
 }
+
+/**
+ * The reverse of building `sources` above: given the raw ids AskLog.sourceIds
+ * stores (a flat array with no kind attached), figures out which table each
+ * one actually belongs to and returns them typed the same way runQ's own
+ * sources are. Needed anywhere a logged answer gets replayed or reused after
+ * the fact — the Slack "Share to channel" button rebuilds its blocks this way
+ * rather than trusting Slack to echo the original message back intact.
+ */
+export async function resolveQSources(ids: string[]): Promise<QSource[]> {
+  if (!ids.length) return [];
+
+  const [insights, competitors, requests] = await Promise.all([
+    prisma.insight.findMany({ where: { id: { in: ids } }, select: { id: true, oneLiner: true, client: true } }),
+    prisma.competitor.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
+    prisma.featureRequest.findMany({ where: { id: { in: ids } }, select: { id: true, title: true } }),
+  ]);
+
+  const byId = new Map<string, QSource>();
+  for (const i of insights) byId.set(i.id, { id: i.id, kind: "insight", label: i.oneLiner, client: i.client ?? null });
+  for (const c of competitors) byId.set(c.id, { id: c.id, kind: "competitor", label: c.name, client: null });
+  for (const f of requests) byId.set(f.id, { id: f.id, kind: "feature-request", label: f.title, client: null });
+
+  // ids, not byId's own order — a citation's [n] maps to this array's
+  // position, and a row deleted since the original answer just drops out
+  // rather than shifting every citation after it.
+  return ids.map((id) => byId.get(id)).filter((s): s is QSource => !!s);
+}

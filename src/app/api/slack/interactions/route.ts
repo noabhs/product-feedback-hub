@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
-import { verifySlackSignature, postToResponseUrl, SHARE_ACTION_ID } from "@/lib/slack";
+import { prisma } from "@/lib/prisma";
+import { verifySlackSignature, postToResponseUrl, qAnswerBlocks, SHARE_ACTION_ID } from "@/lib/slack";
+import { resolveQSources } from "@/lib/ask-q";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -38,10 +40,9 @@ export async function POST(req: NextRequest) {
 
   const payload = JSON.parse(raw) as {
     type?: string;
-    actions?: { action_id: string }[];
+    actions?: { action_id: string; value?: string }[];
     response_url?: string;
     user?: { id: string };
-    message?: { blocks?: { type: string }[] };
   };
 
   if (payload.type !== "block_actions") return NextResponse.json({});
@@ -50,17 +51,30 @@ export async function POST(req: NextRequest) {
 
   const responseUrl = payload.response_url;
   const userId = payload.user?.id;
-  if (!responseUrl || !userId) return NextResponse.json({});
-
-  // The button's own ephemeral message already carries the fully rendered
-  // answer — reused rather than rebuilt from AskLog, so sharing doesn't need
-  // its own copy of the answer text or a second source lookup. Only the
-  // actions block (the button itself) is stripped before this goes out to
-  // people who can't click it anyway.
-  const originalBlocks = payload.message?.blocks ?? [];
-  const answerBlocks = originalBlocks.filter((b) => b.type !== "actions");
+  const askId = action.value;
+  if (!responseUrl || !userId || !askId) return NextResponse.json({});
 
   after(async () => {
+    // Rebuilt from AskLog rather than trusting Slack to hand the original
+    // message back intact: block_actions payloads from an *ephemeral*
+    // message come back with no `message.blocks` at all (that field is only
+    // populated for messages Slack itself is tracking state for), so the
+    // first version of this read an empty array and shared a blank message.
+    const row = await prisma.askLog.findUnique({ where: { id: askId } });
+    if (!row) {
+      await postToResponseUrl(responseUrl, {
+        response_type: "ephemeral",
+        replace_original: true,
+        text: "Couldn't share that — the original question wasn't found.",
+      });
+      return;
+    }
+
+    const sources = await resolveQSources(JSON.parse(row.sourceIds) as string[]);
+    // askId: null — the shared copy shouldn't grow its own "Share to
+    // channel" button, it's already shared.
+    const answerBlocks = qAnswerBlocks(row.question, row.answer, sources, null);
+
     // response_url is good for 5 uses in 30 minutes; this is the first —
     // posting visibly to the whole channel, attributed to whoever clicked.
     await postToResponseUrl(responseUrl, {
@@ -73,8 +87,8 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    // The second use: swap the button on the original ephemeral message for a
-    // quiet confirmation, so a second click on the same message can't post
+    // The second use: swap the button on the original ephemeral message for
+    // a quiet confirmation, so a second click on the same message can't post
     // the same answer to the channel twice.
     await postToResponseUrl(responseUrl, {
       response_type: "ephemeral",
