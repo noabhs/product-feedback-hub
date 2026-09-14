@@ -275,14 +275,23 @@ function sourceLink(s: QSource): string {
   return `<${url}|${s.label}>`;
 }
 
+/** The "Share to channel" button's action_id — matched in
+ *  api/slack/interactions/route.ts against every block_actions payload. */
+export const SHARE_ACTION_ID = "q_share_to_channel";
+
 /**
  * Blocks for a Q answer posted to Slack: the question, the answer, and up to
  * five cited sources as a compact footer so a [n] in the text has somewhere to
  * click through to. Capped at five because most answers cite far more than
  * that and a footer longer than the answer defeats the point of Slack's
  * narrow-box reading; the rest are just uncounted, not hidden.
+ *
+ * Ends with a "Share to channel" button when askId is present — the /ask
+ * command answers ephemerally (only the asker sees it), and this is how they
+ * choose to make one worth the whole channel seeing. No askId (the AskLog
+ * write failed) just means no button: sharing isn't worth blocking the answer.
  */
-export function qAnswerBlocks(question: string, answer: string, sources: QSource[]): unknown[] {
+export function qAnswerBlocks(question: string, answer: string, sources: QSource[], askId: string | null): unknown[] {
   const blocks: unknown[] = [
     { type: "section", text: { type: "mrkdwn", text: `*Q:* ${question}` } },
     { type: "section", text: { type: "mrkdwn", text: markdownToSlackMrkdwn(answer) } },
@@ -294,6 +303,20 @@ export function qAnswerBlocks(question: string, answer: string, sources: QSource
     const footer =
       shown.map((s, i) => `[${i + 1}] ${sourceLink(s)}`).join("  ·  ") + (rest > 0 ? `  +${rest} more` : "");
     blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: footer }] });
+  }
+
+  if (askId) {
+    blocks.push({
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "📣 Share to channel", emoji: true },
+          action_id: SHARE_ACTION_ID,
+          value: askId,
+        },
+      ],
+    });
   }
 
   return blocks;
