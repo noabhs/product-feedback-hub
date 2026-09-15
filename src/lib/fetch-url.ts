@@ -11,6 +11,13 @@ export async function fetchUrlText(url: string): Promise<string> {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; NavinaBot/1.0)" },
     signal: AbortSignal.timeout(12000),
   });
+  // 401/403 means the server itself rejected us as unauthenticated — the same
+  // "needs sign-in" situation the AUTH_WALL check below catches, just surfaced
+  // as a status code instead of a login page in the body (Google Slides does
+  // this; Google Docs/Notion more often return 200 with a login page).
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("That link isn't publicly readable, so it can't be fetched. Paste the document text instead.");
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).hostname}`);
 
   const html = await res.text();
