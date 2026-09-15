@@ -5,27 +5,25 @@ import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
 
 /**
- * Grouped, not flat. Everything about the feedback sits together — including AI
- * extract, which is how feedback arrives rather than a place of its own — then
- * the reference material, then Analytics, which measures the hub itself rather
- * than the product. Dividers alone, no section headings: seven items don't earn
+ * Grouped, not flat. Home on its own, then everything you work in day to day —
+ * the feedback and the reference material it is read against — then Analytics
+ * and Feature requests, which are about the hub and the roadmap rather than
+ * client feedback. Dividers alone, no section headings: nine items don't earn
  * the extra height.
  */
 const NAV_GROUPS = [
   [{ href: "/home", label: "Home", icon: Home }],
   [
-    { href: "/insights", label: "Feedback", icon: Search },
+    { href: "/insights", label: "Product Feedback", icon: Search },
     { href: "/feedback-insights", label: "Feedback insights log", icon: MessageSquare },
-    { href: "/upload", label: "AI extract", icon: Upload },
-  ],
-  [
-    { href: "/discovery", label: "Discovery", icon: BookOpen },
     { href: "/clients", label: "Clients", icon: Building2 },
     { href: "/competitors", label: "Competitors", icon: Swords },
+    { href: "/upload", label: "AI Extract", icon: Upload },
+    { href: "/discovery", label: "Discovery", icon: BookOpen },
   ],
   [
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/feature-requests", label: "Feature Requests", icon: Lightbulb },
+    { href: "/feature-requests", label: "Feature requests", icon: Lightbulb },
   ],
 ];
 
