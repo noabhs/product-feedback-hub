@@ -170,7 +170,7 @@ export function QAsk() {
               <p className="text-[11.5px] text-brand-primary/40 leading-relaxed pt-1.5">
                 Rate it — questions and answers are kept on{" "}
                 <Link href="/feedback-insights" className="text-brand-secondary-600 hover:text-brand-secondary-500 underline underline-offset-2">
-                  Feedback insights log
+                  Asks log
                 </Link>
                 .
               </p>

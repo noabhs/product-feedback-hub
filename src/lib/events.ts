@@ -28,6 +28,7 @@ export const ACTIONS = {
   clientUpdated: "client.updated",
   aiExtract: "ai.extract",
   aiExtractQuestions: "ai.extract_questions",
+  aiExtractCompetition: "ai.extract_competition",
   aiAsk: "ai.ask",
   askRated: "ask.rated",
   askDeleted: "ask.deleted",
@@ -36,6 +37,7 @@ export const ACTIONS = {
   featureRequestCreated: "feature_request.created",
   featureRequestUpdated: "feature_request.updated",
   featureRequestDeleted: "feature_request.deleted",
+  competitorInsightCreated: "competitor_insight.created",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
@@ -60,6 +62,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "csv.imported": "Imported CSV",
   "ai.extract": "Ran AI extract",
   "ai.extract_questions": "Extracted questions from a doc",
+  "ai.extract_competition": "Extracted competitor claims from a doc",
   "ai.ask": "Asked the feedback a question",
   "ask.rated": "Rated an AI answer",
   "ask.deleted": "Deleted a logged answer",
@@ -68,12 +71,14 @@ export const ACTION_LABELS: Record<string, string> = {
   "feature_request.created": "Filed a feature request",
   "feature_request.updated": "Edited a feature request",
   "feature_request.deleted": "Deleted a feature request",
+  "competitor_insight.created": "Added a competitor claim",
 };
 
 /** Actions that consume Anthropic credits — used for the AI usage panel. */
 export const AI_ACTIONS: string[] = [
   ACTIONS.aiExtract,
   ACTIONS.aiExtractQuestions,
+  ACTIONS.aiExtractCompetition,
   ACTIONS.aiAsk,
   ACTIONS.aiGenerateDoc,
 ];

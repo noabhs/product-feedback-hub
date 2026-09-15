@@ -1,11 +1,12 @@
 "use client";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MessageSquare, FileQuestion } from "lucide-react";
+import { MessageSquare, FileQuestion, Swords } from "lucide-react";
 import { ExtractInsights } from "@/components/extract/ExtractInsights";
 import { ExtractQuestions } from "@/components/extract/ExtractQuestions";
+import { ExtractCompetition } from "@/components/extract/ExtractCompetition";
 
-type Mode = "feedback" | "questions";
+type Mode = "feedback" | "questions" | "competition";
 
 const MODES: { value: Mode; label: string; hint: string; Icon: React.FC<{ className?: string }> }[] = [
   {
@@ -20,12 +21,19 @@ const MODES: { value: Mode; label: string; hint: string; Icon: React.FC<{ classN
     hint: "Pull discovery questions out of a doc, and register the doc as a source",
     Icon: FileQuestion,
   },
+  {
+    value: "competition",
+    label: "Competition",
+    hint: "Pull competitor claims out of a doc, call note, or link",
+    Icon: Swords,
+  },
 ];
 
 function ExtractShell() {
   const router = useRouter();
   const params = useSearchParams();
-  const mode: Mode = params.get("mode") === "questions" ? "questions" : "feedback";
+  const modeParam = params.get("mode");
+  const mode: Mode = modeParam === "questions" || modeParam === "competition" ? modeParam : "feedback";
 
   // Mode lives in the URL so the Sources library can deep-link straight into
   // question extraction with a doc prefilled.
@@ -66,7 +74,13 @@ function ExtractShell() {
       </div>
 
       {/* Keyed so switching modes starts clean rather than leaving stale state. */}
-      {mode === "questions" ? <ExtractQuestions key="questions" /> : <ExtractInsights key="feedback" />}
+      {mode === "questions" ? (
+        <ExtractQuestions key="questions" />
+      ) : mode === "competition" ? (
+        <ExtractCompetition key="competition" />
+      ) : (
+        <ExtractInsights key="feedback" />
+      )}
     </div>
   );
 }

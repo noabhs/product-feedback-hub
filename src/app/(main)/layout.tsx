@@ -15,7 +15,6 @@ const NAV_GROUPS = [
   [{ href: "/home", label: "Home", icon: Home }],
   [
     { href: "/insights", label: "Product Feedback", icon: Search },
-    { href: "/feedback-insights", label: "Feedback insights log", icon: MessageSquare },
     { href: "/clients", label: "Clients", icon: Building2 },
     { href: "/competitors", label: "Competitors", icon: Swords },
     { href: "/upload", label: "AI Extract", icon: Upload },
@@ -23,6 +22,7 @@ const NAV_GROUPS = [
   ],
   [
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/feedback-insights", label: "Asks log", icon: MessageSquare },
     { href: "/feature-requests", label: "Feature requests", icon: Lightbulb },
   ],
 ];
