@@ -29,6 +29,10 @@ export function ExtractInsights() {
   const { aiHeaders } = useApiKey();
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
+  // Picked up front, same as Competition picks its competitor before
+  // extracting — most pasted notes are about one client. Still overridable
+  // per row after extraction, for the rarer doc that touches more than one.
+  const [client, setClient] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
@@ -80,6 +84,9 @@ export function ExtractInsights() {
           // Defensive: the schema asks for at least one, but a row with none
           // would be rejected on save with nothing on screen explaining why.
           productAreas: i.productAreas?.length ? i.productAreas : ["GENERAL"],
+          // The client picked up front wins over the model's own guess per
+          // row — the reviewer told us who this is about, which beats a guess.
+          client: client || i.client,
           approved: true,
           expanded: false,
         }))
@@ -186,6 +193,7 @@ export function ExtractInsights() {
               setStage("input");
               setUrl("");
               setText("");
+              setClient("");
               setItems([]);
             }}
           >
@@ -434,6 +442,19 @@ export function ExtractInsights() {
     <div className="p-8 max-w-2xl mx-auto">
 
       <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-6 space-y-4">
+        <div>
+          <label className="block text-[13px] font-semibold text-brand-primary mb-1.5">
+            Client <span className="opacity-40 font-normal">(optional — you can also set it per row after extracting)</span>
+          </label>
+          <ClientField
+            value={client}
+            onChange={setClient}
+            clients={clients}
+            onClientAdded={(name) => setClients((prev) => [...prev, name].sort())}
+            className="w-full"
+          />
+        </div>
+
         <div>
           <label className="flex items-center gap-1.5 text-[13px] font-semibold text-brand-primary mb-1.5">
             <Link2 className="w-3.5 h-3.5" />
