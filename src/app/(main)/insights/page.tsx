@@ -27,16 +27,21 @@ type SortKey =
 // Order here drives the header; InsightRow renders its cells to match.
 const PAGE_SIZE = 20;
 
-const COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "productAreas", label: "Areas" },
-  { key: "theme", label: "Theme" },
-  { key: "persona", label: "Persona" },
+// `width` feeds the colgroup under table-fixed. Fixed widths rather than auto
+// because auto sized every column to its longest value: one account called
+// "Kaiser Foundation Health Plan of the Mid-Atlantic States" wrapped a word per
+// line and made a six-line row out of a one-line entry. Feedback is the only
+// column left to size itself, so it takes whatever is left over.
+const COLUMNS: { key: SortKey; label: string; width?: string }[] = [
+  { key: "productAreas", label: "Areas", width: "8.5rem" },
+  { key: "theme", label: "Theme", width: "6.5rem" },
+  { key: "persona", label: "Persona", width: "7.5rem" },
   { key: "oneLiner", label: "Feedback" },
-  { key: "client", label: "Client" },
-  { key: "sourceName", label: "Source" },
-  { key: "date", label: "Date" },
-  { key: "createdBy", label: "Reporter" },
-  { key: "commentCount", label: "Comments" },
+  { key: "client", label: "Client", width: "9rem" },
+  { key: "sourceName", label: "Source", width: "7rem" },
+  { key: "date", label: "Date", width: "5rem" },
+  { key: "createdBy", label: "Reporter", width: "5.5rem" },
+  { key: "commentCount", label: "Comments", width: "5.5rem" },
 ];
 
 const SORT_KEYS = COLUMNS.map((c) => c.key);
@@ -398,7 +403,12 @@ function Feedback() {
           </div>
         ) : (
           <div className="bg-white rounded-md border border-[rgba(50,43,95,0.08)] overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed min-w-[1120px]">
+              <colgroup>
+                {COLUMNS.map((col) => (
+                  <col key={col.key} style={col.width ? { width: col.width } : undefined} />
+                ))}
+              </colgroup>
               <thead>
                 <tr className="border-b border-[rgba(50,43,95,0.1)] bg-[rgba(50,43,95,0.03)]">
                   {COLUMNS.map((col) => {
@@ -408,18 +418,18 @@ function Feedback() {
                         <button
                           onClick={() => toggleSort(col.key)}
                           aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                          className={`w-full flex items-center gap-1 py-3 px-4 text-[12px] font-semibold uppercase tracking-wide transition-colors ${
+                          className={`w-full flex items-center gap-1 py-3 px-3 text-[12px] font-semibold uppercase tracking-wide transition-colors ${
                             active
                               ? "text-brand-secondary-600 opacity-100"
                               : "text-brand-primary opacity-60 hover:opacity-90"
                           }`}
                           title={`Sort by ${col.label}`}
                         >
-                          {col.label}
+                          <span className="truncate">{col.label}</span>
                           {active ? (
-                            sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                            sortDir === "asc" ? <ArrowUp className="w-3 h-3 shrink-0" /> : <ArrowDown className="w-3 h-3 shrink-0" />
                           ) : (
-                            <ArrowDown className="w-3 h-3 opacity-20" />
+                            <ArrowDown className="w-3 h-3 shrink-0 opacity-20" />
                           )}
                         </button>
                       </th>
