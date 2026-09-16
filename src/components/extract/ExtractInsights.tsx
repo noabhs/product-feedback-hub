@@ -7,6 +7,7 @@ import { Input, Select } from "@/components/ui/Input";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
+import { ClientField } from "@/components/insights/ClientField";
 import { AREA_OPTIONS as AREAS , THEME_OPTIONS as THEMES } from "@/lib/labels";
 
 interface Item {
@@ -43,6 +44,9 @@ export function ExtractInsights() {
   // and is editable, so a doc someone else gathered lands under their name.
   const [reporter, setReporter] = useState("");
   const [reporters, setReporters] = useState<string[]>([]);
+  // Already alphabetical — /api/insights/facets sorts the canonical Account
+  // list by name before returning it.
+  const [clients, setClients] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/insights/facets")
@@ -51,6 +55,7 @@ export function ExtractInsights() {
         if (!d) return;
         setReporters(d.reporters ?? []);
         setReporter((prev) => prev || d.me || "");
+        setClients(d.clients ?? []);
       })
       .catch(() => {}); // non-fatal: the field still works as free text
   }, []);
@@ -343,11 +348,12 @@ export function ExtractInsights() {
 
                       {/* Client */}
                       <td className="py-2 px-3">
-                        <input
+                        <ClientField
                           value={item.client ?? ""}
-                          onChange={(e) => update(idx, { client: e.target.value || null })}
-                          placeholder="—"
-                          className="w-full text-[13px] text-brand-primary bg-transparent rounded px-1.5 py-0.5 -mx-1.5 outline-none hover:bg-[rgba(50,43,95,0.04)] focus:bg-[rgba(50,43,95,0.06)] transition-colors placeholder:text-brand-primary/25"
+                          onChange={(v) => update(idx, { client: v || null })}
+                          clients={clients}
+                          onClientAdded={(name) => setClients((prev) => [...prev, name].sort())}
+                          className="w-full h-7 text-[12px]"
                         />
                       </td>
 
