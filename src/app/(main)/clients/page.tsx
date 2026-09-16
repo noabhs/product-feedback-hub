@@ -7,7 +7,7 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
 import { AccountRow } from "@/components/clients/AccountRow";
 import { AccountPanel } from "@/components/clients/AccountPanel";
-import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk } from "@/lib/accounts";
+import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk, reportIsStale } from "@/lib/accounts";
 import {
   matchesAccountFilters,
   accountFiltersToParams,
@@ -117,7 +117,13 @@ function Clients() {
   const csmOptions = useMemo(() => optionsFrom(accounts, (a) => a.csmName, csm), [accounts, csm]);
 
   const healthOptions = HEALTH_ORDER.map((h) => ({ value: h, label: h }));
-  const productOptions = PRODUCTS.map((p) => ({ value: p, label: p }));
+  // Offered in the canonical order but only where some account actually holds
+  // them — "Reporting API" left the product list between the August and
+  // September reports, and a filter option that can never match is noise.
+  const productOptions = useMemo(() => {
+    const present = new Set(accounts.flatMap((a) => a.products));
+    return PRODUCTS.filter((p) => present.has(p) || products.includes(p)).map((p) => ({ value: p, label: p }));
+  }, [accounts, products]);
   const segmentOptions = SEGMENTS.map((s) => ({ value: s, label: s }));
 
   // Split from `filtered` so the at-risk count reflects the other filters
@@ -239,6 +245,8 @@ function Clients() {
   const hasFilters =
     !!search || !!health.length || !!products.length || !!ehr.length || !!segment.length || !!csm.length || riskOnly;
 
+  const staleCount = useMemo(() => accounts.filter((a) => reportIsStale(a.reportAsOf)).length, [accounts]);
+
   // Headline numbers over whatever is on screen, so they follow the filters.
   const summary = useMemo(() => {
     const withHealth = displayed.filter((a) => a.health);
@@ -264,9 +272,16 @@ function Clients() {
               told us.
             </p>
             <p className="text-[12px] text-brand-primary opacity-35 max-w-2xl mt-1.5">
-              Account data is a snapshot of the Salesforce accounts report from {REPORT_AS_OF}. This
-              is also the canonical list — feedback can only point at a client on it, so one account
-              stops arriving under three spellings.
+              Account data is a snapshot of the Salesforce accounts report from {REPORT_AS_OF}
+              {staleCount > 0 && (
+                <>
+                  {" — except "}
+                  {staleCount} {staleCount === 1 ? "client that isn't" : "clients that aren't"} in it
+                  any more, still showing {staleCount === 1 ? "its" : "their"} last known figures
+                </>
+              )}
+              . This is also the canonical list — feedback can only point at a client on it, so one
+              account stops arriving under three spellings.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { X, MessageSquare, AlertTriangle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { renewalWindow, renewalPhrase, atRenewalRisk, REPORT_AS_OF } from "@/lib/accounts";
+import { renewalWindow, renewalPhrase, atRenewalRisk, reportIsStale, REPORT_AS_OF } from "@/lib/accounts";
 import { fmtDay, money, moneyExact, members, dateInputValue } from "@/lib/format";
 import type { AccountDetail } from "@/lib/types";
 
@@ -92,6 +92,7 @@ export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanel
     account.arr !== null && account.carr !== null && account.carr > account.arr
       ? account.carr - account.arr
       : null;
+  const stale = reportIsStale(account.reportAsOf) ? fmtDay(account.reportAsOf) : null;
   const hasReportData = account.health !== null || account.arr !== null;
 
   return (
@@ -128,6 +129,16 @@ export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanel
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {stale && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-[13px] text-amber-900">
+                Not in the {REPORT_AS_OF} accounts report. Everything below is from {stale}, the last
+                report that covered this client — treat the health, ARR and renewal date as that old.
+                The client stays on the list so its feedback keeps resolving.
+              </p>
+            </div>
+          )}
+
           {!hasReportData && (
             <div className="rounded-md border border-[rgba(50,43,95,0.12)] bg-white px-4 py-3">
               <p className="text-[13px] text-brand-primary opacity-60">

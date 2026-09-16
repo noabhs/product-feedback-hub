@@ -31,6 +31,10 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
   { name: "Amite County Medical Services" },
   { name: "ArchesMed", aliases: ["Arches", "Arches Medical", "Arches Medical Onsite"] },
   { name: "Atlas Oncology Partners" },
+  // "(AR)" is Arkansas — a disambiguator, not a former name, so unlike the FKA
+  // notes it stays in the display name. "Baptist Health" is common enough that
+  // dropping it would invite a collision and mis-filed feedback.
+  { name: "Baptist Health (AR)", aliases: ["Baptist Health"] },
   { name: "Bookmark Medical", aliases: ["Bookmark", "Rural Healthcare Group"] },
   { name: "Cano Health" },
   { name: "Cardiovascular Associates of America" },
@@ -66,6 +70,7 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
   { name: "iMA Medical Group" },
   { name: "IMA of South Florida" },
   { name: "Innovacare Health", aliases: ["InnovaCare"] },
+  { name: "Island Doctors" },
   { name: "Internal Medicine Associates & Specialties" },
   { name: "IntraCare Premier ACO", aliases: ["IntraCare"] },
   { name: "Jefferson City Medical Group", aliases: ["JCMG"] },
@@ -112,6 +117,7 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
   { name: "Tryon Medical Partners", aliases: ["Tryon"] },
   { name: "Tufts Medicine", aliases: ["Tufts", "Wellforce"] },
   { name: "U.S. Renal Care", aliases: ["US Renal Care", "USRC"] },
+  { name: "UC San Diego Health Physicians", aliases: ["UC San Diego Health Physician Network", "UC San Diego Health"] },
   { name: "UniMed HealthCare", aliases: ["UniMed"] },
   { name: "Upperline Health", aliases: ["Upperline", "Upper Line"] },
   { name: "Upward Health", aliases: ["Upward"] },
@@ -203,15 +209,31 @@ function escape(s: string): string {
  * When the Salesforce accounts report the per-account data came from was run.
  * Shown on /clients so nobody reads a stale ARR as today's number.
  */
-export const REPORT_AS_OF = "2026-08-18";
+export const REPORT_AS_OF = "2026-09-16";
+
+/**
+ * Figures from an earlier report than the current one — the account was in a
+ * previous report and isn't in this one, so its numbers are real but old.
+ *
+ * Distinct from having no data at all: an account no report ever covered is
+ * absent, not stale, and saying "as of August" about a blank row would be a
+ * claim about nothing. ISO dates compare correctly as strings.
+ */
+export function reportIsStale(reportAsOf: string | null | undefined): boolean {
+  if (!reportAsOf) return false;
+  return reportAsOf.slice(0, 10) < REPORT_AS_OF;
+}
 
 /** Worst first — a health filter and a health sort both want this order. */
 export const HEALTH_ORDER = ["Red", "Yellow", "Green"] as const;
 
 /**
- * Every product the report knows about. Listed rather than derived so the filter
- * keeps a stable order (roughly by how many accounts carry each one) instead of
- * reshuffling as accounts change.
+ * Every product any report has carried, in a fixed order so the filter doesn't
+ * reshuffle as accounts change. It is an ordering, not the option list: the
+ * filter offers only products some account actually holds, because "Reporting
+ * API" vanished between the August and September reports and an option that can
+ * never match is just noise. Left in the list so it sorts correctly if it
+ * returns.
  */
 export const PRODUCTS = ["Risk", "Quality", "HIE", "Clinician Copilot", "Reporting API"] as const;
 

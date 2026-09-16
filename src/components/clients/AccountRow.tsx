@@ -2,7 +2,7 @@
 import { MessageSquare, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { fmtDay } from "@/lib/format";
-import { renewalWindow, renewalPhrase, atRenewalRisk } from "@/lib/accounts";
+import { renewalWindow, renewalPhrase, atRenewalRisk, reportIsStale } from "@/lib/accounts";
 import type { AccountDetail } from "@/lib/types";
 
 interface AccountRowProps {
@@ -29,6 +29,9 @@ export function AccountRow({ account, onOpen }: AccountRowProps) {
   // healthy, so a green account renewing next month stays quiet.
   const window = renewalWindow(account.renewalDate);
   const flagged = atRenewalRisk(account);
+  // Only set when the figures pre-date the current report, so a row can't imply
+  // its month-old numbers are this month's.
+  const stale = reportIsStale(account.reportAsOf) ? fmtDay(account.reportAsOf) : null;
 
   return (
     <tr
@@ -42,6 +45,14 @@ export function AccountRow({ account, onOpen }: AccountRowProps) {
       </td>
       <td className="py-3 px-4 align-top">
         {account.health ? <Badge type="health" value={account.health} /> : <Empty />}
+        {stale && (
+          <span
+            className="block mt-0.5 text-[11px] text-brand-primary opacity-40"
+            title="This client isn't in the latest accounts report, so its figures are the last ones we had"
+          >
+            as of {stale}
+          </span>
+        )}
       </td>
       <td className="py-3 px-4 align-top">
         {account.products.length ? (

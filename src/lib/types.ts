@@ -84,6 +84,8 @@ export interface AccountDetail {
   lastActivityAt: string | null;
   firstClosedWon: string | null;
   liveDate: string | null;
+  /** Which accounts report these figures came from; null if no report covered it. */
+  reportAsOf: string | null;
   /** Feedback entries filed against this account. */
   feedbackCount: number;
 }
