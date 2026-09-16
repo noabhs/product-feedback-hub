@@ -83,6 +83,12 @@ model Account {
   /// a later report keeps its row and its old numbers, so the page needs to be
   /// able to say how old they are rather than implying they are current.
   reportAsOf     DateTime?
+  /// When this client was archived, or null while it's active. Archived clients
+  /// keep their row and their feedback — they drop out of the main table and the
+  /// feedback picker, so nothing new can be filed against them, but historical
+  /// text still resolves here and the insights stay attached. A date rather than
+  /// a flag, so "when did we stop counting this one" is answerable.
+  archivedAt     DateTime?
 }
 
 model Comment {

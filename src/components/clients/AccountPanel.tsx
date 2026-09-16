@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { X, MessageSquare, AlertTriangle, Check } from "lucide-react";
+import { X, MessageSquare, AlertTriangle, Check, Archive, ArchiveRestore } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { renewalWindow, renewalPhrase, atRenewalRisk, reportIsStale, REPORT_AS_OF } from "@/lib/accounts";
@@ -17,6 +17,8 @@ interface AccountPanelProps {
   account: AccountDetail;
   /** Called with the saved live date so the row behind the panel updates too. */
   onLiveDateSaved: (id: string, liveDate: string | null) => void;
+  /** Called after archiving or restoring, so the row moves tabs behind the panel. */
+  onArchiveChanged: (id: string, archivedAt: string | null) => void;
   onClose: () => void;
 }
 
@@ -47,11 +49,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanelProps) {
+export function AccountPanel({ account, onLiveDateSaved, onArchiveChanged, onClose }: AccountPanelProps) {
   const [liveDraft, setLiveDraft] = useState(dateInputValue(account.liveDate));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -92,6 +95,25 @@ export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanel
     account.arr !== null && account.carr !== null && account.carr > account.arr
       ? account.carr - account.arr
       : null;
+  async function setArchived(archived: boolean) {
+    setArchiving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/accounts/${account.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't change that");
+      onArchiveChanged(account.id, data.archivedAt);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setArchiving(false);
+    }
+  }
+
   const stale = reportIsStale(account.reportAsOf) ? fmtDay(account.reportAsOf) : null;
   const hasReportData = account.health !== null || account.arr !== null;
 
@@ -270,6 +292,45 @@ export function AccountPanel({ account, onLiveDateSaved, onClose }: AccountPanel
                 Nothing filed against this client yet.
               </p>
             )}
+          </Section>
+
+          <Section title={account.archivedAt ? "Archived" : "Archive"}>
+            {account.archivedAt ? (
+              <>
+                <p className="text-[13px] text-brand-primary opacity-60 mb-3">
+                  Archived {fmtDay(account.archivedAt)}. It stays off the main table and off every
+                  feedback form, and its {account.feedbackCount}{" "}
+                  {account.feedbackCount === 1 ? "entry" : "entries"} are untouched.
+                </p>
+                <Button variant="ghost" size="sm" loading={archiving} onClick={() => setArchived(false)}>
+                  <ArchiveRestore className="w-3.5 h-3.5" />
+                  Restore to active
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-[13px] text-brand-primary opacity-60 mb-3">
+                  For clients that aren&rsquo;t real accounts any more. Nothing is deleted — the row
+                  and its {account.feedbackCount}{" "}
+                  {account.feedbackCount === 1 ? "entry" : "entries"} stay, and old text still
+                  resolves here. It just leaves the main table and the feedback picker.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  loading={archiving}
+                  onClick={() => {
+                    if (confirm(`Archive ${account.name}? Its feedback is kept and you can restore it.`)) {
+                      setArchived(true);
+                    }
+                  }}
+                >
+                  <Archive className="w-3.5 h-3.5" />
+                  Archive this client
+                </Button>
+              </>
+            )}
+            {error && <p className="text-[13px] text-red-700 mt-2">{error}</p>}
           </Section>
         </div>
       </aside>

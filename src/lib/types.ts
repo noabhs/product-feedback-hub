@@ -86,6 +86,8 @@ export interface AccountDetail {
   liveDate: string | null;
   /** Which accounts report these figures came from; null if no report covered it. */
   reportAsOf: string | null;
+  /** When it was archived, or null while active. */
+  archivedAt: string | null;
   /** Feedback entries filed against this account. */
   feedbackCount: number;
 }

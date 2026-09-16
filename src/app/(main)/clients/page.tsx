@@ -87,6 +87,9 @@ function Clients() {
   const [segment, setSegment] = useState<string[]>(seeded.segment);
   const [csm, setCsm] = useState<string[]>(seeded.csm);
   const [riskOnly, setRiskOnly] = useState(seeded.riskOnly);
+  // Seeded from the same params as the filters, so an archived-tab link opens on
+  // that tab; accountFiltersToParams writes it back, so it travels in the URL.
+  const [tab, setTab] = useState<"active" | "archived">(seeded.archived ? "archived" : "active");
   const [sortKey, setSortKey] = useState<SortKey>(url.oneOf("sort", SORT_KEYS, DEFAULT_SORT));
   const [sortDir, setSortDir] = useState<"asc" | "desc">(url.oneOf("dir", SORT_DIRS, "asc"));
   const [panelId, setPanelId] = useState<string | null>(url.str("open") || null);
@@ -113,24 +116,36 @@ function Clients() {
     return () => { cancelled = true; };
   }, []);
 
-  const ehrOptions = useMemo(() => optionsFrom(accounts, (a) => a.ehr, ehr), [accounts, ehr]);
-  const csmOptions = useMemo(() => optionsFrom(accounts, (a) => a.csmName, csm), [accounts, csm]);
+  // Everything below is scoped to the open tab: an archived client shouldn't put
+  // its EHR back into the filter, or itself back into the count archiving exists
+  // to remove it from.
+  const inTab = useMemo(
+    () => accounts.filter((a) => (tab === "archived" ? a.archivedAt !== null : a.archivedAt === null)),
+    [accounts, tab],
+  );
+  const tabCounts = useMemo(() => ({
+    active: accounts.filter((a) => a.archivedAt === null).length,
+    archived: accounts.filter((a) => a.archivedAt !== null).length,
+  }), [accounts]);
+
+  const ehrOptions = useMemo(() => optionsFrom(inTab, (a) => a.ehr, ehr), [inTab, ehr]);
+  const csmOptions = useMemo(() => optionsFrom(inTab, (a) => a.csmName, csm), [inTab, csm]);
 
   const healthOptions = HEALTH_ORDER.map((h) => ({ value: h, label: h }));
   // Offered in the canonical order but only where some account actually holds
   // them — "Reporting API" left the product list between the August and
   // September reports, and a filter option that can never match is noise.
   const productOptions = useMemo(() => {
-    const present = new Set(accounts.flatMap((a) => a.products));
+    const present = new Set(inTab.flatMap((a) => a.products));
     return PRODUCTS.filter((p) => present.has(p) || products.includes(p)).map((p) => ({ value: p, label: p }));
-  }, [accounts, products]);
+  }, [inTab, products]);
   const segmentOptions = SEGMENTS.map((s) => ({ value: s, label: s }));
 
   // Split from `filtered` so the at-risk count reflects the other filters
   // without the toggle narrowing its own denominator.
   const filters: AccountFilters = useMemo(
-    () => ({ search, health, products, ehr, segment, csm, riskOnly }),
-    [search, health, products, ehr, segment, csm, riskOnly],
+    () => ({ search, health, products, ehr, segment, csm, riskOnly, archived: tab === "archived" }),
+    [search, health, products, ehr, segment, csm, riskOnly, tab],
   );
 
   // The filters go through the export's encoder; the sort and the open panel are
@@ -239,13 +254,20 @@ function Clients() {
   const handleLiveDateSaved = (id: string, liveDate: string | null) =>
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, liveDate } : a)));
 
+  // Archiving moves the row to the other tab, so the panel closes with it —
+  // leaving it open would show a client the table behind it no longer lists.
+  const handleArchiveChanged = (id: string, archivedAt: string | null) => {
+    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, archivedAt } : a)));
+    setPanelId(null);
+  };
+
   // Derived rather than stored, so an edit made in the panel is reflected there.
   const panelAccount = panelId ? accounts.find((a) => a.id === panelId) ?? null : null;
 
   const hasFilters =
     !!search || !!health.length || !!products.length || !!ehr.length || !!segment.length || !!csm.length || riskOnly;
 
-  const staleCount = useMemo(() => accounts.filter((a) => reportIsStale(a.reportAsOf)).length, [accounts]);
+  const staleCount = useMemo(() => inTab.filter((a) => reportIsStale(a.reportAsOf)).length, [inTab]);
 
   // Headline numbers over whatever is on screen, so they follow the filters.
   const summary = useMemo(() => {
@@ -305,6 +327,36 @@ function Clients() {
           </div>
         )}
 
+        {/* Tabs. Archived clients keep their row and their feedback; they're out
+            of the way rather than gone. */}
+        <div className="flex items-center gap-1 mb-5 border-b border-[rgba(50,43,95,0.1)]">
+          {([
+            ["active", "Active", tabCounts.active],
+            ["archived", "Archived", tabCounts.archived],
+          ] as const).map(([key, label, count]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              aria-current={tab === key ? "page" : undefined}
+              className={`-mb-px px-3 py-2 text-[14px] border-b-2 transition-colors cursor-pointer ${
+                tab === key
+                  ? "border-brand-secondary-500 text-brand-secondary-600 font-semibold"
+                  : "border-transparent text-brand-primary opacity-50 hover:opacity-80"
+              }`}
+            >
+              {label} <span className="opacity-50 tabular-nums">{count}</span>
+            </button>
+          ))}
+        </div>
+
+        {tab === "archived" && (
+          <p className="text-[13px] text-brand-primary opacity-50 mb-4 max-w-2xl">
+            Not real accounts any more, kept so their feedback still resolves. They&rsquo;re out of
+            the main table and can&rsquo;t be picked on a feedback form, but nothing has been
+            deleted — open one and hit Restore to put it back.
+          </p>
+        )}
+
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <Input
@@ -347,7 +399,7 @@ function Clients() {
 
         {!loading && (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-3">
-            <RowCount shown={displayed.length} total={accounts.length} noun="clients" />
+            <RowCount shown={displayed.length} total={inTab.length} noun="clients" />
             <div className="flex items-center gap-3 text-[12px] text-brand-primary opacity-60">
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500" />{summary.red} red
@@ -451,6 +503,7 @@ function Clients() {
           key={panelAccount.id}
           account={panelAccount}
           onLiveDateSaved={handleLiveDateSaved}
+          onArchiveChanged={handleArchiveChanged}
           onClose={() => setPanelId(null)}
         />
       )}

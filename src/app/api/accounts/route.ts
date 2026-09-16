@@ -11,7 +11,12 @@ import { loadAccountDetails } from "@/lib/accounts-db";
  */
 export async function GET(req: NextRequest) {
   if (req.nextUrl.searchParams.get("detail") !== "1") {
+    // Active only. This list is what the feedback form offers, and the point of
+    // archiving a client is that nothing new gets filed against it. Resolution
+    // is separate and still covers archived names, so importing a CSV that says
+    // "Tampa General" still lands on the right row rather than becoming null.
     const rows = await prisma.account.findMany({
+      where: { archivedAt: null },
       select: { name: true },
       orderBy: { name: "asc" },
     });

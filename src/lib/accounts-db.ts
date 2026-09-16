@@ -112,6 +112,7 @@ export async function loadAccountDetails(): Promise<AccountDetail[]> {
     firstClosedWon: iso(r.firstClosedWon),
     liveDate: iso(r.liveDate),
     reportAsOf: iso(r.reportAsOf),
+    archivedAt: iso(r.archivedAt),
     feedbackCount: byClient.get(r.name) ?? 0,
   }));
 }

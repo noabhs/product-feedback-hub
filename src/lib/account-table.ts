@@ -12,7 +12,7 @@ export const ACCOUNT_TABLE_COLUMNS = [
   "Renewal date", "Days to renewal", "Renewal risk",
   "Current ARR", "CARR", "Risk members", "Quality members", "HIE members",
   "Account owner", "CSM", "Billing state", "Last activity", "First closed won",
-  "Feedback entries", "Data as of",
+  "Feedback entries", "Data as of", "Archived",
 ] as const;
 
 /** Dates go out as yyyy-mm-dd, which sorts correctly in every spreadsheet. */
@@ -43,5 +43,6 @@ export function accountTableRow(a: AccountDetail): (string | number | null)[] {
     day(a.firstClosedWon),
     a.feedbackCount,
     day(a.reportAsOf),
+    day(a.archivedAt),
   ];
 }

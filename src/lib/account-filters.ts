@@ -14,6 +14,10 @@ export interface AccountFilters {
   csm: string[];
   /** Renewal inside the window on an account that isn't green. */
   riskOnly: boolean;
+  /** true shows only archived clients, false only active ones. Never both — the
+   *  page presents them as two tabs, and mixing them would put dead accounts
+   *  back into the counts archiving exists to take them out of. */
+  archived: boolean;
 }
 
 export const NO_ACCOUNT_FILTERS: AccountFilters = {
@@ -24,6 +28,7 @@ export const NO_ACCOUNT_FILTERS: AccountFilters = {
   segment: [],
   csm: [],
   riskOnly: false,
+  archived: false,
 };
 
 /**
@@ -32,6 +37,8 @@ export const NO_ACCOUNT_FILTERS: AccountFilters = {
  * of step with the screen, which is the whole reason it reads them from here.
  */
 export function matchesAccountFilters(a: AccountDetail, f: AccountFilters): boolean {
+  // First, because it decides which list the row belongs to at all.
+  if (f.archived !== (a.archivedAt !== null)) return false;
   if (f.health.length && !(a.health && f.health.includes(a.health))) return false;
   // Any picked product counts — an account on Risk shows under a Risk filter
   // whether or not it also runs Quality.
@@ -66,6 +73,7 @@ export function accountFiltersFromParams(params: URLSearchParams): AccountFilter
     segment: params.getAll("segment"),
     csm: params.getAll("csm"),
     riskOnly: params.get("risk") === "1",
+    archived: params.get("archived") === "1",
   };
 }
 
@@ -79,5 +87,6 @@ export function accountFiltersToParams(f: AccountFilters): URLSearchParams {
   for (const v of f.segment) params.append("segment", v);
   for (const v of f.csm) params.append("csm", v);
   if (f.riskOnly) params.set("risk", "1");
+  if (f.archived) params.set("archived", "1");
   return params;
 }
