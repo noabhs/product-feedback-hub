@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { matchAccount, type AccountLike } from "@/lib/accounts";
-import { tokenize } from "@/lib/tokenize";
+import { expandQuestion } from "@/lib/synonyms";
 
 /**
  * The feedback retrieval behind every "ask" feature — which insights are
@@ -8,7 +8,10 @@ import { tokenize } from "@/lib/tokenize";
  * and /api/ai/ask so the two askers agree on what counts as a match.
  */
 export async function searchInsights(question: string, accounts: AccountLike[]) {
-  const words = tokenize(question);
+  // Expanded, not just tokenised. A question naming "DxC" has to find feedback
+  // written as "risk adjustment", "diagnosis" or "HCC", and has to match rows
+  // tagged RISK_DX whose prose never spells any of it out. See lib/synonyms.ts.
+  const { terms: words, areas } = expandQuestion(question);
 
   // A question naming a client used to find that client's feedback only if the
   // name also happened to appear in the prose. Resolved through matchAccount
@@ -23,15 +26,22 @@ export async function searchInsights(question: string, accounts: AccountLike[]) 
     namedClient
       ? prisma.insight.findMany({ where: { client: namedClient }, take: LIMIT, orderBy: { createdAt: "desc" } })
       : Promise.resolve([]),
-    words.length
+    words.length || areas.length
       ? prisma.insight.findMany({
           where: {
-            OR: words.map((word) => ({
-              OR: [
-                { oneLiner: { contains: word, mode: "insensitive" } },
-                { content: { contains: word, mode: "insensitive" } },
-              ],
-            })),
+            OR: [
+              ...words.map((word) => ({
+                OR: [
+                  { oneLiner: { contains: word, mode: "insensitive" as const } },
+                  { content: { contains: word, mode: "insensitive" as const } },
+                ],
+              })),
+              // The product-area tag counts as a match in its own right. This is
+              // the half that fixes questions about a product area rather than a
+              // phrase: the tag is the only place some entries say what they are
+              // about.
+              ...(areas.length ? [{ productAreas: { hasSome: areas } }] : []),
+            ],
           },
           // Every match, not the newest 15. Truncating the candidates by
           // createdAt meant one bulk import could own the whole context window:
@@ -45,13 +55,19 @@ export async function searchInsights(question: string, accounts: AccountLike[]) 
       : Promise.resolve([]),
   ]);
 
-  /** Distinct question words hit, one-liners weighted above body text. */
-  const relevance = (i: { oneLiner: string; content: string }): number => {
+  /**
+   * Distinct terms hit, one-liners weighted above body text, with the area tag
+   * between the two. Deliberately below a one-liner hit: a row that merely
+   * shares a product area should never outrank one that names the thing asked
+   * about, or a broad area like RISK_DX would bury every specific answer.
+   */
+  const relevance = (i: { oneLiner: string; content: string; productAreas: string[] }): number => {
     const head = i.oneLiner.toLowerCase();
     const body = i.content.toLowerCase();
-    return words.reduce(
-      (score, w) => score + (head.includes(w) ? 3 : 0) + (body.includes(w) ? 1 : 0),
-      0,
+    const areaHit = areas.length && i.productAreas.some((a) => areas.includes(a)) ? 2 : 0;
+    return (
+      areaHit +
+      words.reduce((score, w) => score + (head.includes(w) ? 3 : 0) + (body.includes(w) ? 1 : 0), 0)
     );
   };
 

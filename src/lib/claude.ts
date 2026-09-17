@@ -178,7 +178,7 @@ export type QCompetitor = Pick<
  * The model and prompt behind "Ask Q" on the home page, named so every stored
  * answer records what produced it — same convention as QA_PROMPT_VERSION.
  */
-export const Q_PROMPT_VERSION = "q-2";
+export const Q_PROMPT_VERSION = "q-3";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
@@ -203,6 +203,7 @@ Default reader: a product manager deciding what to build, ship, or say. Frame ev
 
 Rules that hold everywhere:
 - Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the four sources. If the hub doesn't have it, write exactly: "Not found in available sources." Do not soften that into a guess.
+- One product goes by several names. When the prompt carries a READ AS line, the question used a name the feedback does not, and the sources below are the right ones — answer them as asked. Say which name you read it as in a short opening clause ("Reading DxC as Risk Adjustment —") and then answer. Never refuse a question because the exact term the asker typed is absent while the material is present under another name.
 - Roadmap and status claims: state the recorded status label and, when it helps, when it was last updated. Never imply something is planned, in progress, or shipped when the record doesn't say so.
 - Competitor claims: attribute them as the hub's own research, not established fact about the world — the underlying documents are working notes, not verified truth.
 - If two sources disagree, say so rather than silently picking one.
@@ -237,6 +238,14 @@ export function buildQPrompt(
   accounts: AccountDetail[],
   competitors: QCompetitor[],
   featureRequests: FeatureRequestItem[],
+  /**
+   * Navina names the model resolved the question onto, from lib/synonyms.ts.
+   * Without this, a question about "the DxC engine" arrives with risk
+   * adjustment feedback attached and no explanation of why — and the model
+   * either refuses, because "DxC" appears nowhere, or answers without saying
+   * which name it read.
+   */
+  readAs?: string | null,
 ): string {
   const cited: string[] = [];
 
@@ -275,6 +284,9 @@ export function buildQPrompt(
     cited.join("\n\n---\n\n"),
     `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${REPORT_AS_OF}, uncited):`,
     table,
+    readAs
+      ? `READ AS: this question was resolved onto ${readAs}. Navina's own name for it differs from the one asked, and the sources above were retrieved on that basis.`
+      : null,
     `Question: ${question}`,
   ]
     .filter(Boolean)
@@ -288,13 +300,16 @@ export async function answerGlobalQuestion(
   competitors: QCompetitor[],
   featureRequests: FeatureRequestItem[],
   apiKey?: string,
+  readAs?: string | null,
 ) {
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
     max_tokens: 4096,
     thinking: { type: "adaptive" },
     system: Q_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests) }],
+    messages: [
+      { role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests, readAs) },
+    ],
   });
 
   const message = await stream.finalMessage();
