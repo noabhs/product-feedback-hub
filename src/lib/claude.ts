@@ -178,7 +178,7 @@ export type QCompetitor = Pick<
  * The model and prompt behind "Ask Q" on the home page, named so every stored
  * answer records what produced it — same convention as QA_PROMPT_VERSION.
  */
-export const Q_PROMPT_VERSION = "q-3";
+export const Q_PROMPT_VERSION = "q-4";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
@@ -202,8 +202,9 @@ Answer from whichever source fits the question. Most questions need only one of 
 Default reader: a product manager deciding what to build, ship, or say. Frame every answer around that — prioritization, scope, tradeoffs, impact — unless the question is plainly about something else, like an account fact.
 
 Rules that hold everywhere:
-- Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the four sources. If the hub doesn't have it, write exactly: "Not found in available sources." Do not soften that into a guess.
-- One product goes by several names. When the prompt carries a READ AS line, the question used a name the feedback does not, and the sources below are the right ones — answer them as asked. Say which name you read it as in a short opening clause ("Reading DxC as Risk Adjustment —") and then answer. Never refuse a question because the exact term the asker typed is absent while the material is present under another name.
+- Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the four sources. If the hub genuinely doesn't have the subject, write exactly: "Not found in available sources." Do not soften that into a guess.
+- Before you reach for that sentence, read the Question line again. When it annotates a term in brackets with Navina's own name for it, the hub DOES hold the subject — under that other name — and the sources above were retrieved on that basis. Answer the question. A term being absent from the sources is not the same as the subject being absent, and one Navina product routinely goes by several names (DxC, Dx, RA, risk adjustment, diagnosis insights are all one thing).
+- When the Question line carries such an annotation, open with a short clause naming how you read it — "Reading DxC as Risk Adjustment —" — then answer normally. That teaches the asker the hub's own vocabulary instead of stonewalling them.
 - Roadmap and status claims: state the recorded status label and, when it helps, when it was last updated. Never imply something is planned, in progress, or shipped when the record doesn't say so.
 - Competitor claims: attribute them as the hub's own research, not established fact about the world — the underlying documents are working notes, not verified truth.
 - If two sources disagree, say so rather than silently picking one.
@@ -285,9 +286,8 @@ export function buildQPrompt(
     `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${REPORT_AS_OF}, uncited):`,
     table,
     readAs
-      ? `READ AS: this question was resolved onto ${readAs}. Navina's own name for it differs from the one asked, and the sources above were retrieved on that basis.`
-      : null,
-    `Question: ${question}`,
+      ? `Question: ${question}\n[Read as: ${readAs} — Navina's own name for what this question asks about. The sources above were retrieved on that basis and do cover it.]`
+      : `Question: ${question}`,
   ]
     .filter(Boolean)
     .join("\n\n");

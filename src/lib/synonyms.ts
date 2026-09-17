@@ -134,6 +134,40 @@ export function expandQuestion(question: string): Expansion {
 }
 
 /**
+ * Substitutes Navina's own name into the question, keeping the asker's word
+ * alongside it: "problems in the DxC engine" becomes "problems in the Risk
+ * Adjustment (DxC) engine".
+ *
+ * Belt and braces next to readAsNote, and the more reliable of the two. Telling
+ * the model that DxC means Risk Adjustment depends on it following an
+ * instruction, against a hard rule to refuse anything not in the sources — and
+ * on the first attempt it kept refusing. Rewriting the term removes the thing it
+ * was refusing over, so compliance stops being a factor.
+ *
+ * The original question is what gets logged and shown; this is only what the
+ * model reads.
+ */
+export function rewriteQuestion(question: string, matched: Concept[]): string {
+  let out = question;
+  for (const concept of matched) {
+    const lower = out.toLowerCase();
+    // Already uses the hub's own word — nothing to clarify.
+    if (mentions(lower, concept.label.toLowerCase())) continue;
+    // Longest alias first, so "risk adj" can't pre-empt "risk adjustment".
+    const alias = [...concept.aliases]
+      .sort((a, b) => b.length - a.length)
+      .find((a) => mentions(lower, a));
+    if (!alias) continue;
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(
+      new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "i"),
+      (m) => `${concept.label} (${m})`,
+    );
+  }
+  return out;
+}
+
+/**
  * A one-line note for the prompt when the question used a name the data does
  * not. Without it the model either answers with no idea why unasked-for
  * material arrived, or — as happened with DxC — refuses while the answer sits

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { answerGlobalQuestion, QA_MODEL, Q_PROMPT_VERSION, type QCompetitor } from "@/lib/claude";
 import { loadAccountDetails, loadAccounts } from "@/lib/accounts-db";
 import { searchInsights } from "@/lib/insight-search";
-import { expandQuestion, readAsNote } from "@/lib/synonyms";
+import { expandQuestion, readAsNote, rewriteQuestion } from "@/lib/synonyms";
 import { recordAskLog } from "@/lib/ask-log";
 import { logEvent, ACTIONS } from "@/lib/events";
 import type { FeatureRequestItem } from "@/lib/types";
@@ -66,10 +66,22 @@ export async function runQ(question: string, actor: string, apiKey?: string): Pr
   // Recomputed rather than returned from searchInsights, which is shared with
   // /api/ai/qa and whose return shape both surfaces depend on. expandQuestion
   // is pure string work, so running it twice costs nothing.
-  const readAs = readAsNote(question, expandQuestion(question).matched);
+  const matched = expandQuestion(question).matched;
+  const readAs = readAsNote(question, matched);
+  // The model reads the question with Navina's own names substituted in; the
+  // original is what gets logged and shown back to the asker.
+  const asModelSeesIt = rewriteQuestion(question, matched);
 
   const startedAt = Date.now();
-  const answer = await answerGlobalQuestion(question, insights, accounts, competitors, requests, apiKey, readAs);
+  const answer = await answerGlobalQuestion(
+    asModelSeesIt,
+    insights,
+    accounts,
+    competitors,
+    requests,
+    apiKey,
+    readAs,
+  );
   const latencyMs = Date.now() - startedAt;
 
   // In the same order buildQPrompt numbered them, so sources[n - 1] is what a
