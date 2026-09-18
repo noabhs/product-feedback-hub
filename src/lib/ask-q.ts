@@ -101,7 +101,7 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
   const asModelSeesIt = rewriteQuestion(question, matched);
 
   const startedAt = Date.now();
-  const { text: answer, usedWebSearch } = await answerGlobalQuestion(
+  const { text: modelAnswer, usedWebSearch } = await answerGlobalQuestion(
     asModelSeesIt,
     insights,
     accounts,
@@ -112,6 +112,14 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     wantsWebSearch,
   );
   const latencyMs = Date.now() - startedAt;
+
+  // Baked into the answer text itself, not left as a separate flag each
+  // surface has to remember to render — a badge only the web UI draws is
+  // invisible from Slack, from the Asks log, and from a copied/pasted
+  // answer, all of which just show this string.
+  const answer = usedWebSearch
+    ? `🌐 **This answer includes a live web search.**\n\n${modelAnswer}`
+    : modelAnswer;
 
   // In the same order buildQPrompt numbered them, so sources[n - 1] is what a
   // [n] citation in the answer points at.
