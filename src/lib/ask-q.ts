@@ -12,7 +12,8 @@ const iso = (d: Date | null) => d?.toISOString() ?? null;
 export type QSource =
   | { id: string; kind: "insight"; label: string; client: string | null }
   | { id: string; kind: "competitor"; label: string; client: null }
-  | { id: string; kind: "feature-request"; label: string; client: null };
+  | { id: string; kind: "feature-request"; label: string; client: null }
+  | { id: string; kind: "web"; label: string; client: null; url: string };
 
 export interface QResult {
   answer: string;
@@ -100,8 +101,17 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
   // original is what gets logged and shown back to the asker.
   const asModelSeesIt = rewriteQuestion(question, matched);
 
+  // In the same order buildQPrompt numbered them, so hubSources[n - 1] is
+  // what a hub [n] citation points at — and any web citations the model
+  // earns continue numbering right after this list ends.
+  const hubSources: QSource[] = [
+    ...insights.map((i) => ({ id: i.id, kind: "insight" as const, label: i.oneLiner, client: i.client ?? null })),
+    ...competitors.map((c) => ({ id: c.id, kind: "competitor" as const, label: c.name, client: null })),
+    ...requests.map((f) => ({ id: f.id, kind: "feature-request" as const, label: f.title, client: null })),
+  ];
+
   const startedAt = Date.now();
-  const { text: modelAnswer, usedWebSearch } = await answerGlobalQuestion(
+  const { text: modelAnswer, usedWebSearch, webSources } = await answerGlobalQuestion(
     asModelSeesIt,
     insights,
     accounts,
@@ -110,6 +120,7 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     apiKey,
     readAs,
     wantsWebSearch,
+    hubSources.length,
   );
   const latencyMs = Date.now() - startedAt;
 
@@ -121,12 +132,12 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     ? `🌐 **This answer includes a live web search.**\n\n${modelAnswer}`
     : modelAnswer;
 
-  // In the same order buildQPrompt numbered them, so sources[n - 1] is what a
-  // [n] citation in the answer points at.
+  // Web results have no row of their own to key off, so the URL stands in
+  // for an id — resolveQSources just won't find it on a later replay (see
+  // its comment), which only matters for Slack's "Share to channel" copy.
   const sources: QSource[] = [
-    ...insights.map((i) => ({ id: i.id, kind: "insight" as const, label: i.oneLiner, client: i.client ?? null })),
-    ...competitors.map((c) => ({ id: c.id, kind: "competitor" as const, label: c.name, client: null })),
-    ...requests.map((f) => ({ id: f.id, kind: "feature-request" as const, label: f.title, client: null })),
+    ...hubSources,
+    ...webSources.map((w) => ({ id: w.url, kind: "web" as const, label: w.title ?? w.url, client: null, url: w.url })),
   ];
 
   void logEvent(ACTIONS.aiAsk, { label: rawQuestion, actor });
@@ -135,7 +146,10 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     question: rawQuestion,
     answer,
     sourceIds: sources.map((s) => s.id),
-    matchedCount: sources.length,
+    // Hub sources only: this counts what the hub's own search matched, a
+    // signal for whether retrieval worked — a live web result answers a
+    // different question and would muddy that reading.
+    matchedCount: hubSources.length,
     model: QA_MODEL,
     promptVersion: Q_PROMPT_VERSION,
     latencyMs,
@@ -151,6 +165,11 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
  * sources are. Needed anywhere a logged answer gets replayed or reused after
  * the fact — the Slack "Share to channel" button rebuilds its blocks this way
  * rather than trusting Slack to echo the original message back intact.
+ *
+ * A web source's id is its URL (see runQ), which matches no table here, so it
+ * quietly drops out of a replayed answer's source list — the citation chip
+ * for it still renders, just unlinked. Only "Share to channel" hits this;
+ * the original answer always carries its web sources.
  */
 export async function resolveQSources(ids: string[]): Promise<QSource[]> {
   if (!ids.length) return [];

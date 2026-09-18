@@ -271,7 +271,9 @@ function sourceLink(s: QSource): string {
       ? `${HUB_URL}/insights?open=${s.id}`
       : s.kind === "competitor"
         ? `${HUB_URL}/competitors`
-        : `${HUB_URL}/feature-requests`;
+        : s.kind === "web"
+          ? s.url
+          : `${HUB_URL}/feature-requests`;
   return `<${url}|${s.label}>`;
 }
 

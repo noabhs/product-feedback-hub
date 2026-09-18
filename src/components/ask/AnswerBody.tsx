@@ -49,16 +49,31 @@ function renderInline(text: string, sources: { id: string; href?: string }[], da
       "transition-colors",
     );
 
-    out.push(
-      source ? (
-        <Link key={at} href={source.href ?? `/insights/${source.id}`} title="Open the source this cites" className={chip}>
-          {n}
-        </Link>
-      ) : (
+    if (!source) {
+      out.push(
         <span key={at} className={chip} title="This source is outside the list below">
           {n}
-        </span>
-      ),
+        </span>,
+      );
+      continue;
+    }
+
+    const href = source.href ?? `/insights/${source.id}`;
+    // A web source's href is the live page itself, not a route in this app —
+    // worth a new tab so following a citation doesn't navigate someone off
+    // the hub entirely.
+    const external = href.startsWith("http");
+    out.push(
+      <Link
+        key={at}
+        href={href}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
+        title="Open the source this cites"
+        className={chip}
+      >
+        {n}
+      </Link>,
     );
   }
 
