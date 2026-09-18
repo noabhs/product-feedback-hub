@@ -295,11 +295,21 @@ export const SHARE_ACTION_ID = "q_share_to_channel";
  * choose to make one worth the whole channel seeing. No askId (the AskLog
  * write failed) just means no button: sharing isn't worth blocking the answer.
  */
-export function qAnswerBlocks(question: string, answer: string, sources: QSource[], askId: string | null): unknown[] {
+export function qAnswerBlocks(
+  question: string,
+  answer: string,
+  sources: QSource[],
+  askId: string | null,
+  usedWebSearch: boolean,
+): unknown[] {
   const blocks: unknown[] = [
     { type: "section", text: { type: "mrkdwn", text: `*Q:* ${question}` } },
     { type: "section", text: { type: "mrkdwn", text: markdownToSlackMrkdwn(answer) } },
   ];
+
+  if (usedWebSearch) {
+    blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: "🌐 Also searched the web for this one" }] });
+  }
 
   if (sources.length) {
     const shown = sources.slice(0, 5);

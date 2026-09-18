@@ -18,6 +18,33 @@ export interface QResult {
   answer: string;
   sources: QSource[];
   askId: string | null;
+  usedWebSearch: boolean;
+}
+
+/**
+ * How an asker opts a question into web search — "search web" or "searchweb"
+ * anywhere in the text, either side of it, case-insensitive. A phrase rather
+ * than a UI-only toggle so the same convention works from Slack, which has no
+ * checkbox to offer. The word boundaries keep it from firing inside "research
+ * web" or similar.
+ */
+const WEB_SEARCH_TRIGGER = /\bsearch\s?web\b/i;
+
+/** Whether a question (as typed, or as logged in AskLog) carries the trigger —
+ *  shared with the Slack "Share to channel" replay, which has no fresh
+ *  answerGlobalQuestion result to read usedWebSearch off of. */
+export function hasWebSearchTrigger(question: string): boolean {
+  return WEB_SEARCH_TRIGGER.test(question);
+}
+
+/** Strips the trigger phrase back out before the question is used for
+ *  retrieval or sent to the model — it's a control signal, not content. The
+ *  raw question (trigger included) is what gets logged, so a replayed answer
+ *  can still tell whether web search ran. */
+function stripWebSearchTrigger(question: string): { question: string; wantsWebSearch: boolean } {
+  const wantsWebSearch = hasWebSearchTrigger(question);
+  if (!wantsWebSearch) return { question, wantsWebSearch };
+  return { question: question.replace(WEB_SEARCH_TRIGGER, " ").replace(/\s{2,}/g, " ").trim(), wantsWebSearch };
 }
 
 /**
@@ -27,7 +54,8 @@ export interface QResult {
  * both call this and log to the same AskLog, so a rating means the same thing
  * regardless of where the question came from.
  */
-export async function runQ(question: string, actor: string, apiKey?: string): Promise<QResult> {
+export async function runQ(rawQuestion: string, actor: string, apiKey?: string): Promise<QResult> {
+  const { question, wantsWebSearch } = stripWebSearchTrigger(rawQuestion);
   const accountsLike = await loadAccounts();
 
   const [insights, accounts, competitorRows, featureRequests] = await Promise.all([
@@ -73,7 +101,7 @@ export async function runQ(question: string, actor: string, apiKey?: string): Pr
   const asModelSeesIt = rewriteQuestion(question, matched);
 
   const startedAt = Date.now();
-  const answer = await answerGlobalQuestion(
+  const { text: answer, usedWebSearch } = await answerGlobalQuestion(
     asModelSeesIt,
     insights,
     accounts,
@@ -81,6 +109,7 @@ export async function runQ(question: string, actor: string, apiKey?: string): Pr
     requests,
     apiKey,
     readAs,
+    wantsWebSearch,
   );
   const latencyMs = Date.now() - startedAt;
 
@@ -92,10 +121,10 @@ export async function runQ(question: string, actor: string, apiKey?: string): Pr
     ...requests.map((f) => ({ id: f.id, kind: "feature-request" as const, label: f.title, client: null })),
   ];
 
-  void logEvent(ACTIONS.aiAsk, { label: question, actor });
+  void logEvent(ACTIONS.aiAsk, { label: rawQuestion, actor });
   const askId = await recordAskLog({
     actor,
-    question,
+    question: rawQuestion,
     answer,
     sourceIds: sources.map((s) => s.id),
     matchedCount: sources.length,
@@ -104,7 +133,7 @@ export async function runQ(question: string, actor: string, apiKey?: string): Pr
     latencyMs,
   });
 
-  return { answer, sources, askId };
+  return { answer, sources, askId, usedWebSearch };
 }
 
 /**

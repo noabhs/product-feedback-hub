@@ -58,12 +58,12 @@ export async function POST(req: NextRequest) {
 
   after(async () => {
     try {
-      const { answer, sources, askId } = await runQ(question, `slack:${userName}`);
+      const { answer, sources, askId, usedWebSearch } = await runQ(question, `slack:${userName}`);
       await postToResponseUrl(responseUrl, {
         response_type: "ephemeral",
         replace_original: true,
         text: answer,
-        blocks: qAnswerBlocks(question, answer, sources, askId),
+        blocks: qAnswerBlocks(question, answer, sources, askId, usedWebSearch),
       });
     } catch (e) {
       console.error("[slack/command] runQ failed:", (e as Error).message);

@@ -23,6 +23,6 @@ export async function POST(req: NextRequest) {
   const actor = session?.user?.email ?? "anonymous";
   const apiKey = req.headers.get("x-anthropic-key") ?? undefined;
 
-  const { answer, sources, askId } = await runQ(asked, actor, apiKey);
-  return NextResponse.json({ answer, sources, askId });
+  const { answer, sources, askId, usedWebSearch } = await runQ(asked, actor, apiKey);
+  return NextResponse.json({ answer, sources, askId, usedWebSearch });
 }
