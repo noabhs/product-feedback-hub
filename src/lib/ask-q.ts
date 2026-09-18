@@ -127,10 +127,14 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
   // Baked into the answer text itself, not left as a separate flag each
   // surface has to remember to render — a badge only the web UI draws is
   // invisible from Slack, from the Asks log, and from a copied/pasted
-  // answer, all of which just show this string.
+  // answer, all of which just show this string. The tip only fires when the
+  // asker never asked for the web at all — not when they did and it simply
+  // didn't run, which would just be confusing.
   const answer = usedWebSearch
     ? `🌐 **This answer includes a live web search.**\n\n${modelAnswer}`
-    : modelAnswer;
+    : wantsWebSearch
+      ? modelAnswer
+      : `${modelAnswer}\n\n💡 **Tip:** add "search web" anywhere in your question to also pull in live web results.`;
 
   // Web results have no row of their own to key off, so the URL stands in
   // for an id — resolveQSources just won't find it on a later replay (see
