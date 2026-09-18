@@ -48,9 +48,28 @@ export function jsonFormat(schema: Record<string, unknown>): Anthropic.JSONOutpu
 }
 
 export function extractText(content: Anthropic.ContentBlock[]): string {
-  const block = content.find((b): b is Anthropic.TextBlock => b.type === "text");
-  if (!block) throw new Error("No text block in Claude response");
-  return block.text;
+  // A plain answer is a single text block, but a response that used a
+  // server-side tool (e.g. web search) can interleave several text blocks
+  // around the tool_use/tool_result ones — joining all of them is what makes
+  // that case read as one continuous answer instead of just its last chunk.
+  const blocks = content.filter((b): b is Anthropic.TextBlock => b.type === "text");
+  if (!blocks.length) throw new Error("No text block in Claude response");
+  return blocks.map((b) => b.text).join("\n\n");
+}
+
+/**
+ * Anthropic's server-executed web search tool: the API runs the search and
+ * feeds results back into the same turn, so no client-side tool loop is
+ * needed. Only attached to a call when the asker opted in (see
+ * WEB_SEARCH_TRIGGER in ask-q.ts) — most questions are answered from the hub
+ * alone, and a tool the model can reach for unprompted would search on
+ * questions no one asked it to.
+ */
+const WEB_SEARCH_TOOL: Anthropic.WebSearchTool20260318 = { type: "web_search_20260318", name: "web_search" };
+
+/** True if the model actually ran a search, not just that the tool was offered. */
+function usedWebSearch(content: Anthropic.ContentBlock[]): boolean {
+  return content.some((b) => b.type === "web_search_tool_result");
 }
 
 /**
@@ -178,7 +197,7 @@ export type QCompetitor = Pick<
  * The model and prompt behind "Ask Q" on the home page, named so every stored
  * answer records what produced it — same convention as QA_PROMPT_VERSION.
  */
-export const Q_PROMPT_VERSION = "q-4";
+export const Q_PROMPT_VERSION = "q-5";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
@@ -188,7 +207,18 @@ export const Q_PROMPT_VERSION = "q-4";
  * jumping-off point, not a workspace — the reader wants the fact and a place
  * to click through, not a brief.
  */
-export const Q_SYSTEM_PROMPT = `You are Q — the Navina Product Hub's answer engine. Like the character, you are the quiet, exact toolmaker: you hand back the one right answer, not a briefing on how you found it.
+/**
+ * Only added when the asker opted in with the "search web"/"searchweb"
+ * trigger (see WEB_SEARCH_TRIGGER in ask-q.ts) — the tool is otherwise absent
+ * from the request entirely, so leaving this out of the prompt by default
+ * keeps Q from reaching for the web on questions no one asked it to.
+ */
+const WEB_SEARCH_ADDENDUM = `5. THE WEB — live search, because the asker added "search web" to this question. Use it for anything current or outside the four hub sources: market news, a competitor's own site, a spec, anything time-sensitive. Cite a web finding in plain text right after the claim it supports (e.g. "(per the vendor's pricing page)") — never with a [n] number, which is reserved for the four hub sources above and would misattribute a web fact as something the hub holds.
+
+`;
+
+function qSystemPrompt(useWebSearch: boolean): string {
+  return `You are Q — the Navina Product Hub's answer engine. Like the character, you are the quiet, exact toolmaker: you hand back the one right answer, not a briefing on how you found it.
 
 You answer any product question a PM would ask, by reading everything the hub holds:
 
@@ -199,7 +229,7 @@ You answer any product question a PM would ask, by reading everything the hub ho
 
 Answer from whichever source fits the question. Most questions need only one of the four — don't pad an answer about a competitor's pricing with unrelated client feedback just because both live in the hub.
 
-Default reader: a product manager deciding what to build, ship, or say. Frame every answer around that — prioritization, scope, tradeoffs, impact — unless the question is plainly about something else, like an account fact.
+${useWebSearch ? WEB_SEARCH_ADDENDUM : ""}Default reader: a product manager deciding what to build, ship, or say. Frame every answer around that — prioritization, scope, tradeoffs, impact — unless the question is plainly about something else, like an account fact.
 
 Rules that hold everywhere:
 - Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the four sources. If the hub genuinely doesn't have the subject, write exactly: "Not found in available sources." Do not soften that into a guess.
@@ -225,6 +255,7 @@ When it's relevant — the question is a decision, a prioritization call, or an 
 - Every bullet has to follow from the sources cited above. Say what it rests on: which clients, which competitor fact, which feature request's status.
 - Never invent scope, effort, timelines, or a roadmap commitment Q doesn't have evidence for.
 - Skip "What's next" entirely rather than padding it with a generic "keep monitoring" — a lookup question gets no such section at all.`;
+}
 
 /**
  * Everything sent to the model for one question on Q — the numbered, citable
@@ -293,6 +324,12 @@ export function buildQPrompt(
     .join("\n\n");
 }
 
+export interface GlobalAnswer {
+  text: string;
+  /** Whether the model actually ran a web search, not just that it could have. */
+  usedWebSearch: boolean;
+}
+
 export async function answerGlobalQuestion(
   question: string,
   insights: QaInsight[],
@@ -301,19 +338,21 @@ export async function answerGlobalQuestion(
   featureRequests: FeatureRequestItem[],
   apiKey?: string,
   readAs?: string | null,
-) {
+  useWebSearch = false,
+): Promise<GlobalAnswer> {
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
     max_tokens: 4096,
     thinking: { type: "adaptive" },
-    system: Q_SYSTEM_PROMPT,
+    system: qSystemPrompt(useWebSearch),
     messages: [
       { role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests, readAs) },
     ],
+    ...(useWebSearch ? { tools: [WEB_SEARCH_TOOL] } : {}),
   });
 
   const message = await stream.finalMessage();
-  return extractText(message.content);
+  return { text: extractText(message.content), usedWebSearch: usedWebSearch(message.content) };
 }
 
 const INSIGHTS_SCHEMA = {

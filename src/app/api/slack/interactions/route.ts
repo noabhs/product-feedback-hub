@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifySlackSignature, postToResponseUrl, qAnswerBlocks, SHARE_ACTION_ID } from "@/lib/slack";
-import { resolveQSources } from "@/lib/ask-q";
+import { resolveQSources, hasWebSearchTrigger } from "@/lib/ask-q";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     const sources = await resolveQSources(JSON.parse(row.sourceIds) as string[]);
     // askId: null — the shared copy shouldn't grow its own "Share to
     // channel" button, it's already shared.
-    const answerBlocks = qAnswerBlocks(row.question, row.answer, sources, null);
+    const answerBlocks = qAnswerBlocks(row.question, row.answer, sources, null, hasWebSearchTrigger(row.question));
 
     // response_url is good for 5 uses in 30 minutes; this is the first —
     // posting visibly to the whole channel, attributed to whoever clicked.

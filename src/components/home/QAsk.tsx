@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { MessageSquare, Building2, Lightbulb, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageSquare, Building2, Lightbulb, Copy, Check, ChevronDown, ChevronUp, Globe } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { useApiKey } from "@/hooks/useApiKey";
@@ -55,6 +55,7 @@ export function QAsk() {
   const [asked, setAsked] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [askId, setAskId] = useState<string | null>(null);
+  const [usedWebSearch, setUsedWebSearch] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
@@ -73,6 +74,7 @@ export function QAsk() {
     setAnswer("");
     setSources([]);
     setAskId(null);
+    setUsedWebSearch(false);
     setCopied(false);
     setCopyError("");
     setShowAllSources(false);
@@ -87,6 +89,7 @@ export function QAsk() {
       setAsked(question.trim());
       setSources(data.sources ?? []);
       setAskId(data.askId ?? null);
+      setUsedWebSearch(!!data.usedWebSearch);
     } finally {
       setLoading(false);
     }
@@ -138,10 +141,21 @@ export function QAsk() {
           Ask
         </Button>
       </div>
+      <p className="text-[11px] text-brand-primary/40 mt-1.5">
+        Add <span className="font-medium">&quot;search web&quot;</span> anywhere in your question to also search the web, not just the hub.
+      </p>
 
       {answer && (
         <div className="mt-4">
-          <div className="flex justify-end mb-2">
+          <div className="flex items-center justify-between mb-2">
+            {usedWebSearch ? (
+              <span className="flex items-center gap-1.5 text-[12px] font-medium text-brand-secondary-600">
+                <Globe className="w-3.5 h-3.5" />
+                Also searched the web
+              </span>
+            ) : (
+              <span />
+            )}
             <button
               onClick={copyAnswer}
               title="Copy the answer and its sources"
