@@ -10,17 +10,20 @@ import { AnswerBody } from "@/components/ask/AnswerBody";
 import { plainAnswer } from "@/lib/answer-format";
 import { QAvatar } from "@/components/home/QAvatar";
 
-type SourceKind = "insight" | "competitor" | "feature-request";
+type SourceKind = "insight" | "competitor" | "feature-request" | "web";
 
 interface Source {
   id: string;
   kind: SourceKind;
   label: string;
   client: string | null;
+  /** Only "web" sources carry this — the live page the search actually found. */
+  url?: string;
 }
 
 /** Where a citation chip and the source list send someone for each kind. */
 function hrefFor(source: Source): string {
+  if (source.kind === "web") return source.url ?? "#";
   if (source.kind === "competitor") return `/competitors?open=${source.id}`;
   if (source.kind === "feature-request") return "/feature-requests";
   return `/insights/${source.id}`;
@@ -30,12 +33,14 @@ const KIND_ICON: Record<SourceKind, typeof MessageSquare> = {
   insight: MessageSquare,
   competitor: Building2,
   "feature-request": Lightbulb,
+  web: Globe,
 };
 
 const KIND_LABEL: Record<SourceKind, string> = {
   insight: "Feedback",
   competitor: "Competitor",
   "feature-request": "Feature request",
+  web: "Web",
 };
 
 /** Past this many, the rest collapse behind "Show more" — a long tail of
@@ -201,6 +206,8 @@ export function QAsk() {
                     <Link
                       key={`${s.kind}-${s.id}`}
                       href={hrefFor(s)}
+                      target={s.kind === "web" ? "_blank" : undefined}
+                      rel={s.kind === "web" ? "noopener noreferrer" : undefined}
                       className="flex items-center gap-1.5 text-[12px] text-brand-primary/70 hover:text-brand-secondary-500 transition-colors"
                     >
                       <span className="shrink-0 w-5 text-right text-brand-primary/35 tabular-nums">{i + 1}</span>

@@ -78,6 +78,56 @@ function usedWebSearch(content: Anthropic.ContentBlock[]): boolean {
   return content.some((b) => b.type === "web_search_tool_result");
 }
 
+export interface WebCitationSource {
+  title: string | null;
+  url: string;
+}
+
+/**
+ * Reassembles the model's text and numbers its web citations, continuing on
+ * from the hub's own [n] sources rather than restarting at [1] — one flat
+ * citation sequence across both, same as buildQPrompt already does across its
+ * four hub source kinds.
+ *
+ * When web search is used, Anthropic auto-splits the response into one text
+ * block per cited span and attaches a `web_search_result_location` citation
+ * (with the real title/url) to each — concatenating the blocks' `text` fields
+ * directly reconstructs the original prose; these blocks are fragments of one
+ * continuous answer, not separate paragraphs, so joining them with "\n\n"
+ * (extractText's behavior) would scatter blank lines through the middle of
+ * sentences. Without web search there's normally just one block, so this
+ * degrades to plain concatenation.
+ */
+function extractTextWithWebCitations(
+  content: Anthropic.ContentBlock[],
+  citationOffset: number,
+): { text: string; webSources: WebCitationSource[] } {
+  const webSources: WebCitationSource[] = [];
+  const numberByUrl = new Map<string, number>();
+  let text = "";
+
+  for (const block of content) {
+    if (block.type !== "text") continue;
+    text += block.text;
+
+    const numbers: number[] = [];
+    for (const citation of block.citations ?? []) {
+      if (citation.type !== "web_search_result_location") continue;
+      let n = numberByUrl.get(citation.url);
+      if (n === undefined) {
+        n = citationOffset + webSources.length + 1;
+        numberByUrl.set(citation.url, n);
+        webSources.push({ title: citation.title, url: citation.url });
+      }
+      if (!numbers.includes(n)) numbers.push(n);
+    }
+    if (numbers.length) text += numbers.map((n) => `[${n}]`).join("");
+  }
+
+  if (!text) throw new Error("No text block in Claude response");
+  return { text, webSources };
+}
+
 /**
  * The model and prompt behind "Ask the feedback", named so every stored answer
  * records what produced it. Bump QA_PROMPT_VERSION whenever the system prompt
@@ -219,7 +269,7 @@ export const Q_PROMPT_VERSION = "q-5";
  * from the request entirely, so leaving this out of the prompt by default
  * keeps Q from reaching for the web on questions no one asked it to.
  */
-const WEB_SEARCH_ADDENDUM = `5. THE WEB — the asker added "search web" to this question, so a web search has run before you write anything; its results are attached above the hub sources. Weigh them alongside the four hub sources rather than defaulting to the hub because it looks sufficient — the asker explicitly wanted the web checked too, even when the hub already has an answer. Cite a web finding in plain text right after the claim it supports (e.g. "(per the vendor's pricing page)") — never with a [n] number, which is reserved for the four hub sources above and would misattribute a web fact as something the hub holds.
+const WEB_SEARCH_ADDENDUM = `5. THE WEB — the asker added "search web" to this question, so you must run a live search before writing anything. Weigh what it finds alongside the four hub sources rather than defaulting to the hub because it looks sufficient — the asker explicitly wanted the web checked too, even when the hub already has an answer. Every web-sourced sentence is cited automatically the moment you write it — you don't add the citation marker yourself, and you don't need to name the source in prose ("per the vendor's site") either; just write the claim.
 
 `;
 
@@ -334,6 +384,8 @@ export interface GlobalAnswer {
   text: string;
   /** Whether the model actually ran a web search, not just that it could have. */
   usedWebSearch: boolean;
+  /** Deduped, in citation order — sources[i] is what "[citationOffset + i + 1]" points at. */
+  webSources: WebCitationSource[];
 }
 
 export async function answerGlobalQuestion(
@@ -345,6 +397,9 @@ export async function answerGlobalQuestion(
   apiKey?: string,
   readAs?: string | null,
   useWebSearch = false,
+  /** How many [n] numbers the hub sources already used, so web citations
+   *  continue the same sequence instead of restarting at [1]. */
+  citationOffset = 0,
 ): Promise<GlobalAnswer> {
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
@@ -367,7 +422,8 @@ export async function answerGlobalQuestion(
   });
 
   const message = await stream.finalMessage();
-  return { text: extractText(message.content), usedWebSearch: usedWebSearch(message.content) };
+  const { text, webSources } = extractTextWithWebCitations(message.content, citationOffset);
+  return { text, usedWebSearch: usedWebSearch(message.content), webSources };
 }
 
 const INSIGHTS_SCHEMA = {
