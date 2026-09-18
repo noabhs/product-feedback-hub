@@ -64,8 +64,14 @@ export function extractText(content: Anthropic.ContentBlock[]): string {
  * WEB_SEARCH_TRIGGER in ask-q.ts) — most questions are answered from the hub
  * alone, and a tool the model can reach for unprompted would search on
  * questions no one asked it to.
+ *
+ * Pinned to the 20250305 tool version deliberately: this workspace's default
+ * `allowed_callers` on the newer versions (20260209, 20260318) is
+ * `['code_execution_20260120']` only, which rejects a direct model tool call
+ * with a 400 — confirmed against the live API, not just the docs. 20250305 is
+ * the one version this account can call directly.
  */
-const WEB_SEARCH_TOOL: Anthropic.WebSearchTool20260318 = { type: "web_search_20260318", name: "web_search" };
+const WEB_SEARCH_TOOL: Anthropic.WebSearchTool20250305 = { type: "web_search_20250305", name: "web_search" };
 
 /** True if the model actually ran a search, not just that the tool was offered. */
 function usedWebSearch(content: Anthropic.ContentBlock[]): boolean {
@@ -213,7 +219,7 @@ export const Q_PROMPT_VERSION = "q-5";
  * from the request entirely, so leaving this out of the prompt by default
  * keeps Q from reaching for the web on questions no one asked it to.
  */
-const WEB_SEARCH_ADDENDUM = `5. THE WEB — live search, because the asker added "search web" to this question. Use it for anything current or outside the four hub sources: market news, a competitor's own site, a spec, anything time-sensitive. Cite a web finding in plain text right after the claim it supports (e.g. "(per the vendor's pricing page)") — never with a [n] number, which is reserved for the four hub sources above and would misattribute a web fact as something the hub holds.
+const WEB_SEARCH_ADDENDUM = `5. THE WEB — the asker added "search web" to this question, so a web search has run before you write anything; its results are attached above the hub sources. Weigh them alongside the four hub sources rather than defaulting to the hub because it looks sufficient — the asker explicitly wanted the web checked too, even when the hub already has an answer. Cite a web finding in plain text right after the claim it supports (e.g. "(per the vendor's pricing page)") — never with a [n] number, which is reserved for the four hub sources above and would misattribute a web fact as something the hub holds.
 
 `;
 
@@ -348,7 +354,16 @@ export async function answerGlobalQuestion(
     messages: [
       { role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests, readAs) },
     ],
-    ...(useWebSearch ? { tools: [WEB_SEARCH_TOOL] } : {}),
+    /**
+     * Forced, not left to the model's judgment: a first pass that only
+     * offered the tool (auto choice) let the model decide the hub sources
+     * already covered the question and skip the search outright — silently,
+     * with no error and no way for the asker to tell. "search web" is an
+     * explicit instruction, not a hint, so the tool call is mandatory
+     * whenever it's attached. (Confirmed forcing it is compatible with
+     * adaptive thinking on this tool version — some others 400.)
+     */
+    ...(useWebSearch ? { tools: [WEB_SEARCH_TOOL], tool_choice: { type: "tool" as const, name: "web_search" } } : {}),
   });
 
   const message = await stream.finalMessage();
