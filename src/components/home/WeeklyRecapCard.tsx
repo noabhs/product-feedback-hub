@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Send, Check, Copy, Stethoscope, Sparkles } from "lucide-react";
+import { Send, Check, Copy, Stethoscope, Sparkles, RefreshCw } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
 
 export interface RecapView {
@@ -86,9 +86,17 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
       const res = await fetch(`/api/recap?period=${forPeriod}`, { method: "POST", signal: abort.signal });
       const d = await res.json().catch(() => null);
       if (!res.ok || !d) throw new Error(d?.error ?? `Failed with ${res.status}`);
-      if (d.narrative) {
-        setRecap((r) => ({ ...r, narrative: d.narrative, narrativeError: null }));
-      } else {
+      // Re-read the whole recap, not just the paragraph: counts, clients and
+      // themes are computed live, so rows imported since the page loaded would
+      // otherwise stay invisible until a full reload.
+      const refreshed = await fetch(`/api/recap?period=${forPeriod}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      if (refreshed) setRecap(refreshed);
+      else if (d.narrative) setRecap((r) => ({ ...r, narrative: d.narrative, narrativeError: null }));
+
+      // Nothing to write about is not a failure.
+      if (!d.narrative && d.entries > 0) {
         setDiagnosis(d.narrativeError ?? "Claude returned no text for this period.");
       }
     } catch (e) {
@@ -202,6 +210,15 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => writeNow()}
+            disabled={writing || loading}
+            title="Re-read the latest entries and write a fresh brief"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-primary border border-[rgba(50,43,95,0.15)] rounded-sm px-2.5 py-1.5 hover:bg-[rgba(50,43,95,0.04)] disabled:opacity-40 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${writing ? "animate-spin" : ""}`} />
+            {writing ? "Regenerating…" : "Regenerate"}
+          </button>
           <button
             onClick={copy}
             disabled={!recap.markdown}
