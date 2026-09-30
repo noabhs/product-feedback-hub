@@ -641,7 +641,7 @@ const MAX_ENTRIES = 150;
  * the cached copy to expire — which is how a reworded prompt sat invisible
  * behind this morning's text.
  */
-export const BRIEF_VERSION = "b2";
+export const BRIEF_VERSION = "b3";
 const MAX_CONTENT = 240;
 
 function spread<T>(items: T[], max: number): T[] {

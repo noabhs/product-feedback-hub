@@ -61,13 +61,19 @@ export interface WeeklyRecap {
 }
 
 /**
- * Counted by createdAt, not the feedback's own date: this is a recap of what
- * landed in the hub during the period, not of when the conversations happened.
+ * Counted by the feedback's own date (`Insight.date`), so a recap describes when
+ * clients said things, not when the rows were imported. Rows with no date fall
+ * back to createdAt rather than vanishing from every period.
  *
  * `period` is "week" — the last complete Sunday–Saturday — or "month", the
  * calendar month so far. The month view exists because a weekly cadence started
  * cold reports on one week and ignores everything already in the hub.
  */
+/** Insights whose feedback date — else import date — falls in [gte, lt). */
+const feedbackIn = (range: { gte?: Date; lt: Date }) => ({
+  OR: [{ date: range }, { date: null, createdAt: range }],
+});
+
 export async function buildWeeklyRecap(
   now: Date = new Date(),
   {
@@ -91,8 +97,8 @@ export async function buildWeeklyRecap(
 
   const [entries, entriesPrev, questions, asks, accounts, seenBefore] = await Promise.all([
     prisma.insight.findMany({
-      where: { createdAt: inWeek },
-      orderBy: { createdAt: "desc" },
+      where: feedbackIn(inWeek),
+      orderBy: [{ date: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
       select: {
         id: true,
         oneLiner: true,
@@ -101,7 +107,7 @@ export async function buildWeeklyRecap(
         persona: true,
       },
     }),
-    prisma.insight.count({ where: { createdAt: { gte: prev.start, lt: prev.end } } }),
+    prisma.insight.count({ where: feedbackIn({ gte: prev.start, lt: prev.end }) }),
     prisma.discoveryQuestion.count({ where: { createdAt: inWeek } }),
     prisma.askLog.count({ where: { createdAt: inWeek } }),
     loadAccounts(),
@@ -109,7 +115,7 @@ export async function buildWeeklyRecap(
     // count per client — that was 55 round trips on the current data.
     prisma.insight.groupBy({
       by: ["client"],
-      where: { client: { not: null }, createdAt: { lt: week.start } },
+      where: { client: { not: null }, ...feedbackIn({ lt: week.start }) },
     }),
   ]);
 
