@@ -2,16 +2,14 @@ export const dynamic = "force-dynamic";
 
 import { MessageSquare, Users, FileQuestion, Sparkles } from "lucide-react";
 import { SectionHeading, KpiCard } from "@/components/home/cards";
-import { WeeklyRecapCard } from "@/components/home/WeeklyRecapCard";
+import { QuickActions } from "@/components/home/QuickActions";
 import { QAsk } from "@/components/home/QAsk";
-import { buildWeeklyRecap } from "@/lib/weekly-recap";
-import { recapMarkdown } from "@/lib/slack";
 import { prisma } from "@/lib/prisma";
 import { ADVISORS, matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
 
 export default async function HomePage() {
-  const [totalFeedback, totalQuestions, totalAsks, feedbackByClient, accounts, recap, matchable] =
+  const [totalFeedback, totalQuestions, totalAsks, feedbackByClient, accounts, matchable] =
     await Promise.all([
       prisma.insight.count(),
       prisma.discoveryQuestion.count(),
@@ -23,10 +21,6 @@ export default async function HomePage() {
         orderBy: { _count: { id: "desc" } },
       }),
       prisma.account.findMany({ select: { name: true, health: true, arr: true } }),
-      // Reads a stored brief, never writes one. Generation belongs to the cron:
-      // a page load must not be able to start a model call, which is how this
-      // ended up hanging on a spinner nobody could cancel.
-      buildWeeklyRecap(new Date(), { narrative: "cached" }),
       loadAccounts(),
     ]);
 
@@ -66,27 +60,11 @@ export default async function HomePage() {
           <QAsk />
         </div>
 
-        {/* ── Last week ──────────────────────────────────────────────────── */}
-        <WeeklyRecapCard
-          recap={{
-            weekLabel: recap.week.label,
-            kind: recap.week.kind,
-            entries: recap.entries,
-            entriesPrev: recap.entriesPrev,
-            clients: recap.clients,
-            newClients: recap.newClients,
-            topAreas: recap.topAreas,
-            questions: recap.questions,
-            asks: recap.asks,
-            narrative: recap.narrative,
-            narrativeError: recap.narrativeError,
-            themes: recap.themes,
-            picks: recap.picks,
-            mostClientsAreNew: recap.mostClientsAreNew,
-            unrecognisedClients: recap.unrecognisedClients,
-            markdown: recapMarkdown(recap),
-          }}
-        />
+        {/* ── Quick actions ──────────────────────────────────────────────── */}
+        <SectionHeading title="Quick actions" />
+        <div className="mb-8">
+          <QuickActions />
+        </div>
 
         {/* ── Overview ───────────────────────────────────────────────────── */}
         <SectionHeading title="Overview" />

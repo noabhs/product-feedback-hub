@@ -35,6 +35,8 @@ export const ACTIONS = {
   askRated: "ask.rated",
   askDeleted: "ask.deleted",
   aiGenerateDoc: "ai.generate_doc",
+  briefGenerated: "brief.generated",
+  briefSent: "brief.sent",
   pageView: "page.view",
   featureRequestCreated: "feature_request.created",
   featureRequestUpdated: "feature_request.updated",
@@ -68,6 +70,8 @@ export const ACTION_LABELS: Record<string, string> = {
   "ai.extract_questions": "Extracted questions from a doc",
   "ai.extract_competition": "Extracted competitor claims from a doc",
   "ai.ask": "Asked the feedback a question",
+  "brief.generated": "Generated a brief",
+  "brief.sent": "Sent a brief to Slack",
   "ask.rated": "Rated an AI answer",
   "ask.deleted": "Deleted a logged answer",
   "ai.generate_doc": "Generated a discovery doc",
@@ -85,6 +89,7 @@ export const AI_ACTIONS: string[] = [
   ACTIONS.aiExtractCompetition,
   ACTIONS.aiAsk,
   ACTIONS.aiGenerateDoc,
+  ACTIONS.briefGenerated,
 ];
 
 export async function logEvent(
