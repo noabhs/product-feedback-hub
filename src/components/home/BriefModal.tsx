@@ -3,7 +3,6 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { X, Copy, Check, Send, Globe, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
-import { MultiSelect } from "@/components/ui/MultiSelect";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { useApiKey } from "@/hooks/useApiKey";
 import { AREA_OPTIONS } from "@/lib/labels";
@@ -196,20 +195,40 @@ export function BriefModal({ kind, onClose }: { kind: BriefKind; onClose: () => 
           <label className="block text-[12px] font-semibold uppercase tracking-wide text-brand-primary opacity-70 mb-1.5">
             {copy.pick}
           </label>
-          <div className="flex items-start gap-2">
-            <div className="flex-1">
-              {kind === "area" ? (
-                <MultiSelect value={multi} onChange={setMulti} options={options} placeholder={copy.placeholder} className="w-full" />
-              ) : (
-                <Select
-                  value={single}
-                  onChange={setSingle}
-                  options={options}
-                  placeholder={loadingOptions ? "Loading…" : copy.placeholder}
-                  className="w-full"
-                />
-              )}
+          {kind === "area" ? (
+            // Chips, not a dropdown: a dropdown panel opens inside this
+            // scrolling body and gets clipped by it.
+            <div className="flex flex-wrap gap-2">
+              {options.map((o) => {
+                const on = multi.includes(o.value);
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setMulti(on ? multi.filter((v) => v !== o.value) : [...multi, o.value])}
+                    className={
+                      "rounded-pill border px-3 py-1 text-[13px] cursor-pointer transition-colors " +
+                      (on
+                        ? "bg-brand-secondary-500 border-brand-secondary-500 text-white"
+                        : "border-black/15 text-brand-primary hover:border-brand-secondary-500")
+                    }
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
             </div>
+          ) : (
+            <Select
+              value={single}
+              onChange={setSingle}
+              options={options}
+              placeholder={loadingOptions ? "Loading…" : copy.placeholder}
+              className="w-full"
+            />
+          )}
+          <div className="mt-3">
             <Button onClick={generate} disabled={!ready} loading={busy}>
               {busy ? "Writing…" : result ? "Regenerate" : "Generate"}
             </Button>
