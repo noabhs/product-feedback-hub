@@ -730,3 +730,49 @@ Write two or three short paragraphs. Rules:
       : `Couldn't reach Claude: ${message.slice(0, 120)}` };
   }
 }
+
+export interface BriefOutput {
+  text: string;
+  usedWebSearch: boolean;
+  webSources: WebCitationSource[];
+}
+
+/**
+ * One brief: a system prompt, the hub data already assembled into `prompt`, and
+ * optionally the web search tool. Unlike Ask Q the search is offered, not forced
+ * — a brief about a competitor should search because it needs fresh facts, and
+ * the prompt says so, but a forced call would also fire for a client brief that
+ * has nothing to look up.
+ *
+ * Server-side tool turns can end with stop_reason "pause_turn" when the search
+ * loop runs long; the partial turn is sent back so the model carries on, up to a
+ * few rounds, instead of returning half a brief.
+ */
+export async function generateBriefText(opts: {
+  system: string;
+  prompt: string;
+  webSearch: boolean;
+  apiKey?: string;
+}): Promise<BriefOutput> {
+  const client = getClient(opts.apiKey);
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: opts.prompt }];
+  const content: Anthropic.ContentBlock[] = [];
+
+  for (let round = 0; round < 4; round++) {
+    const message = await client.messages
+      .stream({
+        model: QA_MODEL,
+        max_tokens: 6000,
+        system: opts.system,
+        messages,
+        ...(opts.webSearch ? { tools: [{ ...WEB_SEARCH_TOOL, max_uses: 6 }] } : {}),
+      })
+      .finalMessage();
+    content.push(...message.content);
+    if (message.stop_reason !== "pause_turn") break;
+    messages.push({ role: "assistant", content: message.content });
+  }
+
+  const { text, webSources } = extractTextWithWebCitations(content, 0);
+  return { text, usedWebSearch: usedWebSearch(content), webSources };
+}
