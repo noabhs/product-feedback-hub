@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { MessageSquare, Users, FileQuestion, Sparkles } from "lucide-react";
+import { MessageSquare, Users, Swords, Sparkles } from "lucide-react";
 import { SectionHeading, KpiCard } from "@/components/home/cards";
 import { QuickActions } from "@/components/home/QuickActions";
 import { QAsk } from "@/components/home/QAsk";
@@ -12,10 +12,10 @@ import { loadAccounts } from "@/lib/accounts-db";
 
 export default async function HomePage() {
   const session = await auth();
-  const [totalFeedback, totalQuestions, totalAsks, feedbackByClient, accounts, matchable] =
+  const [totalFeedback, totalCompetitors, totalAsks, feedbackByClient, accounts, matchable] =
     await Promise.all([
       prisma.insight.count(),
-      prisma.discoveryQuestion.count(),
+      prisma.competitor.count(),
       prisma.askLog.count(),
       prisma.insight.groupBy({
         by: ["client"],
@@ -74,7 +74,7 @@ export default async function HomePage() {
         <div className="grid grid-cols-4 gap-4">
           <KpiCard value={totalFeedback} label="Feedback entries" sub="across every source" Icon={MessageSquare} href="/insights" />
           <KpiCard value={heardFrom.length} label="Clients heard from" sub={`of ${clients.length} accounts`} Icon={Users} href="/clients" />
-          <KpiCard value={totalQuestions} label="Discovery questions" sub="in the library" Icon={FileQuestion} href="/discovery" />
+          <KpiCard value={totalCompetitors} label="Competitors" sub="tracked in the hub" Icon={Swords} href="/competitors" />
           <KpiCard value={totalAsks} label="Questions asked" sub="of the feedback, by the team" Icon={Sparkles} href="/feedback-insights" />
         </div>
       </div>

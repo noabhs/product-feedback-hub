@@ -4,17 +4,19 @@ import Link from "next/link";
 import { Building2, Swords, BookOpen, Layers, ArrowRight } from "lucide-react";
 import { BriefModal, type BriefKind } from "@/components/home/BriefModal";
 
-const BOX = "block w-full text-left bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-5 h-full group hover:border-brand-secondary-500/30 hover:shadow-sm transition-all cursor-pointer";
+const BOX = "block w-full text-left bg-white rounded-lg border border-brand-secondary-500/25 shadow-sm p-5 h-full group hover:border-brand-secondary-500 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer";
 
 function Box({ title, sub, Icon }: { title: string; sub: string; Icon: React.FC<{ className?: string }> }) {
   return (
     <>
       <div className="flex items-start justify-between mb-3">
-        <Icon className="w-5 h-5 text-brand-primary opacity-30 group-hover:opacity-60 transition-opacity" />
-        <ArrowRight className="w-3.5 h-3.5 text-brand-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-secondary-500/10 text-brand-secondary-600 group-hover:bg-brand-secondary-500 group-hover:text-white transition-colors">
+          <Icon className="w-5 h-5" />
+        </span>
+        <ArrowRight className="w-4 h-4 text-brand-secondary-500 opacity-40 group-hover:opacity-100 transition-opacity" />
       </div>
-      <div className="text-[14px] font-semibold text-brand-primary">{title}</div>
-      <div className="text-[11.5px] text-brand-primary opacity-40 mt-0.5">{sub}</div>
+      <div className="text-[15px] font-bold text-brand-primary">{title}</div>
+      <div className="text-[12px] text-brand-primary opacity-60 mt-1">{sub}</div>
     </>
   );
 }
