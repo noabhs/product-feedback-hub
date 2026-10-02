@@ -25,7 +25,7 @@ const BRIEFS: { kind: BriefKind; title: string; sub: string; Icon: React.FC<{ cl
   { kind: "area", title: "Generate product area brief", sub: "Feedback and market view for one or more areas", Icon: Layers },
 ];
 
-export function QuickActions() {
+export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: boolean }) {
   const [open, setOpen] = useState<BriefKind | null>(null);
   const [client, competitor, area] = BRIEFS;
 
@@ -39,7 +39,7 @@ export function QuickActions() {
         </Link>
         <button type="button" className={BOX} onClick={() => setOpen(area.kind)}><Box {...area} /></button>
       </div>
-      {open && <BriefModal key={open} kind={open} onClose={() => setOpen(null)} />}
+      {open && <BriefModal key={open} kind={open} canSendToSlack={canSendToSlack} onClose={() => setOpen(null)} />}
     </>
   );
 }

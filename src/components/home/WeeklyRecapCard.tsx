@@ -29,7 +29,14 @@ export interface RecapView {
  * rolling seven days, so a number quoted from here matches the number in the
  * channel.
  */
-export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
+export function WeeklyRecapCard({
+  recap: initial,
+  canSendToSlack = false,
+}: {
+  recap: RecapView;
+  /** Hidden for everyone but the owner until the Slack app has its permissions. */
+  canSendToSlack?: boolean;
+}) {
   const [period, setPeriod] = useState<"week" | "month">("week");
   const [recap, setRecap] = useState<RecapView>(initial);
   const [loading, setLoading] = useState(false);
@@ -228,6 +235,7 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             {copied ? "Copied" : "Copy"}
           </button>
+        {canSendToSlack && (
         <button
           onClick={sendNow}
           disabled={sending || sent}
@@ -236,6 +244,7 @@ export function WeeklyRecapCard({ recap: initial }: { recap: RecapView }) {
           {sent ? <Check className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
           {sent ? "Sent" : sending ? "Sending…" : "Send to Slack"}
         </button>
+        )}
         </div>
       </div>
 

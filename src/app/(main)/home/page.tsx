@@ -4,11 +4,14 @@ import { MessageSquare, Users, FileQuestion, Sparkles } from "lucide-react";
 import { SectionHeading, KpiCard } from "@/components/home/cards";
 import { QuickActions } from "@/components/home/QuickActions";
 import { QAsk } from "@/components/home/QAsk";
+import { auth } from "@/auth";
+import { isOwner } from "@/lib/people";
 import { prisma } from "@/lib/prisma";
 import { ADVISORS, matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
 
 export default async function HomePage() {
+  const session = await auth();
   const [totalFeedback, totalQuestions, totalAsks, feedbackByClient, accounts, matchable] =
     await Promise.all([
       prisma.insight.count(),
@@ -63,7 +66,7 @@ export default async function HomePage() {
         {/* ── Quick actions ──────────────────────────────────────────────── */}
         <SectionHeading title="Quick actions" />
         <div className="mb-8">
-          <QuickActions />
+          <QuickActions canSendToSlack={isOwner(session?.user?.email)} />
         </div>
 
         {/* ── Overview ───────────────────────────────────────────────────── */}
