@@ -124,12 +124,7 @@ export function QAsk() {
     <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-5">
       <div className="flex items-center gap-2.5 mb-3">
         <QAvatar />
-        <div>
-          <h2 className="text-[14px] font-semibold text-brand-primary leading-tight">Ask Q</h2>
-          <p className="text-[11.5px] text-brand-primary/50 leading-tight">
-            Feedback, clients, competitors and feature requests — one answer.
-          </p>
-        </div>
+        <h2 className="text-[14px] font-semibold text-brand-primary leading-tight">Ask Q</h2>
       </div>
 
       <NoKeyBanner />
