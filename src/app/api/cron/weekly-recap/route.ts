@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { isOwner } from "@/lib/people";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
 import { weeklyRecapBlocks, postToSlack } from "@/lib/slack";
@@ -119,6 +120,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // The button is owner-only for now; keep the endpoint in step with it.
+  if (!isOwner(session.user.email)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
   return send(true, period);
 }

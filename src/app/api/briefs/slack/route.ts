@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { markdownToSlackMrkdwn, postToSlack } from "@/lib/slack";
+import { isOwner } from "@/lib/people";
 import { logEvent, ACTIONS } from "@/lib/events";
 
 /** Slack caps a section block's text at 3000 characters. */
@@ -29,6 +30,10 @@ function chunk(text: string): string[] {
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Owner only until the Slack app has its permissions; the buttons are hidden
+  // for everyone else, and this keeps the endpoint from being called directly.
+  if (!isOwner(session.user.email)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { title, markdown } = (await req.json()) as { title?: string; markdown?: string };
   if (!title?.trim() || !markdown?.trim()) {

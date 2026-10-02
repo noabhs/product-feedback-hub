@@ -82,7 +82,7 @@ function bodyText(r: BriefResult): string {
 
 const copyText = (r: BriefResult) => `${r.title}\n\n${bodyText(r)}`;
 
-export function BriefModal({ kind, onClose }: { kind: BriefKind; onClose: () => void }) {
+export function BriefModal({ kind, canSendToSlack = false, onClose }: { kind: BriefKind; canSendToSlack?: boolean; onClose: () => void }) {
   const copy = COPY[kind];
   const { aiHeaders } = useApiKey();
   const [options, setOptions] = useState<Option[]>(kind === "area" ? AREA_OPTIONS : []);
@@ -285,11 +285,15 @@ export function BriefModal({ kind, onClose }: { kind: BriefKind; onClose: () => 
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? "Copied" : "Copy"}
             </Button>
+            {canSendToSlack && (
+              <>
             <Button variant="ghost" onClick={sendToSlack} loading={slack === "sending"} disabled={slack === "sent"}>
               {slack === "sent" ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
               {slack === "sent" ? "Sent to Slack" : "Send to Slack"}
             </Button>
             {slackError && <span className="text-[12px] text-red-700">{slackError}</span>}
+              </>
+            )}
           </div>
         )}
       </div>
