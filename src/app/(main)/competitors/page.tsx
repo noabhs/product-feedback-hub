@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState, Suspense } from "react";
-import { Search } from "lucide-react";
+import { Search, Download } from "lucide-react";
 import { COMPETITOR_CATEGORIES, COMPETITOR_SUBGROUPS } from "@/lib/competitor-categories";
 import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
 import { CompetitorIcon } from "@/components/competitors/CompetitorIcon";
 import { CompetitorInsightsTable } from "@/components/competitors/CompetitorInsightsTable";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import type { CompetitorItem } from "@/lib/types";
@@ -79,6 +80,16 @@ function Competitors() {
 
   const claimTotal = useMemo(() => competitors.reduce((n, c) => n + c.coverage.claims, 0), [competitors]);
 
+  // Both tabs, regardless of which one is active: the roster and the claims
+  // are two separate CSVs, so this fires two downloads back to back rather
+  // than picking whichever tab happens to be open.
+  const exportAll = () => {
+    window.location.href = "/api/competitors/export";
+    setTimeout(() => {
+      window.location.href = "/api/competitors/insights/export";
+    }, 300);
+  };
+
   /**
    * Across every competitor, not just the search results: this answers "can the
    * ask actually field a competitor question", which is a property of the whole
@@ -101,24 +112,30 @@ function Competitors() {
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Competitors</h1>
-          <p className="text-[14px] text-brand-primary opacity-50 max-w-2xl">
-            Who else our clients evaluate, grouped the same way as the CI Launcher tool this was
-            pulled from. Open any competitor for its overview, every source link we have on it, and
-            what we&rsquo;ve read out of those links.
-          </p>
-          {coverage.total > 0 && (
-            <p className="text-[12px] text-brand-primary opacity-50 mt-2">
-              Read {coverage.read} of {coverage.total} documents behind these links
-              {coverage.failed > 0 && (
-                <>
-                  {" · "}
-                  <span className="text-red-700 opacity-90">{coverage.failed} unreachable</span>
-                </>
-              )}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Competitors</h1>
+            <p className="text-[14px] text-brand-primary opacity-50 max-w-2xl">
+              Who else our clients evaluate, grouped the same way as the CI Launcher tool this was
+              pulled from. Open any competitor for its overview, every source link we have on it, and
+              what we&rsquo;ve read out of those links.
             </p>
-          )}
+            {coverage.total > 0 && (
+              <p className="text-[12px] text-brand-primary opacity-50 mt-2">
+                Read {coverage.read} of {coverage.total} documents behind these links
+                {coverage.failed > 0 && (
+                  <>
+                    {" · "}
+                    <span className="text-red-700 opacity-90">{coverage.failed} unreachable</span>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+          <Button variant="ghost" size="sm" onClick={exportAll}>
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
         </div>
 
         {/* Two views over the same competitors: the roster, and every claim the
