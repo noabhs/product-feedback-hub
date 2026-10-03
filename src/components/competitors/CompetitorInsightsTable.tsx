@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { Search, ArrowUp, ArrowDown, Lock } from "lucide-react";
+import { Search, ArrowUp, ArrowDown, Lock, Info } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
@@ -10,7 +10,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { CONFIDENCE_STYLE } from "@/components/competitors/ClaimRow";
 import {
   COMPETITOR_TOPIC_OPTIONS, CONFIDENCE_OPTIONS, AREA_OPTIONS,
-  competitorTopicLabel, confidenceLabel, areaLabel,
+  competitorTopicLabel, confidenceLabel, areaLabel, CONFIDENCE_LABELS, CONFIDENCE_DESCRIPTIONS,
 } from "@/lib/labels";
 import type { CompetitorInsightItem } from "@/lib/types";
 
@@ -36,13 +36,25 @@ type SortKey = "competitorName" | "oneLiner" | "topics" | "productAreas" | "conf
 const PAGE_SIZE = 25;
 
 // Same fixed-width approach as the feedback table; the claim takes the rest.
-const COLUMNS: { key: SortKey; label: string; width?: string }[] = [
+const COLUMNS: { key: SortKey; label: string; width?: string; hint?: string }[] = [
   { key: "competitorName", label: "Competitor", width: "9rem" },
   { key: "oneLiner", label: "Claim" },
   { key: "topics", label: "Topics", width: "9.5rem" },
   { key: "productAreas", label: "Areas", width: "9rem" },
-  { key: "confidence", label: "Confidence", width: "6.5rem" },
-  { key: "sensitivity", label: "Visibility", width: "6.5rem" },
+  {
+    key: "confidence",
+    label: "Confidence",
+    width: "7.5rem",
+    hint:
+      "How well-sourced the claim is, as judged from its source document.\n" +
+      Object.entries(CONFIDENCE_LABELS).map(([k, l]) => `${l}: ${CONFIDENCE_DESCRIPTIONS[k]}`).join("\n"),
+  },
+  {
+    key: "sensitivity",
+    label: "Visibility",
+    width: "6.5rem",
+    hint: "Internal: not for sharing outside Navina (our pricing, strategy, named clients, private intel). Shareable: public information about the competitor.",
+  },
 ];
 
 function sortValue(c: CompetitorInsightItem, key: SortKey): string {
@@ -205,9 +217,10 @@ export function CompetitorInsightsTable({ onOpen }: { onOpen: (claim: Competitor
                             ? "text-brand-secondary-600 opacity-100"
                             : "text-brand-primary opacity-60 hover:opacity-90"
                         }`}
-                        title={`Sort by ${col.label}`}
+                        title={col.hint ? `${col.hint}\n\nClick to sort` : `Sort by ${col.label}`}
                       >
                         <span className="truncate">{col.label}</span>
+                        {col.hint && <Info className="w-3 h-3 shrink-0 opacity-40" />}
                         {active ? (
                           sortDir === "asc" ? <ArrowUp className="w-3 h-3 shrink-0" /> : <ArrowDown className="w-3 h-3 shrink-0" />
                         ) : (

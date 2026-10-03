@@ -93,7 +93,18 @@ export const CONFIDENCE_LABELS: Record<string, string> = {
   CLAIMED: "Claimed",
 };
 
-export const CONFIDENCE_OPTIONS = Object.entries(CONFIDENCE_LABELS).map(([value, label]) => ({ value, label }));
+/** Shown in the claims table's filter and column header; mirrors the extraction prompt. */
+export const CONFIDENCE_DESCRIPTIONS: Record<string, string> = {
+  VERIFIED: "Several independent sources, or the source document tags it verified.",
+  REPORTED: "One credible source (a publication, a colleague, a single deal), or no sourcing stated.",
+  CLAIMED: "The competitor's own marketing or self-reported figures, or flagged unverified.",
+};
+
+export const CONFIDENCE_OPTIONS = Object.entries(CONFIDENCE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+  description: CONFIDENCE_DESCRIPTIONS[value],
+}));
 
 export function competitorTopicLabel(topic: string): string {
   return COMPETITOR_TOPIC_LABELS[topic] ?? prettify(topic);
