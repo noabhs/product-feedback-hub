@@ -6,7 +6,8 @@ import { Check, ChevronDown, Search } from "lucide-react";
 interface MultiSelectProps {
   value: string[];
   onChange: (next: string[]) => void;
-  options: { value: string; label: string }[];
+  /** `description` adds a second, muted line under the label. */
+  options: { value: string; label: string; description?: string }[];
   /** Shown when nothing is picked, e.g. "All clients". */
   placeholder: string;
   className?: string;
@@ -111,17 +112,24 @@ export function MultiSelect({ value, onChange, options, placeholder, className }
                   type="button"
                   onClick={() => toggle(o.value)}
                   aria-pressed={checked}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[13px] text-brand-primary hover:bg-[rgba(50,43,95,0.04)] transition-colors"
+                  className="w-full flex items-start gap-2 px-3 py-1.5 text-left text-[13px] text-brand-primary hover:bg-[rgba(50,43,95,0.04)] transition-colors"
                 >
                   <span
                     className={clsx(
-                      "w-4 h-4 shrink-0 rounded-[3px] border flex items-center justify-center",
+                      "w-4 h-4 mt-0.5 shrink-0 rounded-[3px] border flex items-center justify-center",
                       checked ? "bg-brand-secondary-500 border-brand-secondary-500" : "border-black/25"
                     )}
                   >
                     {checked && <Check className="w-3 h-3 text-white" />}
                   </span>
-                  <span className="truncate">{o.label}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate">{o.label}</span>
+                    {o.description && (
+                      <span className="block text-[11.5px] leading-snug opacity-50 whitespace-normal">
+                        {o.description}
+                      </span>
+                    )}
+                  </span>
                 </button>
               );
             })
