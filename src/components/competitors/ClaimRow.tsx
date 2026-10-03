@@ -16,14 +16,14 @@ import type { CompetitorInsightItem } from "@/lib/types";
  * verified figure.
  */
 
-const CONFIDENCE_STYLE: Record<string, string> = {
+export const CONFIDENCE_STYLE: Record<string, string> = {
   VERIFIED: "bg-green-50 text-green-700",
   REPORTED: "bg-blue-50 text-blue-700",
   // Amber on purpose: the competitor's own claim about itself, unverified.
   CLAIMED: "bg-amber-50 text-amber-700",
 };
 
-function day(iso: string | null): string | null {
+export function day(iso: string | null): string | null {
   if (!iso) return null;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
