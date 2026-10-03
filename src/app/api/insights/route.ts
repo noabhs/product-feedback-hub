@@ -5,6 +5,7 @@ import { normalizeKey, normalizeAreas } from "@/lib/labels";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { insightWhere } from "@/lib/insight-filters";
 import { resolveClientForEdit } from "@/lib/accounts-db";
+import { isCompetitiveIntelClient, COMPETITIVE_INTEL_MESSAGE } from "@/lib/competitive";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -64,6 +65,10 @@ export async function POST(req: NextRequest) {
   // all appears in no area filter and no chart, which is worse than being asked.
   if (!productAreas.length) {
     return NextResponse.json({ error: "At least one product area is required" }, { status: 400 });
+  }
+
+  if (isCompetitiveIntelClient(body.client)) {
+    return NextResponse.json({ error: COMPETITIVE_INTEL_MESSAGE }, { status: 400 });
   }
 
   // A typed client that isn't on the list used to be stored as null, so the
