@@ -1,11 +1,17 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { clsx } from "clsx";
+import { Search, ArrowUp, ArrowDown, Lock } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
-import { ClaimRow } from "@/components/competitors/ClaimRow";
-import { COMPETITOR_TOPIC_OPTIONS, CONFIDENCE_OPTIONS, AREA_OPTIONS } from "@/lib/labels";
+import { Badge } from "@/components/ui/Badge";
+import { Pagination } from "@/components/ui/Pagination";
+import { CONFIDENCE_STYLE } from "@/components/competitors/ClaimRow";
+import {
+  COMPETITOR_TOPIC_OPTIONS, CONFIDENCE_OPTIONS, AREA_OPTIONS,
+  competitorTopicLabel, confidenceLabel, areaLabel,
+} from "@/lib/labels";
 import type { CompetitorInsightItem } from "@/lib/types";
 
 /**
@@ -25,7 +31,29 @@ const SENSITIVITY_OPTIONS = [
   { value: "external", label: "Shareable" },
 ];
 
-export function CompetitorInsightsTable() {
+type SortKey = "competitorName" | "oneLiner" | "topics" | "productAreas" | "confidence" | "sensitivity";
+
+const PAGE_SIZE = 25;
+
+// Same fixed-width approach as the feedback table; the claim takes the rest.
+const COLUMNS: { key: SortKey; label: string; width?: string }[] = [
+  { key: "competitorName", label: "Competitor", width: "9rem" },
+  { key: "oneLiner", label: "Claim" },
+  { key: "topics", label: "Topics", width: "9.5rem" },
+  { key: "productAreas", label: "Areas", width: "9rem" },
+  { key: "confidence", label: "Confidence", width: "6.5rem" },
+  { key: "sensitivity", label: "Visibility", width: "6.5rem" },
+];
+
+function sortValue(c: CompetitorInsightItem, key: SortKey): string {
+  const v = c[key];
+  return Array.isArray(v) ? (v[0] ?? "") : v;
+}
+
+export function CompetitorInsightsTable({ onOpen }: { onOpen: (claim: CompetitorInsightItem) => void }) {
+  const [sortKey, setSortKey] = useState<SortKey>("competitorName");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
   const [claims, setClaims] = useState<CompetitorInsightItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -59,6 +87,10 @@ export function CompetitorInsightsTable() {
     return names.map((n) => ({ value: n, label: n }));
   }, [claims]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, competitors, topics, confidences, areas, sensitivities]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return claims.filter((c) => {
@@ -71,6 +103,25 @@ export function CompetitorInsightsTable() {
       return true;
     });
   }, [claims, search, competitors, topics, confidences, areas, sensitivities]);
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => dir * sortValue(a, sortKey).localeCompare(sortValue(b, sortKey)));
+  }, [filtered, sortKey, sortDir]);
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const current = Math.min(page, pageCount);
+  const start = (current - 1) * PAGE_SIZE;
+  const pageRows = sorted.slice(start, start + PAGE_SIZE);
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
 
   if (loading) {
     return (
@@ -133,10 +184,138 @@ export function CompetitorInsightsTable() {
           <p className="text-brand-primary opacity-40 text-[14px]">No claims match these filters</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] px-4">
-          {filtered.map((c) => (
-            <ClaimRow key={c.id} claim={c} showCompetitor />
-          ))}
+        <div className="bg-white rounded-md border border-[rgba(50,43,95,0.08)] overflow-x-auto">
+          <table className="w-full table-fixed min-w-[960px]">
+            <colgroup>
+              {COLUMNS.map((col) => (
+                <col key={col.key} style={col.width ? { width: col.width } : undefined} />
+              ))}
+            </colgroup>
+            <thead>
+              <tr className="border-b border-[rgba(50,43,95,0.1)] bg-[rgba(50,43,95,0.03)]">
+                {COLUMNS.map((col) => {
+                  const active = sortKey === col.key;
+                  return (
+                    <th key={col.key} className="text-left py-0 px-0">
+                      <button
+                        onClick={() => toggleSort(col.key)}
+                        aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                        className={`w-full flex items-center gap-1 py-3 px-3 text-[12px] font-semibold uppercase tracking-wide transition-colors ${
+                          active
+                            ? "text-brand-secondary-600 opacity-100"
+                            : "text-brand-primary opacity-60 hover:opacity-90"
+                        }`}
+                        title={`Sort by ${col.label}`}
+                      >
+                        <span className="truncate">{col.label}</span>
+                        {active ? (
+                          sortDir === "asc" ? <ArrowUp className="w-3 h-3 shrink-0" /> : <ArrowDown className="w-3 h-3 shrink-0" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 shrink-0 opacity-20" />
+                        )}
+                      </button>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((c) => {
+                const internal = c.sensitivity === "internal";
+                return (
+                    <tr
+                      key={c.id}
+                      onClick={() => onOpen(c)}
+                      className="group border-b border-[rgba(50,43,95,0.07)] hover:bg-[rgba(93,7,226,0.03)] transition-colors cursor-pointer"
+                    >
+                      <td className="py-3 px-3 align-top">
+                        <span className="text-[13px] font-semibold text-brand-secondary-600 line-clamp-2 break-words">
+                          {c.competitorName}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        <span
+                          className={clsx(
+                            "text-[14px] font-medium text-brand-primary group-hover:text-brand-secondary-600 transition-colors leading-snug",
+                            "line-clamp-2",
+                          )}
+                          title={c.oneLiner}
+                        >
+                          {c.oneLiner}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        <div className="flex flex-wrap gap-1">
+                          {c.topics.slice(0, 2).map((t) => (
+                            <span
+                              key={t}
+                              className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-secondary-50 text-brand-secondary-600"
+                            >
+                              {competitorTopicLabel(t)}
+                            </span>
+                          ))}
+                          {c.topics.length > 2 && (
+                            <span
+                              className="text-[11px] text-brand-primary opacity-40 self-center"
+                              title={c.topics.map(competitorTopicLabel).join(", ")}
+                            >
+                              +{c.topics.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        <div className="flex flex-wrap gap-1">
+                          {c.productAreas.slice(0, 2).map((a) => (
+                            <Badge key={a} type="area" value={a} />
+                          ))}
+                          {c.productAreas.length > 2 && (
+                            <span
+                              className="text-[11px] text-brand-primary opacity-40 self-center"
+                              title={c.productAreas.map(areaLabel).join(", ")}
+                            >
+                              +{c.productAreas.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 align-top whitespace-nowrap">
+                        <span
+                          className={clsx(
+                            "text-[10.5px] font-medium px-1.5 py-0.5 rounded-full",
+                            CONFIDENCE_STYLE[c.confidence] ?? "bg-gray-50 text-gray-600",
+                          )}
+                        >
+                          {confidenceLabel(c.confidence)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 align-top whitespace-nowrap">
+                        {internal ? (
+                          <span
+                            title={c.sensitivityReason ?? "Not for sharing outside Navina"}
+                            className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700"
+                          >
+                            <Lock className="w-2.5 h-2.5" />
+                            Internal
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-brand-primary opacity-40">Shareable</span>
+                        )}
+                      </td>
+                    </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <Pagination
+            page={current}
+            pageCount={pageCount}
+            start={start}
+            pageSize={PAGE_SIZE}
+            total={sorted.length}
+            noun="claims"
+            onPage={setPage}
+          />
         </div>
       )}
     </div>

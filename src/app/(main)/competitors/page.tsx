@@ -4,11 +4,12 @@ import { Search, Download } from "lucide-react";
 import { COMPETITOR_CATEGORIES, COMPETITOR_SUBGROUPS } from "@/lib/competitor-categories";
 import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
 import { CompetitorIcon } from "@/components/competitors/CompetitorIcon";
+import { ClaimPanel } from "@/components/competitors/ClaimPanel";
 import { CompetitorInsightsTable } from "@/components/competitors/CompetitorInsightsTable";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
-import type { CompetitorItem } from "@/lib/types";
+import type { CompetitorItem, CompetitorInsightItem } from "@/lib/types";
 
 export default function CompetitorsPage() {
   // useSearchParams (via useUrlReader) needs a Suspense boundary during prerender.
@@ -36,6 +37,7 @@ function Competitors() {
   const [competitors, setCompetitors] = useState<CompetitorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(url.str("open") || null);
+  const [claim, setClaim] = useState<CompetitorInsightItem | null>(null);
   const [search, setSearch] = useState(url.str("search"));
   // Kept in the URL like the other filters, so a link to the claims view lands
   // there rather than on the grid.
@@ -111,7 +113,7 @@ function Competitors() {
 
   return (
     <div className="p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className={view === "claims" ? "max-w-6xl mx-auto" : "max-w-4xl mx-auto"}>
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Competitors</h1>
@@ -160,7 +162,7 @@ function Competitors() {
         </div>
 
         {view === "claims" ? (
-          <CompetitorInsightsTable />
+          <CompetitorInsightsTable onOpen={setClaim} />
         ) : (
           <>
         <div className="mb-5">
@@ -230,6 +232,14 @@ function Competitors() {
           </>
         )}
       </div>
+
+      {claim && (
+        <ClaimPanel
+          claim={claim}
+          onOpenCompetitor={(id) => { setClaim(null); setOpenId(id); }}
+          onClose={() => setClaim(null)}
+        />
+      )}
 
       {openCompetitor && (
         <CompetitorPanel key={openCompetitor.id} competitor={openCompetitor} onClose={() => setOpenId(null)} />
