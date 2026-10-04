@@ -22,6 +22,26 @@ function list(names: string[], max = 4): string {
   return `${names.slice(0, max).join(", ")} +${names.length - max} more`;
 }
 
+// Slack rejects a section whose text exceeds 3000 characters with a 400
+// invalid_blocks — buffer under that so a long narrative or theme list still
+// posts, just as several blocks instead of one.
+const SECTION_TEXT_LIMIT = 2900;
+
+function pushMrkdwnSections(blocks: unknown[], text: string): void {
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= SECTION_TEXT_LIMIT) {
+      blocks.push({ type: "section", text: { type: "mrkdwn", text: remaining } });
+      break;
+    }
+    let splitAt = remaining.lastIndexOf("\n", SECTION_TEXT_LIMIT);
+    if (splitAt <= 0) splitAt = remaining.lastIndexOf(" ", SECTION_TEXT_LIMIT);
+    if (splitAt <= 0) splitAt = SECTION_TEXT_LIMIT;
+    blocks.push({ type: "section", text: { type: "mrkdwn", text: remaining.slice(0, splitAt) } });
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+}
+
 /**
  * Block Kit for the Sunday recap. Deliberately short: a header, the numbers, the
  * week's read, and a link. Anyone who wants detail clicks through.
@@ -73,41 +93,30 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
 
     // The AI read when there is one, the entries themselves when there isn't.
     if (recap.narrative) {
-      blocks.push({
-        type: "section",
-        text: { type: "mrkdwn", text: `*What stood out*\n${markdownToSlackMrkdwn(recap.narrative)}` },
-      });
+      pushMrkdwnSections(blocks, `*What stood out*\n${markdownToSlackMrkdwn(recap.narrative)}`);
     } else if (recap.themes.length) {
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text:
-            `*Came up across clients*  _wording several different accounts used_\n` +
-            recap.themes
-              .map(
-                (t) =>
-                  `• *${t.clients.length} clients* mentioned *“${t.label.toLowerCase()}”* — ${list(t.clients, 3)}\n` +
-                  `   one of them: <${HUB_URL}/insights?open=${t.example.id}|“${t.example.oneLiner}”>`,
-              )
-              .join("\n"),
-        },
-      });
+      pushMrkdwnSections(
+        blocks,
+        `*Came up across clients*  _wording several different accounts used_\n` +
+          recap.themes
+            .map(
+              (t) =>
+                `• *${t.clients.length} clients* mentioned *“${t.label.toLowerCase()}”* — ${list(t.clients, 3)}\n` +
+                `   one of them: <${HUB_URL}/insights?open=${t.example.id}|“${t.example.oneLiner}”>`,
+            )
+            .join("\n"),
+      );
     } else if (recap.picks.length) {
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text:
-            `*Highlights*\n` +
-            recap.picks
-              .map(
-                (p) =>
-                  `• <${HUB_URL}/insights?open=${p.id}|${p.oneLiner}>\n  _${p.client ?? "No client"}${p.areas.length ? ` · ${p.areas.join(", ")}` : ""}_`,
-              )
-              .join("\n"),
-        },
-      });
+      pushMrkdwnSections(
+        blocks,
+        `*Highlights*\n` +
+          recap.picks
+            .map(
+              (p) =>
+                `• <${HUB_URL}/insights?open=${p.id}|${p.oneLiner}>\n  _${p.client ?? "No client"}${p.areas.length ? ` · ${p.areas.join(", ")}` : ""}_`,
+            )
+            .join("\n"),
+      );
     }
   }
 
