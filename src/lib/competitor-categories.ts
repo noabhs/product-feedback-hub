@@ -5,6 +5,8 @@
  */
 export const COMPETITOR_CATEGORIES = [
   "HCC / Risk Adj.",
+  "Pop Health",
+  "Ambient Scribes",
   "EHRs",
   "Payer Solutions",
   "Other",
@@ -15,11 +17,3 @@ export type CompetitorCategory = (typeof COMPETITOR_CATEGORIES)[number];
 export function isCompetitorCategory(value: string): value is CompetitorCategory {
   return (COMPETITOR_CATEGORIES as readonly string[]).includes(value);
 }
-
-/**
- * Sub-groupings that exist inside one category only, in display order.
- * Every other category has no entry here (subgroup is always null for them).
- */
-export const COMPETITOR_SUBGROUPS: Partial<Record<CompetitorCategory, readonly string[]>> = {
-  "HCC / Risk Adj.": ["Pop Health", "Ambient Scribes"],
-};

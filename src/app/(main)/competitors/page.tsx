@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { Search, Download } from "lucide-react";
-import { COMPETITOR_CATEGORIES, COMPETITOR_SUBGROUPS } from "@/lib/competitor-categories";
+import { COMPETITOR_CATEGORIES } from "@/lib/competitor-categories";
 import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
 import { CompetitorIcon } from "@/components/competitors/CompetitorIcon";
 import { ClaimPanel } from "@/components/competitors/ClaimPanel";
@@ -18,18 +18,6 @@ export default function CompetitorsPage() {
       <Competitors />
     </Suspense>
   );
-}
-
-/** One category, and within it, subgroups (in declared order) then ungrouped rows. */
-function groupsFor(category: string, all: CompetitorItem[]): { subgroup: string | null; rows: CompetitorItem[] }[] {
-  const subgroups = COMPETITOR_SUBGROUPS[category as keyof typeof COMPETITOR_SUBGROUPS] ?? [];
-  const inCategory = all.filter((c) => c.category === category);
-  const groups: { subgroup: string | null; rows: CompetitorItem[] }[] = subgroups.map((sg) => ({
-    subgroup: sg,
-    rows: inCategory.filter((c) => c.subgroup === sg),
-  }));
-  groups.push({ subgroup: null, rows: inCategory.filter((c) => !c.subgroup) });
-  return groups.filter((g) => g.rows.length > 0);
 }
 
 function Competitors() {
@@ -72,9 +60,10 @@ function Competitors() {
   }, [competitors, search]);
 
   const sections = useMemo(
-    () => COMPETITOR_CATEGORIES.map((category) => ({ category, groups: groupsFor(category, filtered) })).filter(
-      (s) => s.groups.length > 0,
-    ),
+    () => COMPETITOR_CATEGORIES.map((category) => ({
+      category,
+      rows: filtered.filter((c) => c.category === category),
+    })).filter((s) => s.rows.length > 0),
     [filtered],
   );
 
@@ -189,40 +178,29 @@ function Competitors() {
           </div>
         ) : (
           <div className="space-y-8">
-            {sections.map(({ category, groups }) => (
+            {sections.map(({ category, rows }) => (
               <div key={category}>
                 <h2 className="text-[13px] font-bold text-brand-primary uppercase tracking-wide mb-3">
                   {category}
                 </h2>
-                <div className="space-y-4">
-                  {groups.map(({ subgroup, rows }) => (
-                    <div key={subgroup ?? "_"}>
-                      {subgroup && (
-                        <h3 className="text-[12px] font-semibold text-brand-primary opacity-50 mb-2 ml-1">
-                          {subgroup}
-                        </h3>
-                      )}
-                      <div className="grid grid-cols-4 gap-2">
-                        {rows.map((c) => (
-                          <button
-                            key={c.id}
-                            onClick={() => setOpenId(c.id)}
-                            className="flex items-center gap-2 text-left bg-white rounded-md border border-[rgba(50,43,95,0.08)] hover:bg-[rgba(93,7,226,0.03)] transition-colors px-3 py-2.5 min-w-0"
-                          >
-                            <CompetitorIcon name={c.name} website={c.website} />
-                            <div className="min-w-0">
-                              <p className="text-[14px] font-medium text-brand-primary truncate">{c.name}</p>
-                              <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
-                                {c.sources.length
-                                  ? `${c.sources.length} source${c.sources.length === 1 ? "" : "s"}` +
-                                    (c.coverage.claims ? ` · ${c.coverage.claims} claims` : "")
-                                  : "No sources yet"}
-                              </p>
-                            </div>
-                          </button>
-                        ))}
+                <div className="grid grid-cols-4 gap-2">
+                  {rows.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setOpenId(c.id)}
+                      className="flex items-center gap-2 text-left bg-white rounded-md border border-[rgba(50,43,95,0.08)] hover:bg-[rgba(93,7,226,0.03)] transition-colors px-3 py-2.5 min-w-0"
+                    >
+                      <CompetitorIcon name={c.name} website={c.website} />
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-medium text-brand-primary truncate">{c.name}</p>
+                        <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">
+                          {c.sources.length
+                            ? `${c.sources.length} source${c.sources.length === 1 ? "" : "s"}` +
+                              (c.coverage.claims ? ` · ${c.coverage.claims} claims` : "")
+                            : "No sources yet"}
+                        </p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

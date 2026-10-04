@@ -64,7 +64,14 @@ function jaccard(a: string, b: string) {
     return byName.get(k) ?? competitors.find((c) => c.name.toLowerCase().startsWith(k + " ") || k.startsWith(c.name.toLowerCase() + " "));
   };
 
-  const plan = { move: [] as any[], dupes: [] as any[], noPrefix: [] as any[], newNames: new Map<string, number>() };
+  type Row = (typeof rows)[number];
+  type Comp = (typeof competitors)[number];
+  const plan = {
+    move: [] as { r: Row; name: string; claim: string; comp: Comp | undefined }[],
+    dupes: [] as { r: Row; comp: string; dupe: string }[],
+    noPrefix: [] as Row[],
+    newNames: new Map<string, number>(),
+  };
   for (const r of rows) {
     const m = r.oneLiner.match(/^(.{2,40}?)\s+[-–—]\s+(.+)$/);
     if (!m) { plan.noPrefix.push(r); continue; }
