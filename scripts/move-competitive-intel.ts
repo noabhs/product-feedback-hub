@@ -94,7 +94,7 @@ function jaccard(a: string, b: string) {
         oneLiner: claim.trim(),
         content: r.content,
         topics: THEME_TOPICS[r.theme] ?? ["POSITIONING"],
-        productAreas: r.productAreas.filter((a) => a !== "COMPETITIVE"),
+        productAreas: r.productAreas.filter((a: string) => a !== "COMPETITIVE"),
         confidence: "REPORTED",
         sensitivity: "internal",
         sensitivityReason: "Moved from product feedback; not reviewed for sharing",
