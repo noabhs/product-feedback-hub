@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 import { Send, Check, Copy, Stethoscope, Sparkles, RefreshCw } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
 
@@ -329,23 +330,38 @@ export function WeeklyRecapCard({
   );
 }
 
-const P = "text-[13.5px] text-brand-primary/80 leading-relaxed";
+// Compact Markdown: bold leads, tight bullets, no paragraph margins —
+// a card, not an article. Shared by the always-visible TL;DR and the
+// collapsed topic blocks so the two don't drift visually apart.
+const BRIEF_PROSE =
+  "text-[13.5px] text-brand-primary/80 leading-relaxed " +
+  "[&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-brand-primary " +
+  "[&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mt-1 [&_ul]:space-y-0.5 [&_li]:leading-relaxed";
 
 function Brief({ text }: { text: string }) {
+  // The model's first block is the TL;DR line, kept visible on its own;
+  // every topic block after it collapses behind the toggle below. Splitting
+  // on blank lines (rather than parsing full Markdown structure here) is
+  // what lets each topic still get its own <details> without a custom
+  // Markdown AST walk — ReactMarkdown parses each chunk independently.
   const [first, ...rest] = text.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
   return (
     <>
-      <p className={P}>{first}</p>
+      <div className={BRIEF_PROSE}>
+        <ReactMarkdown>{first}</ReactMarkdown>
+      </div>
       {rest.length > 0 && (
         <details className="mt-2 group">
           <summary className="text-[12px] text-brand-secondary-600 cursor-pointer hover:underline marker:content-none">
-            {rest.length} more {rest.length === 1 ? "topic" : "topics"}
+            {rest.length} {rest.length === 1 ? "topic" : "topics"}
             <span className="group-open:hidden"> ▾</span>
             <span className="hidden group-open:inline"> ▴</span>
           </summary>
           <div className="space-y-2.5 mt-2">
             {rest.map((para, i) => (
-              <p key={i} className={P}>{para}</p>
+              <div key={i} className={BRIEF_PROSE}>
+                <ReactMarkdown>{para}</ReactMarkdown>
+              </div>
             ))}
           </div>
         </details>

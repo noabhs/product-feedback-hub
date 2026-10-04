@@ -641,7 +641,7 @@ const MAX_ENTRIES = 150;
  * the cached copy to expire — which is how a reworded prompt sat invisible
  * behind this morning's text.
  */
-export const BRIEF_VERSION = "b3";
+export const BRIEF_VERSION = "b4";
 const MAX_CONTENT = 240;
 
 function spread<T>(items: T[], max: number): T[] {
@@ -685,22 +685,34 @@ export async function summarizeWeek(
 
 The feedback below is everything logged in ${periodLabel}.
 
-Write two or three short paragraphs. Rules:
-- One topic per paragraph, separated by a blank line. Never run two topics
-  together in one block — this is read in a wide card and a single dense
-  paragraph does not get read.
-- Two or three sentences per paragraph. If a topic needs more, it is two topics.
+Output is Markdown. Shape, in order:
+
+1. One line starting with "**TL;DR:**" — the single most important thing
+   this period, in one sentence. If nothing rises above the rest, say that
+   plainly instead of inflating a minor item.
+2. A blank line, then one topic per block, each block separated by a blank
+   line. Never merge two topics into one block — this is read in a wide card
+   and a wall of text does not get read.
+3. Each topic block starts with a short **bold lead-in** naming the
+   client(s) or subject (e.g. "**KP (Kaiser Permanente):**"), then 2-4 short
+   bullet points ("- "), one finding per bullet.
+
+Rules:
+- Each bullet is one sentence, one finding. If a finding needs a second
+  sentence to stand on its own, split it into two bullets rather than
+  running them together.
 - Name the pattern, not the volume. "Three clients independently asked for X"
   earns its place; "there was feedback about X" does not.
 - Only claim what the entries support. No projections, no recommendations, no
   invented client names.
-- Name clients and product areas where it sharpens the point.
-- Plain sentences. No bullet points, no headings, no bold, no emoji, and no
-  preamble like "This period".
+- Bold client names and the specific product/feature where it sharpens the
+  point — not every noun. Over-bolding is as hard to scan as no bolding.
+- No headings beyond the bold lead-ins, no emoji, no preamble like "This
+  period".
 - Refer to the timeframe as ${periodLabel} if you refer to it at all. Do not call
   a month a week.
-- If it holds nothing beyond unrelated one-offs, say that plainly in one
-  sentence. That is a useful thing for the team to read.`,
+- If it holds nothing beyond unrelated one-offs, say that in the TL;DR and
+  give it a single topic block, rather than manufacturing several.`,
       messages: [
         {
           role: "user",
