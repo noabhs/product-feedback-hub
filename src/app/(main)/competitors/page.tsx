@@ -28,7 +28,12 @@ function groupsFor(category: string, all: CompetitorItem[]): { subgroup: string 
     subgroup: sg,
     rows: inCategory.filter((c) => c.subgroup === sg),
   }));
-  groups.push({ subgroup: null, rows: inCategory.filter((c) => !c.subgroup) });
+  // Only label the ungrouped bucket when there's a named subgroup beside it to
+  // distinguish it from — otherwise every card in this category already shares
+  // the same (missing) subgroup, and a heading would be pure noise. Named
+  // subgroups render last in this array, so without a label an ungrouped
+  // bucket reads as a silent continuation of whichever subgroup came before it.
+  groups.push({ subgroup: subgroups.length > 0 ? "General" : null, rows: inCategory.filter((c) => !c.subgroup) });
   return groups.filter((g) => g.rows.length > 0);
 }
 
