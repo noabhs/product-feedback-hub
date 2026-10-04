@@ -44,10 +44,12 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
   { name: "Center for Primary Care" },
   { name: "Christie Clinic" },
   { name: "Citadel", aliases: ["Aylo", "Aylo Health", "Eagles Landing Health"] },
+  { name: "Complete Health" },
   { name: "ClareMedica Health Partners", aliases: ["ClareMedica", "CareMax", "Caremax"] },
   { name: "ConvenientMD" },
   { name: "CVFP Medical Group", aliases: ["CVFP"] },
   { name: "Doctors Health of South Florida" },
+  { name: "Derry Medical Center", aliases: ["DMC Primary Care"] },
   { name: "DTC Family Health", aliases: ["DTC"] },
   { name: "Edinger Medical Group" },
   { name: "Evergreen Nephrology" },
@@ -209,7 +211,7 @@ function escape(s: string): string {
  * When the Salesforce accounts report the per-account data came from was run.
  * Shown on /clients so nobody reads a stale ARR as today's number.
  */
-export const REPORT_AS_OF = "2026-09-16";
+export const REPORT_AS_OF = "2026-10-04";
 
 /**
  * Figures from an earlier report than the current one — the account was in a
