@@ -1,3 +1,4 @@
+import { isCompetitiveIntelClient, COMPETITIVE_INTEL_MESSAGE } from "@/lib/competitive";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { AREA_LABELS } from "@/lib/labels";
@@ -147,6 +148,10 @@ export async function importFeedbackRows(rows: unknown[][]): Promise<ImportResul
     const [productAreaRaw, themeRaw, persona, oneLiner, content, date, wtp, source, client, sourceUrl, reporter] =
       row as string[];
     if (!oneLiner?.trim()) continue;
+    if (isCompetitiveIntelClient(client)) {
+      errors.push(`Skipped "${oneLiner.trim().slice(0, 60)}": ${COMPETITIVE_INTEL_MESSAGE}`);
+      continue;
+    }
     const id = hashId("ins", `${client}${oneLiner}`);
     try {
       await prisma.insight.upsert({

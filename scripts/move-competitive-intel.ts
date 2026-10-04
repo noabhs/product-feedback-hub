@@ -29,13 +29,21 @@ const THEME_TOPICS: Record<string, string[]> = {
 };
 
 // Prefixes that name a regulator, publication or market theme rather than a
-// company, or several companies at once. They stay in feedback for a human.
+// company. They are filed under one catch-all competitor, with the prefix kept
+// in the one-liner so the context isn't lost.
+const CATCH_ALL = "Market & regulatory";
 const NOT_A_COMPETITOR = new Set([
   "cms", "doj", "oig", "medpac", "congress", "white house", "chamber", "jama", "ama", "ama / fierce",
   "market", "ambient market", "competitive landscape", "medicare advantage", "navina", "highmark health",
   "juxly / arcadia", "vytalize / unitedhealth", "lightbeam / apixio / stanson",
 ]);
-const ALIAS: Record<string, string> = { foreseemed: "Foresee Medical", "eclat / evaire": "Eclat / Evarie" };
+const ALIAS: Record<string, string> = {
+  foreseemed: "Foresee Medical",
+  "eclat / evaire": "Eclat / Evarie",
+  "juxly / arcadia": "Arcadia",
+  "lightbeam / apixio / stanson": "Lightbeam Health",
+  "vytalize / unitedhealth": "Vytalize",
+};
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 2);
 function jaccard(a: string, b: string) {
@@ -56,18 +64,29 @@ function jaccard(a: string, b: string) {
     return byName.get(k) ?? competitors.find((c) => c.name.toLowerCase().startsWith(k + " ") || k.startsWith(c.name.toLowerCase() + " "));
   };
 
-  const plan = { move: [] as any[], dupes: [] as any[], noPrefix: [] as any[], newNames: new Map<string, number>() };
+  type Row = (typeof rows)[number];
+  type Comp = (typeof competitors)[number];
+  const plan = {
+    move: [] as { r: Row; name: string; claim: string; comp: Comp | undefined }[],
+    dupes: [] as { r: Row; comp: string; dupe: string }[],
+    noPrefix: [] as Row[],
+    newNames: new Map<string, number>(),
+  };
   for (const r of rows) {
     const m = r.oneLiner.match(/^(.{2,40}?)\s+[-–—]\s+(.+)$/);
     if (!m) { plan.noPrefix.push(r); continue; }
     const [, name, claim] = m;
-    if (NOT_A_COMPETITOR.has(name.trim().toLowerCase())) { plan.noPrefix.push(r); continue; }
-    const comp = find(ALIAS[name.trim().toLowerCase()] ?? name.trim());
+    const key = name.trim().toLowerCase();
+    const general = NOT_A_COMPETITOR.has(key) && !ALIAS[key];
+    const target = general ? CATCH_ALL : (ALIAS[key] ?? name.trim());
+    const comp = find(target);
+    // Several-company and general entries keep their original subject up front.
+    const claimText = general || ALIAS[key] && ALIAS[key] !== name.trim() ? `${name.trim()}: ${claim}` : claim;
     const pool = comp?.insights ?? [];
     const dupe = pool.find((i) => jaccard(`${claim} ${r.content}`, `${i.oneLiner} ${i.content}`) >= 0.5);
     if (dupe) { plan.dupes.push({ r, comp: comp!.name, dupe: dupe.oneLiner }); continue; }
-    if (!comp) plan.newNames.set(name.trim(), (plan.newNames.get(name.trim()) ?? 0) + 1);
-    plan.move.push({ r, name: name.trim(), claim, comp });
+    if (!comp) plan.newNames.set(target, (plan.newNames.get(target) ?? 0) + 1);
+    plan.move.push({ r, name: target, claim: claimText, comp });
   }
 
   console.log(`rows ${rows.length} | to move ${plan.move.length} | duplicates ${plan.dupes.length} | no competitor prefix ${plan.noPrefix.length}`);

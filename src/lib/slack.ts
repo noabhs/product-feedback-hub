@@ -75,7 +75,7 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
     if (recap.narrative) {
       blocks.push({
         type: "section",
-        text: { type: "mrkdwn", text: `*What stood out*\n${recap.narrative}` },
+        text: { type: "mrkdwn", text: `*What stood out*\n${markdownToSlackMrkdwn(recap.narrative)}` },
       });
     } else if (recap.themes.length) {
       blocks.push({
@@ -153,7 +153,7 @@ export function recapMarkdown(recap: WeeklyRecap): string {
     if (aside.length) lines.push(aside.join("  ·  "));
 
     if (recap.narrative) {
-      lines.push("", "*What stood out*", recap.narrative);
+      lines.push("", "*What stood out*", markdownToSlackMrkdwn(recap.narrative));
     } else if (recap.themes.length) {
       lines.push("", "*Came up across clients*  _wording several different accounts used_");
       for (const t of recap.themes) {
