@@ -322,7 +322,7 @@ function Feedback({ recap }: { recap?: React.ReactNode }) {
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Client feedback</h1>
+            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Product feedback</h1>
             <p className="text-[14px] text-brand-primary opacity-50">
               From client sessions, onsites, Jira, and feedback threads
             </p>
