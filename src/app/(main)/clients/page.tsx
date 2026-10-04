@@ -7,7 +7,7 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
 import { AccountRow } from "@/components/clients/AccountRow";
 import { AccountPanel } from "@/components/clients/AccountPanel";
-import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk, reportIsStale } from "@/lib/accounts";
+import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk } from "@/lib/accounts";
 import {
   matchesAccountFilters,
   accountFiltersToParams,
@@ -267,8 +267,6 @@ function Clients() {
   const hasFilters =
     !!search || !!health.length || !!products.length || !!ehr.length || !!segment.length || !!csm.length || riskOnly;
 
-  const staleCount = useMemo(() => inTab.filter((a) => reportIsStale(a.reportAsOf)).length, [inTab]);
-
   // Headline numbers over whatever is on screen, so they follow the filters.
   const summary = useMemo(() => {
     const withHealth = displayed.filter((a) => a.health);
@@ -289,21 +287,10 @@ function Clients() {
             <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Clients</h1>
             <p className="text-[14px] text-brand-primary opacity-50 max-w-2xl">
               Who our clients are and how they&rsquo;re doing, so feedback can be weighed by the
-              account behind it — a red account renewing in two months is a different signal from a
-              green one three years out. Open any client for its full picture and everything it has
-              told us.
+              account behind it. Open any client for its full picture.
             </p>
             <p className="text-[12px] text-brand-primary opacity-35 max-w-2xl mt-1.5">
-              Account data is a snapshot of the Salesforce accounts report from {REPORT_AS_OF}
-              {staleCount > 0 && (
-                <>
-                  {" — except "}
-                  {staleCount} {staleCount === 1 ? "client that isn't" : "clients that aren't"} in it
-                  any more, still showing {staleCount === 1 ? "its" : "their"} last known figures
-                </>
-              )}
-              . This is also the canonical list — feedback can only point at a client on it, so one
-              account stops arriving under three spellings.
+              Account data is a snapshot of the Salesforce accounts report from {REPORT_AS_OF}.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
