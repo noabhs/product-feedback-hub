@@ -641,7 +641,7 @@ const MAX_ENTRIES = 150;
  * the cached copy to expire — which is how a reworded prompt sat invisible
  * behind this morning's text.
  */
-export const BRIEF_VERSION = "b4";
+export const BRIEF_VERSION = "b5";
 const MAX_CONTENT = 240;
 
 function spread<T>(items: T[], max: number): T[] {
@@ -685,34 +685,46 @@ export async function summarizeWeek(
 
 The feedback below is everything logged in ${periodLabel}.
 
+This is a product synthesis, not a client-by-client log — the Hub itself
+already has every row, filterable by client. The brief's job is to say what
+the period taught the product team, organized by **product theme or domain**
+(a suspecting-logic gap, a reporting-model limitation, an integration
+readiness pattern), never by client. A client name may appear inside a
+bullet as evidence, but it never starts one, and it is never the thing the
+block is about.
+
 Output is Markdown. Shape, in order:
 
-1. One line starting with "**TL;DR:**" — the single most important thing
-   this period, in one sentence. If nothing rises above the rest, say that
-   plainly instead of inflating a minor item.
-2. A blank line, then one topic per block, each block separated by a blank
-   line. Never merge two topics into one block — this is read in a wide card
-   and a wall of text does not get read.
-3. Each topic block starts with a short **bold lead-in** naming the
-   client(s) or subject (e.g. "**KP (Kaiser Permanente):**"), then 2-4 short
-   bullet points ("- "), one finding per bullet.
+1. One line starting with "**TL;DR:**" — the single most important product
+   takeaway this period, in one sentence. If nothing rises above the rest,
+   say that plainly instead of inflating a minor item.
+2. A blank line, then at most 3-4 topic blocks, each a distinct product
+   theme, each separated by a blank line.
+3. Each block starts with a short **bold lead-in** naming the theme or
+   domain (e.g. "**Suspecting logic lags coder workflow:**"), then at most
+   2 short bullets giving the concrete evidence and its implication.
 
 Rules:
-- Each bullet is one sentence, one finding. If a finding needs a second
-  sentence to stand on its own, split it into two bullets rather than
-  running them together.
-- Name the pattern, not the volume. "Three clients independently asked for X"
-  earns its place; "there was feedback about X" does not.
-- Only claim what the entries support. No projections, no recommendations, no
-  invented client names.
-- Bold client names and the specific product/feature where it sharpens the
+- Short, above everything else. This is a synthesis a product lead reads in
+  30 seconds, not a transcript. If you have more than 4 real themes, keep
+  only the ones with the broadest product implication and drop the rest —
+  do not shrink every theme to fit more in.
+- A theme earns a slot by implication for the product, not by how many
+  entries mention it. One entry naming a real gap in the suspecting model
+  outranks five routine access requests.
+- Each bullet is one sentence: the evidence, then what it means for the
+  product, not just a restatement of the complaint. "X because Y" beats "X
+  happened."
+- Only claim what the entries support. No projections, no recommendations
+  beyond what's implied, no invented client names.
+- Bold the theme name and the specific product/feature where it sharpens the
   point — not every noun. Over-bolding is as hard to scan as no bolding.
 - No headings beyond the bold lead-ins, no emoji, no preamble like "This
   period".
 - Refer to the timeframe as ${periodLabel} if you refer to it at all. Do not call
   a month a week.
-- If it holds nothing beyond unrelated one-offs, say that in the TL;DR and
-  give it a single topic block, rather than manufacturing several.`,
+- If nothing rises above routine one-offs, say that in the TL;DR and give it
+  a single topic block, rather than manufacturing several.`,
       messages: [
         {
           role: "user",
