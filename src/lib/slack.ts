@@ -52,7 +52,7 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
       type: "header",
       text: {
         type: "plain_text",
-        text: `📊  ${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}`,
+        text: `☀️  ${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}`,
         emoji: true,
       },
     },
@@ -137,7 +137,7 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
  */
 export function recapMarkdown(recap: WeeklyRecap): string {
   const lines: string[] = [
-    `*📊 ${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}*`,
+    `*☀️ ${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}*`,
     "",
   ];
 

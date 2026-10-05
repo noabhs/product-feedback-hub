@@ -331,40 +331,31 @@ export function WeeklyRecapCard({
 }
 
 // Compact Markdown: bold leads, tight bullets, no paragraph margins —
-// a card, not an article. Shared by the always-visible TL;DR and the
-// collapsed topic blocks so the two don't drift visually apart.
+// a card, not an article. Shared by the TL;DR paragraph and the bullet
+// list below it so the two don't drift visually apart.
 const BRIEF_PROSE =
   "text-[13.5px] text-brand-primary/80 leading-relaxed " +
   "[&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-brand-primary " +
-  "[&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mt-1 [&_ul]:space-y-0.5 [&_li]:leading-relaxed";
+  "[&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mt-1 [&_ul]:space-y-1 [&_li]:leading-relaxed";
 
 function Brief({ text }: { text: string }) {
-  // The model's first block is the TL;DR line, kept visible on its own;
-  // every topic block after it collapses behind the toggle below. Splitting
-  // on blank lines (rather than parsing full Markdown structure here) is
-  // what lets each topic still get its own <details> without a custom
-  // Markdown AST walk — ReactMarkdown parses each chunk independently.
-  const [first, ...rest] = text.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+  // Exactly two parts: a TL;DR paragraph, then one flat bullet list (up to
+  // 10 items, per the prompt). Splitting on only the first blank-line
+  // boundary — rather than every one — keeps the whole list as a single
+  // Markdown chunk, so ReactMarkdown parses it as one <ul>, not one per item.
+  const trimmed = text.trim();
+  const boundary = trimmed.search(/\n{2,}/);
+  const tldr = boundary === -1 ? trimmed : trimmed.slice(0, boundary).trim();
+  const bullets = boundary === -1 ? "" : trimmed.slice(boundary).trim();
   return (
     <>
       <div className={BRIEF_PROSE}>
-        <ReactMarkdown>{first}</ReactMarkdown>
+        <ReactMarkdown>{tldr}</ReactMarkdown>
       </div>
-      {rest.length > 0 && (
-        <details className="mt-2 group">
-          <summary className="text-[12px] text-brand-secondary-600 cursor-pointer hover:underline marker:content-none">
-            {rest.length} {rest.length === 1 ? "topic" : "topics"}
-            <span className="group-open:hidden"> ▾</span>
-            <span className="hidden group-open:inline"> ▴</span>
-          </summary>
-          <div className="space-y-2.5 mt-2">
-            {rest.map((para, i) => (
-              <div key={i} className={BRIEF_PROSE}>
-                <ReactMarkdown>{para}</ReactMarkdown>
-              </div>
-            ))}
-          </div>
-        </details>
+      {bullets && (
+        <div className={`${BRIEF_PROSE} mt-2`}>
+          <ReactMarkdown>{bullets}</ReactMarkdown>
+        </div>
       )}
     </>
   );
