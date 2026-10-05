@@ -641,7 +641,7 @@ const MAX_ENTRIES = 150;
  * the cached copy to expire — which is how a reworded prompt sat invisible
  * behind this morning's text.
  */
-export const BRIEF_VERSION = "b5";
+export const BRIEF_VERSION = "b6";
 const MAX_CONTENT = 240;
 
 function spread<T>(items: T[], max: number): T[] {
@@ -685,46 +685,40 @@ export async function summarizeWeek(
 
 The feedback below is everything logged in ${periodLabel}.
 
-This is a product synthesis, not a client-by-client log — the Hub itself
-already has every row, filterable by client. The brief's job is to say what
-the period taught the product team, organized by **product theme or domain**
-(a suspecting-logic gap, a reporting-model limitation, an integration
-readiness pattern), never by client. A client name may appear inside a
-bullet as evidence, but it never starts one, and it is never the thing the
-block is about.
+This is a synthesis, not a transcript — the Hub itself already has every
+row, filterable by client. Cover both **product** takeaways (a suspecting-
+logic gap, a reporting limitation, an integration pattern) and **business**
+ones (renewal or churn risk, expansion or upsell signal, pricing pushback,
+contract value at stake) wherever the entries actually support one — don't
+force a business angle onto a purely technical bug, or vice versa.
 
 Output is Markdown. Shape, in order:
 
-1. One line starting with "**TL;DR:**" — the single most important product
-   takeaway this period, in one sentence. If nothing rises above the rest,
-   say that plainly instead of inflating a minor item.
-2. A blank line, then at most 3-4 topic blocks, each a distinct product
-   theme, each separated by a blank line.
-3. Each block starts with a short **bold lead-in** naming the theme or
-   domain (e.g. "**Suspecting logic lags coder workflow:**"), then at most
-   2 short bullets giving the concrete evidence and its implication.
+1. One paragraph, 2-4 sentences, starting with "**TL;DR:**" — the single
+   biggest story of the period. Say what happened and why it matters; if it
+   has both a product and a business angle, say both in the same paragraph.
+   If nothing rises above the rest, say that plainly instead of inflating a
+   minor item.
+2. A blank line, then one flat bullet list ("- "), ranked most important
+   first, of up to 10 items. No sub-headings, no grouping by client or
+   theme, no nested bullets — one level, one list.
 
 Rules:
-- Short, above everything else. This is a synthesis a product lead reads in
-  30 seconds, not a transcript. If you have more than 4 real themes, keep
-  only the ones with the broadest product implication and drop the rest —
-  do not shrink every theme to fit more in.
-- A theme earns a slot by implication for the product, not by how many
-  entries mention it. One entry naming a real gap in the suspecting model
-  outranks five routine access requests.
-- Each bullet is one sentence: the evidence, then what it means for the
-  product, not just a restatement of the complaint. "X because Y" beats "X
-  happened."
+- Each bullet is 1-2 sentences: the evidence, then what it means (for the
+  product, the account, or both). "X because Y" beats "X happened."
+- Rank by stakes, not volume. One entry naming a real suspecting-model gap
+  or a renewal at risk outranks five routine access requests. If fewer than
+  10 items clear that bar, list fewer — never pad to reach 10.
 - Only claim what the entries support. No projections, no recommendations
-  beyond what's implied, no invented client names.
-- Bold the theme name and the specific product/feature where it sharpens the
-  point — not every noun. Over-bolding is as hard to scan as no bolding.
-- No headings beyond the bold lead-ins, no emoji, no preamble like "This
+  beyond what's implied, no invented client names or numbers.
+- Bold the key term or client name that sharpens a bullet — not every noun.
+  Over-bolding is as hard to scan as no bolding.
+- No headings beyond the TL;DR label, no emoji, no preamble like "This
   period".
 - Refer to the timeframe as ${periodLabel} if you refer to it at all. Do not call
   a month a week.
-- If nothing rises above routine one-offs, say that in the TL;DR and give it
-  a single topic block, rather than manufacturing several.`,
+- If nothing rises above routine one-offs, say that in the TL;DR and keep
+  the list short rather than manufacturing items to fill it.`,
       messages: [
         {
           role: "user",
