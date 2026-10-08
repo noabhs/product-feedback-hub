@@ -5,8 +5,10 @@ import type { Resource } from "@/lib/domain/types";
 
 /** Shown on every page of the section until the content has been reviewed. */
 export function DraftNotice() {
+  // A caveat, not a warning: it was the loudest thing on the page in full
+  // amber. Same words, carried by a rule down the side instead of a block.
   return (
-    <div className="mb-6 rounded-sm border border-amber-200 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-900">
+    <div className="mb-6 border-l-2 border-amber-400 bg-amber-50/40 pl-3 py-1.5 text-[12.5px] leading-relaxed text-amber-900/90">
       <span className="font-semibold">Draft.</span> This section is being built. Definitions are
       written from public sources and have not been reviewed by a clinical or compliance owner yet.
       Figures that change every year are dated in the text, so check the linked source before relying on one.
