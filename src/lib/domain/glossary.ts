@@ -1,5 +1,6 @@
 import type { GlossaryTerm, Resource } from "./types";
 import { GLOSSARY_PAYMENT_ORGS } from "./glossary-payment-orgs";
+import { GLOSSARY_OPS_DATA } from "./glossary-ops-data";
 
 /**
  * Pilot batch of definitions (Risk adjustment, Quality + Stars, and the few
@@ -334,7 +335,7 @@ const CORE_TERMS: GlossaryTerm[] = [
   },
 ];
 
-export const GLOSSARY: GlossaryTerm[] = [...CORE_TERMS, ...GLOSSARY_PAYMENT_ORGS];
+export const GLOSSARY: GlossaryTerm[] = [...CORE_TERMS, ...GLOSSARY_PAYMENT_ORGS, ...GLOSSARY_OPS_DATA];
 
 export function getTerm(term: string): GlossaryTerm | undefined {
   return GLOSSARY.find((t) => t.term === term);

@@ -2,12 +2,16 @@ import type { Topic } from "./types";
 import { VBC_FUNDAMENTALS } from "./topic-vbc-fundamentals";
 import { CARE_ORGANIZATIONS } from "./topic-care-organizations";
 import { INSURANCE_MODELS } from "./topic-insurance-models";
+import { UTILIZATION_AND_COST } from "./topic-utilization-and-cost";
+import { CMS_AND_REGULATION } from "./topic-cms-and-regulation";
+import { CLINIC_ROLES } from "./topic-clinic-roles";
+import { DATA_AND_INTEROPERABILITY } from "./topic-data-and-interoperability";
 
 /**
- * Written in full: VBC fundamentals, Care organizations, Insurance models,
- * Risk adjustment, and Quality + Star Ratings (the first three live in their own
- * files). The remaining topics carry a summary only and are marked "planned" so the
- * landing page shows the whole map without pretending the content exists.
+ * All nine topics are written. Risk adjustment and Quality + Star Ratings are
+ * defined here; the rest live in their own topic-*.ts files. A topic with
+ * status "planned" shows only its summary, which is how a topic can be added to
+ * the map before its content exists.
  *
  * Facts that change every year (V28 phase-in, Star Ratings weights, RADV
  * rules) are dated in the text. Re-check them each fall when CMS publishes the
@@ -47,7 +51,7 @@ export const TOPICS: Topic[] = [
       },
       {
         title: "The model keeps changing",
-        body: "CMS updated the model from V24 to V28 and phased it in over three years, ending in 2026. V28 counts fewer diagnosis codes toward payment and re-weights others, which lowered scores for many organizations.",
+        body: "CMS updated the model from V24 to V28 and phased it in over three years, ending in 2026. For 2027 it kept V28 but stopped counting diagnoses from audio-only visits and unlinked chart reviews. V28 counts fewer diagnosis codes toward payment and re-weights others, which lowered scores for many organizations.",
       },
     ],
     deepDive: [
@@ -91,6 +95,15 @@ A diagnosis also generally needs to come from a face-to-face encounter (or audio
         body: `**Risk Adjustment Data Validation (RADV)** is how CMS checks that the diagnoses behind payments are supported by medical records. In 2025 CMS announced it would audit all eligible Medicare Advantage contracts every year, a large increase over the earlier sample of plans, and would hire thousands more coders to do so.
 
 Extrapolation, which projects the error rate found in a sample across a whole contract, is the high-stakes part. A federal court vacated the extrapolation provisions of the 2023 RADV rule in September 2025, and the government appealed. **Check the current status before relying on this.** Either way, plans push audit risk down to providers through documentation requirements and chart requests.`,
+      },
+      {
+        heading: "What changes for 2027 payment",
+        body: `The final 2027 Rate Announcement (April 2026) keeps the 2024 model (V28) rather than moving to an updated one calibrated on newer data, and makes two changes to which diagnoses count:
+
+- **Diagnoses from audio-only encounters are excluded** from risk scores. Audio-video telehealth visits can still support a diagnosis.
+- **Diagnoses from unlinked chart reviews are excluded.** A chart review record that is not tied to a specific visit no longer counts, except for patients who switch from one Medicare Advantage plan to another.
+
+CMS projects a 2.48% payment increase for 2027 (4.98% once expected risk score growth is included). Both exclusions point the same way: a diagnosis counts when it comes from a real visit, with a clinician, documented in the note.`,
       },
       {
         heading: "Why the economics are under pressure",
@@ -287,54 +300,10 @@ Plans therefore treat the 4-star line as a financial cliff, and contracted pract
     ],
     related: ["risk-adjustment", "utilization-and-cost", "clinic-roles"],
   },
-  {
-    slug: "utilization-and-cost",
-    title: "Utilization and cost",
-    tagline: "Admissions, ED visits, readmissions and total cost of care.",
-    summary:
-      "In value-based contracts the cost of all care a patient receives counts against the group, wherever it happens. This topic covers utilization measures, total cost of care, avoidable use and the data that shows it (claims and ADT feeds).",
-    status: "planned",
-    concepts: [],
-    deepDive: [],
-    resources: [],
-    related: ["vbc-fundamentals", "data-and-interoperability"],
-  },
-  {
-    slug: "cms-and-regulation",
-    title: "CMS and regulation",
-    tagline: "The agencies, the annual rule cycle and the rules that change the economics.",
-    summary:
-      "CMS runs Medicare and sets most of the rules in this industry. This topic covers CMS and its Innovation Center, the yearly Advance Notice and Rate Announcement, and the interoperability and prior authorization rules.",
-    status: "planned",
-    concepts: [],
-    deepDive: [],
-    resources: [],
-    related: ["insurance-models", "risk-adjustment", "data-and-interoperability"],
-  },
-  {
-    slug: "clinic-roles",
-    title: "Clinic roles and workflows",
-    tagline: "Who does what in a primary care practice, and how a visit flows.",
-    summary:
-      "From the medical assistant who rooms the patient to the coder who reviews the chart and the care manager who calls after discharge, each role touches quality and risk adjustment differently. This topic maps the roles and the patient journey.",
-    status: "planned",
-    concepts: [],
-    deepDive: [],
-    resources: [],
-    related: ["risk-adjustment", "quality-and-stars"],
-  },
-  {
-    slug: "data-and-interoperability",
-    title: "Data and interoperability",
-    tagline: "EHRs, claims, identifiers and the standards that move data between them.",
-    summary:
-      "Healthcare data is spread across EHRs, payers, labs and hospitals. This topic covers the main data sources, the identifiers that link them (MBI, NPI, TIN), and the standards (FHIR, HL7, CCLF, BCDA).",
-    status: "planned",
-    concepts: [],
-    deepDive: [],
-    resources: [],
-    related: ["utilization-and-cost", "cms-and-regulation"],
-  },
+  UTILIZATION_AND_COST,
+  CMS_AND_REGULATION,
+  CLINIC_ROLES,
+  DATA_AND_INTEROPERABILITY,
 ];
 
 export function getTopic(slug: string): Topic | undefined {
