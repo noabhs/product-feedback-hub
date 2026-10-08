@@ -80,7 +80,11 @@ async function loadAnalytics() {
     if (e.createdAt > p.last) p.last = e.createdAt;
     peopleMap.set(e.actor, p);
   }
-  const people = [...peopleMap.values()].sort((a, b) => b.total - a.total);
+  // Most recently seen first: with pagination, "who is still around" is the
+  // question page one should answer. Volume breaks ties.
+  const people = [...peopleMap.values()].sort(
+    (a, b) => b.last.getTime() - a.last.getTime() || b.total - a.total,
+  );
   const contributors = people.filter((p) => p.writes > 0 || p.ai > 0).length;
   const viewersOnly = people.length - contributors;
 
