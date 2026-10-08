@@ -65,6 +65,13 @@ export function markdownToHtml(title: string, markdown: string): string {
 /** Thrown when the user signed in before Docs access existed, or revoked it. */
 export class NeedsReconnect extends Error {}
 
+/** Drive refused the request; `detail` is Google's own explanation. */
+export class DriveError extends Error {
+  constructor(public status: number, public detail: string) {
+    super(`Drive ${status}: ${detail}`);
+  }
+}
+
 /**
  * A usable access token for this request's user. Google's last an hour but the
  * session lasts far longer, so an expired one is renewed from the refresh token
@@ -120,9 +127,14 @@ export async function createGoogleDoc(
       body,
     },
   );
-  // 401/403 from Drive means the grant is gone or never included Drive.
-  if (res.status === 401 || res.status === 403) throw new NeedsReconnect();
-  if (!res.ok) throw new Error(`Drive returned ${res.status}`);
+  // Only 401 means the token itself is bad. A 403 is Google saying why
+  // (Drive API switched off, scope not granted…), and that has to be shown,
+  // not turned into another reconnect prompt that can never succeed.
+  if (res.status === 401) throw new NeedsReconnect();
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new DriveError(res.status, body?.error?.message ?? "no detail");
+  }
   const data = (await res.json()) as { id: string; webViewLink?: string };
   return { url: data.webViewLink ?? `https://docs.google.com/document/d/${data.id}/edit` };
 }
