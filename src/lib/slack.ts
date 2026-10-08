@@ -282,7 +282,9 @@ function sourceLink(s: QSource): string {
         ? `${HUB_URL}/competitors`
         : s.kind === "web"
           ? s.url
-          : `${HUB_URL}/feature-requests`;
+          : s.kind === "domain"
+            ? `${HUB_URL}${s.href}`
+            : `${HUB_URL}/feature-requests`;
   return `<${url}|${s.label}>`;
 }
 

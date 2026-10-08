@@ -4,6 +4,7 @@ import { loadAccountDetails, loadAccounts } from "@/lib/accounts-db";
 import { searchInsights } from "@/lib/insight-search";
 import { expandQuestion, readAsNote, rewriteQuestion } from "@/lib/synonyms";
 import { recordAskLog } from "@/lib/ask-log";
+import { searchDomain, resolveDomainSource } from "@/lib/domain/search";
 import { logEvent, ACTIONS } from "@/lib/events";
 import type { FeatureRequestItem } from "@/lib/types";
 
@@ -13,6 +14,8 @@ export type QSource =
   | { id: string; kind: "insight"; label: string; client: string | null }
   | { id: string; kind: "competitor"; label: string; client: null }
   | { id: string; kind: "feature-request"; label: string; client: null }
+  /** A glossary term or topic section from Know your domain; `href` is its path in the hub. */
+  | { id: string; kind: "domain"; label: string; client: null; href: string }
   | { id: string; kind: "web"; label: string; client: null; url: string };
 
 export interface QResult {
@@ -50,7 +53,7 @@ function stripWebSearchTrigger(question: string): { question: string; wantsWebSe
 
 /**
  * "Q" over the whole hub — feedback, competitors, feature requests, the client
- * table. Pulled out of the route handler so it has no dependency on
+ * table, and the Know your domain glossary and topics. Pulled out of the route handler so it has no dependency on
  * NextRequest/NextResponse: the home page's Ask box and the Slack /ask command
  * both call this and log to the same AskLog, so a rating means the same thing
  * regardless of where the question came from.
@@ -58,6 +61,8 @@ function stripWebSearchTrigger(question: string): { question: string; wantsWebSe
 export async function runQ(rawQuestion: string, actor: string, apiKey?: string): Promise<QResult> {
   const { question, wantsWebSearch } = stripWebSearchTrigger(rawQuestion);
   const accountsLike = await loadAccounts();
+  // Static content in code, so no query: matched against the question as asked.
+  const domain = searchDomain(question);
 
   const [insights, accounts, competitorRows, featureRequests] = await Promise.all([
     searchInsights(question, accountsLike),
@@ -108,6 +113,7 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     ...insights.map((i) => ({ id: i.id, kind: "insight" as const, label: i.oneLiner, client: i.client ?? null })),
     ...competitors.map((c) => ({ id: c.id, kind: "competitor" as const, label: c.name, client: null })),
     ...requests.map((f) => ({ id: f.id, kind: "feature-request" as const, label: f.title, client: null })),
+    ...domain.map((d) => ({ id: d.id, kind: "domain" as const, label: d.label, client: null, href: d.href })),
   ];
 
   const startedAt = Date.now();
@@ -117,6 +123,7 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     accounts,
     competitors,
     requests,
+    domain,
     apiKey,
     readAs,
     wantsWebSearch,
@@ -188,6 +195,11 @@ export async function resolveQSources(ids: string[]): Promise<QSource[]> {
   for (const i of insights) byId.set(i.id, { id: i.id, kind: "insight", label: i.oneLiner, client: i.client ?? null });
   for (const c of competitors) byId.set(c.id, { id: c.id, kind: "competitor", label: c.name, client: null });
   for (const f of requests) byId.set(f.id, { id: f.id, kind: "feature-request", label: f.title, client: null });
+  // Domain ids are not rows: they are rebuilt from the content in code.
+  for (const id of ids) {
+    const d = resolveDomainSource(id);
+    if (d) byId.set(id, { id, kind: "domain", label: d.label, client: null, href: d.href });
+  }
 
   // ids, not byId's own order — a citation's [n] maps to this array's
   // position, and a row deleted since the original answer just drops out
