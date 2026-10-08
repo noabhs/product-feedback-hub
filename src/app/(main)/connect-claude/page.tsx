@@ -109,11 +109,19 @@ export default function ConnectClaudePage() {
 
         <section className="space-y-3">
           <h2 className="text-[15px] font-bold text-brand-primary">2. Add it to Claude</h2>
-          <p className="text-[13px] text-brand-primary opacity-70"><b>Claude Code</b> — run in a terminal:</p>
-          <CopyBlock text={`claude mcp add --transport http navina-hub ${url} --header "Authorization: Bearer ${token}"`} />
+          <p className="text-[13px] text-brand-primary opacity-70"><b>Claude Code</b> — run in a terminal. <code>--scope user</code> makes the hub available in
+            every project on your machine (leave it off and it only works in the folder you ran this in):
+          </p>
+          <CopyBlock text={`claude mcp add --scope user --transport http navina-hub ${url} --header "Authorization: Bearer ${token}"`} />
+          <p className="text-[13px] text-brand-primary opacity-70 leading-relaxed">
+            To add the hub to one shared project instead, use <code>--scope project</code>. That writes a <code>.mcp.json</code>{" "}
+            into the repo, so never put your token in it: set <code>NAVINA_HUB_TOKEN</code> in your own shell and use{" "}
+            <code>{"--header 'Authorization: Bearer ${NAVINA_HUB_TOKEN}'"}</code> (single quotes, so your shell doesn&apos;t expand it
+            into the file). Each teammate uses their own token.
+          </p>
           <p className="text-[13px] text-brand-primary opacity-70">
             <b>Claude Desktop</b> — Settings → Developer → Edit Config, add this under <code>mcpServers</code>, then restart
-            (needs Node.js installed):
+            (needs Node.js installed). It applies to all your chats; Desktop has no per-project setting:
           </p>
           <CopyBlock
             text={JSON.stringify(
@@ -132,14 +140,24 @@ export default function ConnectClaudePage() {
         <section className="space-y-2">
           <h2 className="text-[15px] font-bold text-brand-primary">3. Ask away</h2>
           <p className="text-[13px] text-brand-primary opacity-70 leading-relaxed">
+            The hub becomes a set of tools next to whatever else your Claude has (your files, GitHub, Jira…). Claude
+            decides when to use them, based on your question; nothing is read in the background. Say &ldquo;check the
+            hub&rdquo; to make sure it does, or &ldquo;don&apos;t use the hub&rdquo; to stop it. Claude Code asks before
+            the first call.
+          </p>
+          <p className="text-[13px] text-brand-primary opacity-70 leading-relaxed">
             Try: &ldquo;What are Aegis&apos;s biggest complaints about Risk?&rdquo;, &ldquo;List competitor claims about
             ambient scribe pricing&rdquo;, or &ldquo;Which red-health accounts renew in the next 90 days, and what have they
-            told us?&rdquo; Claude will call the hub&apos;s tools itself.
+            told us?&rdquo; 
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-[15px] font-bold text-brand-primary">Your tokens</h2>
+          <p className="text-[13px] text-brand-primary opacity-60">
+            Treat a token like a password: it lives in your Claude config. If it leaks or you lose a laptop, revoke it here.
+            This works with Claude Code and Claude Desktop, not with claude.ai on the web.
+          </p>
           {tokens.length === 0 ? (
             <p className="text-[13px] text-brand-primary opacity-60">None yet.</p>
           ) : (
