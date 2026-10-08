@@ -1,6 +1,7 @@
 "use client";
 import { MessageSquare, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { fmtDay } from "@/lib/format";
 import { renewalWindow, renewalPhrase, atRenewalRisk, reportIsStale } from "@/lib/accounts";
 import type { AccountDetail } from "@/lib/types";
@@ -39,8 +40,11 @@ export function AccountRow({ account, onOpen }: AccountRowProps) {
       className="group border-b border-[rgba(50,43,95,0.07)] hover:bg-[rgba(93,7,226,0.03)] transition-colors cursor-pointer"
     >
       <td className="py-3 px-4 align-top">
-        <span className="text-[14px] font-semibold text-brand-primary group-hover:text-brand-secondary-600 transition-colors leading-snug">
-          {account.name}
+        <span className="flex items-center gap-2">
+          <EntityIcon name={account.name} />
+          <span className="text-[14px] font-semibold text-brand-primary group-hover:text-brand-secondary-600 transition-colors leading-snug">
+            {account.name}
+          </span>
         </span>
       </td>
       <td className="py-3 px-4 align-top">

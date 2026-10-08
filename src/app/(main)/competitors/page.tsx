@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, Suspense } from "react";
 import { Search, Download } from "lucide-react";
 import { COMPETITOR_CATEGORIES } from "@/lib/competitor-categories";
 import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
-import { CompetitorIcon } from "@/components/competitors/CompetitorIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { ClaimPanel } from "@/components/competitors/ClaimPanel";
 import { CompetitorInsightsTable } from "@/components/competitors/CompetitorInsightsTable";
 import { Button } from "@/components/ui/Button";
@@ -190,7 +190,7 @@ function Competitors() {
                       onClick={() => setOpenId(c.id)}
                       className="flex items-center gap-2 text-left bg-white rounded-md border border-[rgba(50,43,95,0.08)] hover:bg-[rgba(93,7,226,0.03)] transition-colors px-3 py-2.5 min-w-0"
                     >
-                      <CompetitorIcon name={c.name} website={c.website} />
+                      <EntityIcon name={c.name} website={c.website} />
                       <div className="min-w-0">
                         <p className="text-[14px] font-medium text-brand-primary truncate">{c.name}</p>
                         <p className="text-[12px] text-brand-primary opacity-40 mt-0.5">

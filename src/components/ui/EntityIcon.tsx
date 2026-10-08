@@ -16,8 +16,15 @@ function fallbackColor(name: string): string {
   return FALLBACK_COLORS[sum % FALLBACK_COLORS.length];
 }
 
-/** A favicon pulled from the competitor's website, falling back to a colored initial when there's no website or the favicon fails to load. */
-export function CompetitorIcon({ name, website, size = 24 }: { name: string; website: string | null; size?: number }) {
+/**
+ * The square mark next to a company name — a competitor or a client.
+ *
+ * A favicon pulled from the company's website, falling back to a colored
+ * initial when there is no website or the favicon fails to load. Accounts have
+ * no website on file, so they always take the initial; the colour is derived
+ * from the name, so a given company keeps the same one everywhere.
+ */
+export function EntityIcon({ name, website = null, size = 24 }: { name: string; website?: string | null; size?: number }) {
   const [failed, setFailed] = useState(false);
   const src = faviconUrl(website, size * 2);
 
