@@ -1,4 +1,4 @@
-import { Activity, Users, Sparkles, Eye, Info } from "lucide-react";
+import { Activity, Users, Sparkles, Eye, Info, Plug } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ACTION_LABELS, AI_ACTIONS, ACTIONS, EVENT_LOG_LIMIT } from "@/lib/events";
 import { shortName } from "@/lib/people";
@@ -10,7 +10,10 @@ const WINDOW_DAYS = 30;
 const TREND_DAYS = 14;
 
 const WRITE_ACTIONS = new Set<string>(
-  Object.values(ACTIONS).filter((a) => a !== ACTIONS.pageView && !AI_ACTIONS.includes(a))
+  // A read through someone's own Claude changes nothing, so it is not an edit.
+  Object.values(ACTIONS).filter(
+    (a) => a !== ACTIONS.pageView && a !== ACTIONS.mcpCall && !AI_ACTIONS.includes(a),
+  ),
 );
 
 function dayKey(d: Date) {
@@ -25,7 +28,7 @@ async function loadAnalytics() {
   const now = Date.now();
   const since = new Date(now - WINDOW_DAYS * 86400_000);
 
-  const [events, totalEvents, firstEvent, insightCount, questionCount] = await Promise.all([
+  const [events, totalEvents, firstEvent, insightCount, questionCount, activeTokens, unusedTokens] = await Promise.all([
     prisma.event.findMany({
       where: { createdAt: { gte: since } },
       orderBy: { createdAt: "desc" },
@@ -35,6 +38,8 @@ async function loadAnalytics() {
     prisma.event.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
     prisma.insight.count(),
     prisma.discoveryQuestion.count(),
+    prisma.apiToken.count({ where: { revokedAt: null } }),
+    prisma.apiToken.count({ where: { revokedAt: null, lastUsedAt: null } }),
   ]);
 
   // ── Aggregates, all derived from the one query above.
@@ -45,6 +50,17 @@ async function loadAnalytics() {
   const aiCalls = events.filter((e) => AI_ACTIONS.includes(e.action));
   const pageViews = events.filter((e) => e.action === ACTIONS.pageView);
   const writes = events.filter((e) => WRITE_ACTIONS.has(e.action));
+
+  // Reads through a person's own Claude (the MCP endpoint), by tool and by person.
+  const mcpCalls = events.filter((e) => e.action === ACTIONS.mcpCall);
+  const mcpByTool = new Map<string, number>();
+  for (const e of mcpCalls) {
+    const tool = e.target ?? "unknown";
+    mcpByTool.set(tool, (mcpByTool.get(tool) ?? 0) + 1);
+  }
+  const mcpTools = [...mcpByTool.entries()].sort((a, b) => b[1] - a[1]);
+  const mcpMaxTool = Math.max(...mcpTools.map(([, n]) => n), 1);
+  const mcpPeople = new Set(mcpCalls.map((e) => e.actor)).size;
 
   // Daily trend, split into views vs everything else so a busy day is legible.
   const trend: { key: string; label: string; views: number; actions: number }[] = [];
@@ -76,7 +92,7 @@ async function loadAnalytics() {
     p.total++;
     if (e.action === ACTIONS.pageView) p.views++;
     else if (AI_ACTIONS.includes(e.action)) p.ai++;
-    else p.writes++;
+    else if (e.action !== ACTIONS.mcpCall) p.writes++;
     if (e.createdAt > p.last) p.last = e.createdAt;
     peopleMap.set(e.actor, p);
   }
@@ -135,6 +151,12 @@ async function loadAnalytics() {
     topPages,
     maxPage,
     logRows,
+    mcpCallCount: mcpCalls.length,
+    mcpPeople,
+    mcpTools,
+    mcpMaxTool,
+    activeTokens,
+    unusedTokens,
   };
 }
 
@@ -160,6 +182,12 @@ export async function UsageAnalyticsTab() {
     topPages,
     maxPage,
     logRows,
+    mcpCallCount,
+    mcpPeople,
+    mcpTools,
+    mcpMaxTool,
+    activeTokens,
+    unusedTokens,
   } = await loadAnalytics();
 
   return (
@@ -291,6 +319,33 @@ export async function UsageAnalyticsTab() {
           </p>
         </Card>
       </div>
+
+      {/* Personal Claude connections (the MCP endpoint, see /connect-claude) */}
+      <Card
+        title="Claude connections"
+        subtitle={`People reading hub data from their own Claude · last ${WINDOW_DAYS} days`}
+        className="mb-5"
+      >
+        <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 gap-4 content-start">
+            <Stat value={mcpPeople} label="People using it" />
+            <Stat value={mcpCallCount} label="Tool calls" />
+            <Stat value={activeTokens} label="Active tokens" />
+            <Stat value={unusedTokens} label="Tokens never used" />
+          </div>
+          <div>
+            {mcpTools.length === 0 ? (
+              <p className="text-[12.5px] text-brand-primary opacity-40 py-1 flex items-center gap-1.5">
+                <Plug className="w-3.5 h-3.5" /> No one has called it yet.
+              </p>
+            ) : (
+              mcpTools.map(([tool, n]) => (
+                <Bar key={tool} label={tool} count={n} pct={n / mcpMaxTool} color="#5d07e2" />
+              ))
+            )}
+          </div>
+        </div>
+      </Card>
 
       <EventLog events={logRows} />
     </div>
