@@ -380,3 +380,65 @@ export async function postToSlack(blocks: unknown[], fallbackText: string): Prom
     return { ok: false, error: (e as Error).message };
   }
 }
+
+interface SlackApiResponse {
+  ok: boolean;
+  error?: string;
+  [key: string]: unknown;
+}
+
+/** Slack's Web API always answers 200 and reports failure through the body's
+ *  own `ok`/`error` fields, unlike the webhook postToSlack calls above. */
+async function callSlackApi(method: string, token: string, body: Record<string, unknown>): Promise<SlackApiResponse> {
+  const res = await fetch(`https://slack.com/api/${method}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+/**
+ * DMs the signed-in user directly instead of posting to a shared channel —
+ * for previewing a brief, or any send that's meant for one person rather than
+ * the team. Needs a bot token (SLACK_BOT_TOKEN) with users:read.email,
+ * im:write, and chat:write scopes — separate from the incoming webhook
+ * postToSlack uses, which can only ever post to the channel it was created
+ * for and has no notion of "one user" at all.
+ */
+export async function postDmToUser(email: string, blocks: unknown[], fallbackText: string): Promise<SlackResult> {
+  const token = process.env.SLACK_BOT_TOKEN?.trim();
+  if (!token) {
+    return { ok: false, error: "SLACK_BOT_TOKEN isn't set — add it in Vercel's environment variables." };
+  }
+
+  try {
+    // users.lookupByEmail takes its param on the query string, not the body.
+    const lookup: SlackApiResponse = await fetch(
+      `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ).then((r) => r.json());
+    if (!lookup.ok) {
+      return { ok: false, error: `No Slack user found for ${email}: ${lookup.error}` };
+    }
+    const userId = (lookup.user as { id: string }).id;
+
+    const opened = await callSlackApi("conversations.open", token, { users: userId });
+    if (!opened.ok) {
+      return { ok: false, error: `Couldn't open a DM with ${email}: ${opened.error}` };
+    }
+    const channelId = (opened.channel as { id: string }).id;
+
+    const posted = await callSlackApi("chat.postMessage", token, {
+      channel: channelId,
+      text: fallbackText,
+      blocks,
+    });
+    if (!posted.ok) {
+      return { ok: false, error: `Slack rejected the DM: ${posted.error}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}

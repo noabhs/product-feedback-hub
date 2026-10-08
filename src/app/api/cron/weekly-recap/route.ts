@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { isOwner } from "@/lib/people";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
-import { weeklyRecapBlocks, postToSlack } from "@/lib/slack";
+import { weeklyRecapBlocks, postToSlack, postDmToUser } from "@/lib/slack";
 
 /** The brief is a model call; the default function limit is too short for it. */
 export const maxDuration = 60;
@@ -31,10 +31,10 @@ async function alreadyPosted(weekKey: string): Promise<boolean> {
   return Boolean(seen);
 }
 
-async function send(force: boolean, period: "week" | "month" = "week") {
+async function send(force: boolean, period: "week" | "month" = "week", dmEmail?: string) {
   const recap = await buildWeeklyRecap(new Date(), { period });
 
-  if (!force && (await alreadyPosted(recap.week.key))) {
+  if (!dmEmail && !force && (await alreadyPosted(recap.week.key))) {
     return NextResponse.json({ skipped: "already posted", week: recap.week.key });
   }
 
@@ -48,6 +48,34 @@ async function send(force: boolean, period: "week" | "month" = "week") {
     } catch (e) {
       console.error("[recap] month brief failed:", (e as Error).message);
     }
+  }
+
+  const fallbackText = `${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}: ${recap.entries} new feedback entries`;
+
+  // A DM is a personal preview, not the week's official post — it must not
+  // satisfy alreadyPosted, or pressing the button once would make the real
+  // Sunday cron skip the channel entirely.
+  if (dmEmail) {
+    const result = await postDmToUser(dmEmail, weeklyRecapBlocks(recap), fallbackText);
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          error: result.error,
+          week: recap.week.key,
+          narrative: Boolean(recap.narrative),
+          narrativeError: recap.narrativeError,
+        },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json({
+      posted: true,
+      dm: true,
+      week: recap.week.key,
+      entries: recap.entries,
+      narrative: Boolean(recap.narrative),
+      narrativeError: recap.narrativeError,
+    });
   }
 
   // No webhook configured means posting is somebody else's job — a scheduled
@@ -68,10 +96,7 @@ async function send(force: boolean, period: "week" | "month" = "week") {
     });
   }
 
-  const result = await postToSlack(
-    weeklyRecapBlocks(recap),
-    `${recap.week.kind === "month" ? "Monthly" : "Weekly"} brief · ${recap.week.label}: ${recap.entries} new feedback entries`,
-  );
+  const result = await postToSlack(weeklyRecapBlocks(recap), fallbackText);
 
   if (!result.ok) {
     // 502, not 500: the hub did its part and Slack (or its config) did not.
@@ -123,5 +148,8 @@ export async function POST(req: NextRequest) {
   // The button is owner-only for now; keep the endpoint in step with it.
   if (!isOwner(session.user.email)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
-  return send(true, period);
+  // "Send to Slack" now previews to the signed-in user's own DM rather than
+  // the shared channel — the real weekly post still only happens from the
+  // Sunday cron's GET above.
+  return send(true, period, session.user.email);
 }

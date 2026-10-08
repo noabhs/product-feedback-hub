@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { markdownToSlackMrkdwn, postToSlack } from "@/lib/slack";
+import { markdownToSlackMrkdwn, postDmToUser } from "@/lib/slack";
 import { isOwner } from "@/lib/people";
 import { logEvent, ACTIONS } from "@/lib/events";
 
@@ -26,7 +26,7 @@ function chunk(text: string): string[] {
   return out;
 }
 
-/** Post a generated brief to the team's Slack channel. */
+/** DM a generated brief to the signed-in user who asked for it. */
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,10 +44,10 @@ export async function POST(req: NextRequest) {
   const blocks = [
     { type: "header", text: { type: "plain_text", text: title.slice(0, 150) } },
     ...chunk(body).map((text) => ({ type: "section", text: { type: "mrkdwn", text } })),
-    { type: "context", elements: [{ type: "mrkdwn", text: `Generated in the Insights Hub by ${session.user.email}` }] },
+    { type: "context", elements: [{ type: "mrkdwn", text: `Generated in the Insights Hub` }] },
   ];
 
-  const result = await postToSlack(blocks, title);
+  const result = await postDmToUser(session.user.email, blocks, title);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
 
   void logEvent(ACTIONS.briefSent, { label: title, actor: session.user.email });
