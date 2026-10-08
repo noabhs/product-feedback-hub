@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState, Suspense } from "react";
-import { Search, Download } from "lucide-react";
+import { Search, Download, Sparkles } from "lucide-react";
 import { COMPETITOR_CATEGORIES } from "@/lib/competitor-categories";
 import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
 import { EntityIcon } from "@/components/ui/EntityIcon";
 import { ClaimPanel } from "@/components/competitors/ClaimPanel";
 import { CompetitorInsightsTable } from "@/components/competitors/CompetitorInsightsTable";
 import { Button } from "@/components/ui/Button";
+import { BriefModal } from "@/components/home/BriefModal";
 import { Input } from "@/components/ui/Input";
 import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import type { CompetitorItem, CompetitorInsightItem } from "@/lib/types";
@@ -25,11 +26,29 @@ function Competitors() {
   const [competitors, setCompetitors] = useState<CompetitorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(url.str("open") || null);
+  // null = closed. "" = open with the competitor still to be picked, which is
+  // the header CTA; an id = opened from that competitor's panel, which skips
+  // the pick. The brief is keyed by id, so the name travels separately.
+  const [briefFor, setBriefFor] = useState<string | null>(null);
+  // Only decides whether the modal offers "Send to Slack" — the endpoint
+  // checks the session itself.
+  const [owner, setOwner] = useState(false);
   const [claim, setClaim] = useState<CompetitorInsightItem | null>(null);
   const [search, setSearch] = useState(url.str("search"));
   // Kept in the URL like the other filters, so a link to the claims view lands
   // there rather than on the grid.
   const [view, setView] = useState(url.str("view") === "claims" ? "claims" : "competitors");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((d) => !cancelled && setOwner(!!d.owner))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,10 +142,16 @@ function Competitors() {
               </p>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={exportAll}>
-            <Download className="w-4 h-4" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => setBriefFor("")}>
+              <Sparkles className="w-4 h-4" />
+              Generate competitor brief
+            </Button>
+            <Button variant="ghost" size="sm" onClick={exportAll}>
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {/* Two views over the same competitors: the roster, and every claim the
@@ -220,7 +245,24 @@ function Competitors() {
       )}
 
       {openCompetitor && (
-        <CompetitorPanel key={openCompetitor.id} competitor={openCompetitor} onClose={() => setOpenId(null)} />
+        <CompetitorPanel
+          key={openCompetitor.id}
+          competitor={openCompetitor}
+          onGenerateBrief={() => setBriefFor(openCompetitor.id)}
+          briefOpen={briefFor !== null}
+          onClose={() => setOpenId(null)}
+        />
+      )}
+
+      {briefFor !== null && (
+        <BriefModal
+          key={briefFor}
+          kind="competitor"
+          canSendToSlack={owner}
+          subject={briefFor || undefined}
+          subjectLabel={competitors.find((c) => c.id === briefFor)?.name}
+          onClose={() => setBriefFor(null)}
+        />
       )}
     </div>
   );

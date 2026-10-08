@@ -1,12 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { X, Globe } from "lucide-react";
+import { X, Globe, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { CompetitorSources } from "@/components/competitors/CompetitorSources";
 import { CompetitorClaims } from "@/components/competitors/CompetitorClaims";
 import type { CompetitorItem, CompetitorDocumentItem, CompetitorInsightItem } from "@/lib/types";
 
 interface CompetitorPanelProps {
   competitor: CompetitorItem;
+  /** Opens the brief for this competitor. The modal belongs to the page, not
+   *  here: nested inside this panel it would sit under the panel's overlay. */
+  onGenerateBrief: () => void;
+  /** True while that brief is on screen, so Escape closes the brief alone —
+   *  both listen on the document, and otherwise one key closes both. */
+  briefOpen: boolean;
   onClose: () => void;
 }
 
@@ -63,7 +70,7 @@ function Freshness({ competitor }: { competitor: CompetitorItem }) {
   );
 }
 
-export function CompetitorPanel({ competitor, onClose }: CompetitorPanelProps) {
+export function CompetitorPanel({ competitor, onGenerateBrief, briefOpen, onClose }: CompetitorPanelProps) {
   const [documents, setDocuments] = useState<CompetitorDocumentItem[]>([]);
   const [insights, setInsights] = useState<CompetitorInsightItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,11 +104,11 @@ export function CompetitorPanel({ competitor, onClose }: CompetitorPanelProps) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !briefOpen) onClose();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, briefOpen]);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -124,13 +131,19 @@ export function CompetitorPanel({ competitor, onClose }: CompetitorPanelProps) {
               <p className="text-[12px] text-brand-primary opacity-50 mt-1.5">{competitor.positioning}</p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded text-brand-primary opacity-40 hover:opacity-80 transition-opacity shrink-0"
-            title="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="sm" onClick={onGenerateBrief}>
+              <Sparkles className="w-4 h-4" />
+              Generate brief
+            </Button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded text-brand-primary opacity-40 hover:opacity-80 transition-opacity"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
