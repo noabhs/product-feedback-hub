@@ -1,13 +1,14 @@
 "use client";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { X, Copy, Check, Send, Globe, AlertCircle } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { useApiKey } from "@/hooks/useApiKey";
 import { AREA_OPTIONS } from "@/lib/labels";
 
-export type BriefKind = "client" | "competitor" | "area";
+export type BriefKind = "client" | "competitor" | "area" | "domain";
 
 interface Option {
   value: string;
@@ -20,6 +21,8 @@ interface BriefResult {
   usedWebSearch: boolean;
   webSources: { title: string | null; url: string }[];
   hubEntries: number;
+  /** Know your domain briefs: the topic pages it was written from. */
+  domainTopics?: { title: string; href: string }[];
 }
 
 const COPY: Record<BriefKind, { title: string; pick: string; placeholder: string; web: boolean; source: string }> = {
@@ -43,6 +46,13 @@ const COPY: Record<BriefKind, { title: string; pick: string; placeholder: string
     placeholder: "Select one or more areas…",
     web: true,
     source: "Written from the hub and a live web search.",
+  },
+  domain: {
+    title: "Generate Know your domain brief",
+    pick: "Topics",
+    placeholder: "",
+    web: false,
+    source: "Written from the Know your domain topics you pick. General industry background, not Navina data.",
   },
 };
 
@@ -105,6 +115,11 @@ export function BriefModal({
   const { aiHeaders } = useApiKey();
   const [options, setOptions] = useState<Option[]>(kind === "area" ? AREA_OPTIONS : []);
   const [loadingOptions, setLoadingOptions] = useState(kind !== "area" && !subject);
+  // Know your domain only: how many topics can go in one brief, and whether to
+  // also check the web for figures that have changed since the pages were written.
+  const [maxTopics, setMaxTopics] = useState(4);
+  const [checkWeb, setCheckWeb] = useState(false);
+  const multiKind = kind === "area" || kind === "domain";
   const [single, setSingle] = useState(subject ?? "");
   const [multi, setMulti] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -118,11 +133,16 @@ export function BriefModal({
     // Nothing to pick from when the subject is already known.
     if (kind === "area" || subject) return;
     let cancelled = false;
-    const url = kind === "client" ? "/api/accounts" : "/api/competitors";
+    const url = kind === "client" ? "/api/accounts" : kind === "domain" ? "/api/domain/topics" : "/api/competitors";
     fetch(url)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
+        if (kind === "domain") {
+          setMaxTopics(data.max ?? 4);
+          setOptions((data.topics as { slug: string; title: string }[]).map((t) => ({ value: t.slug, label: t.title })));
+          return;
+        }
         setOptions(
           kind === "client"
             ? (data as string[]).map((n) => ({ value: n, label: n }))
@@ -142,7 +162,7 @@ export function BriefModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [busy, onClose]);
 
-  const ready = kind === "area" ? multi.length > 0 : !!single;
+  const ready = multiKind ? multi.length > 0 : !!single;
 
   async function generate() {
     if (!ready || busy) return;
@@ -155,7 +175,7 @@ export function BriefModal({
       const res = await fetch("/api/briefs", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...aiHeaders },
-        body: JSON.stringify({ kind, subject: kind === "area" ? multi : single }),
+        body: JSON.stringify({ kind, subject: multiKind ? multi : single, ...(kind === "domain" ? { web: checkWeb } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
@@ -227,30 +247,49 @@ export function BriefModal({
           </label>
           {subject ? (
             <p className="text-[15px] font-semibold text-brand-primary">{subjectLabel ?? subject}</p>
-          ) : kind === "area" ? (
+          ) : multiKind ? (
             // Chips, not a dropdown: a dropdown panel opens inside this
             // scrolling body and gets clipped by it.
-            <div className="flex flex-wrap gap-2">
-              {options.map((o) => {
-                const on = multi.includes(o.value);
-                return (
-                  <button
-                    key={o.value}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setMulti(on ? multi.filter((v) => v !== o.value) : [...multi, o.value])}
-                    className={
-                      "rounded-pill border px-3 py-1 text-[13px] cursor-pointer transition-colors " +
-                      (on
-                        ? "bg-brand-secondary-500 border-brand-secondary-500 text-white"
-                        : "border-black/15 text-brand-primary hover:border-brand-secondary-500")
-                    }
-                  >
-                    {o.label}
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="flex flex-wrap gap-2">
+                {loadingOptions && <span className="text-[13px] text-brand-primary opacity-50">Loading…</span>}
+                {options.map((o) => {
+                  const on = multi.includes(o.value);
+                  // Topics are capped, so the rest go quiet once the cap is reached.
+                  const full = kind === "domain" && !on && multi.length >= maxTopics;
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      aria-pressed={on}
+                      disabled={full}
+                      onClick={() => setMulti(on ? multi.filter((v) => v !== o.value) : [...multi, o.value])}
+                      className={
+                        "rounded-pill border px-3 py-1 text-[13px] transition-colors " +
+                        (on
+                          ? "bg-brand-secondary-500 border-brand-secondary-500 text-white cursor-pointer"
+                          : full
+                            ? "border-black/10 text-brand-primary opacity-35 cursor-not-allowed"
+                            : "border-black/15 text-brand-primary hover:border-brand-secondary-500 cursor-pointer")
+                      }
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {kind === "domain" && (
+                <>
+                  <p className="text-[11.5px] text-brand-primary opacity-45 mt-2">
+                    Pick up to {maxTopics}. {multi.length > 0 ? `${multi.length} selected.` : ""}
+                  </p>
+                  <label className="flex items-center gap-2 mt-3 text-[13px] text-brand-primary cursor-pointer">
+                    <input type="checkbox" checked={checkWeb} onChange={(e) => setCheckWeb(e.target.checked)} />
+                    Also check the web for recent changes (slower)
+                  </label>
+                </>
+              )}
+            </>
           ) : (
             <Select
               value={single}
@@ -265,7 +304,11 @@ export function BriefModal({
               {busy ? "Writing…" : result ? "Regenerate" : "Generate"}
             </Button>
           </div>
-          <p className="text-[11.5px] text-brand-primary opacity-45 mt-2">{copy.source}</p>
+          <p className="text-[11.5px] text-brand-primary opacity-45 mt-2">
+            {kind === "domain" && checkWeb
+              ? "Written from the Know your domain topics you pick, plus a live web search for recent changes."
+              : copy.source}
+          </p>
 
           <div className="mt-3">
             <NoKeyBanner />
@@ -273,7 +316,11 @@ export function BriefModal({
 
           {busy && (
             <p className="text-[13px] text-brand-primary opacity-60 mt-5">
-              {copy.web ? "Reading the hub and searching the web — this can take up to a minute…" : "Reading the hub…"}
+              {copy.web || (kind === "domain" && checkWeb)
+                ? "Reading the hub and searching the web — this can take up to a minute…"
+                : kind === "domain"
+                  ? "Reading the topics…"
+                  : "Reading the hub…"}
             </p>
           )}
 
@@ -289,10 +336,24 @@ export function BriefModal({
               <h3 className="text-[16px] font-extrabold text-brand-primary mb-1">{result.title}</h3>
               <p className="text-[11.5px] text-brand-primary opacity-45 mb-3 flex items-center gap-1.5">
                 {result.usedWebSearch && <Globe className="w-3 h-3" />}
-                {result.hubEntries} hub {result.hubEntries === 1 ? "entry" : "entries"}
+                {result.domainTopics
+                  ? `${result.hubEntries} ${result.hubEntries === 1 ? "topic" : "topics"}`
+                  : `${result.hubEntries} hub ${result.hubEntries === 1 ? "entry" : "entries"}`}
                 {result.usedWebSearch ? " + live web search" : ""}
               </p>
               <BriefBody markdown={result.markdown} />
+              {result.domainTopics && result.domainTopics.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-[rgba(50,43,95,0.08)]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-primary opacity-50 mb-1.5">Read the full topics</p>
+                  <ol className="text-[12px] space-y-1 list-decimal pl-4">
+                    {result.domainTopics.map((t) => (
+                      <li key={t.href}>
+                        <Link href={t.href} className="text-brand-secondary-600 hover:underline">{t.title}</Link>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
               {result.webSources.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-[rgba(50,43,95,0.08)]">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-primary opacity-50 mb-1.5">Web sources</p>

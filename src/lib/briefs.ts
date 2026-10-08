@@ -5,8 +5,11 @@ import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
 import { REPORT_AS_OF } from "@/lib/accounts";
 import { AREA_LABELS, areaLabel, themeLabel, competitorTopicLabel } from "@/lib/labels";
+import { getTopic } from "@/lib/domain/topics";
+import type { Topic } from "@/lib/domain/types";
+import { GLOSSARY } from "@/lib/domain/glossary";
 
-export type BriefKind = "client" | "competitor" | "area";
+export type BriefKind = "client" | "competitor" | "area" | "domain";
 
 export interface Brief {
   title: string;
@@ -16,6 +19,8 @@ export interface Brief {
   webSources: WebCitationSource[];
   /** How many hub rows the brief was written from, so a thin one reads as thin. */
   hubEntries: number;
+  /** Know your domain briefs only: the topic pages it was written from, to read in full. */
+  domainTopics?: { title: string; href: string }[];
 }
 
 /** Newest first, and capped: past this a prompt is mostly noise and cost. */
@@ -219,6 +224,70 @@ export async function areaBrief(areas: string[], apiKey?: string): Promise<Brief
     web: true,
     apiKey,
   });
+}
+
+/** More than this and the prompt is mostly the topics themselves, and the brief a list. */
+export const MAX_DOMAIN_TOPICS = 4;
+/** Per deep-dive section; the longest are about 2.5 KB, so this only trims outliers. */
+const MAX_SECTION_CHARS = 2600;
+
+/**
+ * A brief on one or more Know your domain topics, written from the topic pages
+ * and glossary in code. Optional web search is there for the figures those
+ * pages date (rates, program rules, Star weights), which are the first thing to
+ * go stale.
+ */
+/** The prompt for a Know your domain brief. Pure, so it can be printed and checked without paying for an answer. */
+export function buildDomainBriefPrompt(topics: Topic[], web: boolean): { prompt: string; joined: string } {
+  const blocks = topics.map((t, n) => {
+    const terms = GLOSSARY.filter((g) => g.topics.includes(t.slug))
+      .map((g) => `- ${g.term}${g.expansion ? ` (${g.expansion})` : ""}: ${g.short}`)
+      .join("\n");
+    return [
+      `[${n + 1}] TOPIC — ${t.title}`,
+      `Summary: ${t.summary}`,
+      t.concepts.length ? `Key concepts:\n${t.concepts.map((c) => `- ${c.title}: ${c.body}`).join("\n")}` : null,
+      ...t.deepDive.map((d) => `Deep dive — ${d.heading}\n${d.body.slice(0, MAX_SECTION_CHARS)}`),
+      terms ? `Glossary terms in this topic:\n${terms}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  });
+
+  const joined = topics.map((t) => t.title).join(" + ");
+  const prompt = [
+    `Write a briefing on ${joined} for a Navina colleague who needs to understand the subject well enough to follow a customer conversation: what it is, how it works, the terms they will hear, and why it matters to a primary care or value-based care customer.`,
+    `Suggested sections: In one minute, How it works, Terms to know (a few, defined in a phrase), What changed recently (with the year), Why it matters to customers, Where to read more.${topics.length > 1 ? " Say how the topics connect." : ""}`,
+    `Rules: write only from the topic material below${web ? " and what the web search finds" : ""}. It is general industry education from public sources, not Navina data, so do not make claims about Navina clients or product. Give the year for any rate, date, weight or rule, because these change.${web ? " Where the web shows a figure or rule has changed since the material was written, say so and say which is which." : ""} The material is still a draft: if you notice two statements that conflict, point it out instead of choosing silently. Cite by topic number, like [1].`,
+    `TOPIC MATERIAL:`,
+    blocks.join("\n\n---\n\n"),
+  ].join("\n\n");
+  return { prompt, joined };
+}
+
+/**
+ * A brief on one or more Know your domain topics, written from the topic pages
+ * and glossary in code. Optional web search is there for the figures those
+ * pages date (rates, program rules, Star weights), which are the first thing to
+ * go stale.
+ */
+export async function domainBrief(slugs: string[], web: boolean, apiKey?: string): Promise<Brief> {
+  const topics = [...new Set(slugs)].map((s) => getTopic(s)).filter((t): t is NonNullable<typeof t> => !!t);
+  if (!topics.length) throw new BriefError("Pick at least one topic.", 400);
+  if (topics.length > MAX_DOMAIN_TOPICS) {
+    throw new BriefError(`Pick at most ${MAX_DOMAIN_TOPICS} topics, so the brief stays readable.`, 400);
+  }
+
+  const { prompt, joined } = buildDomainBriefPrompt(topics, web);
+  const brief = await run({
+    title: `Know your domain brief — ${joined}`,
+    role: "You are writing a plain-language briefing on healthcare and value-based care topics, from the hub's Know your domain material.",
+    prompt,
+    hubEntries: topics.length,
+    web,
+    apiKey,
+  });
+  return { ...brief, domainTopics: topics.map((t) => ({ title: t.title, href: `/know-your-domain/${t.slug}` })) };
 }
 
 export class BriefError extends Error {
