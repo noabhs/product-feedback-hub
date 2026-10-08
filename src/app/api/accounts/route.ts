@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { logEvent, ACTIONS } from "@/lib/events";
-import { loadAccountDetails } from "@/lib/accounts-db";
+import { loadAccountDetails, loadAccounts } from "@/lib/accounts-db";
+import { normalizeAccount } from "@/lib/accounts";
 
 /**
  * `?detail=1` returns the full account rows for /clients. Plain GET stays a
@@ -36,13 +37,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "A client name is required" }, { status: 400 });
   }
 
-  // Case-insensitive: "privia health" must not become a second Privia Health.
-  const clash = await prisma.account.findFirst({
-    where: { name: { equals: name, mode: "insensitive" } },
-    select: { name: true },
-  });
-  if (clash) {
-    return NextResponse.json({ error: `"${clash.name}" is already on the list`, name: clash.name }, { status: 409 });
+  // Aliases count as taken, not just names. "AICNY" has been an alias of
+  // Alliance for Integrated Care of New York since the list was seeded, and a
+  // name-only check still let someone add "aicny" as a second account — the
+  // same gap would have accepted "TGH", "NOMS" or "DTC". Compared on the
+  // normalised form, so case and punctuation don't get a duplicate through.
+  //
+  // Exact normalised equality rather than matchAccount(), deliberately: the
+  // matcher also resolves prefixes and contained names, which would reject a
+  // genuinely new "Privia Health Texas" as a duplicate of Privia Health.
+  const wanted = normalizeAccount(name);
+  const taken = (await loadAccounts()).find(
+    (a) => [a.name, ...(a.aliases ?? [])].some((term) => normalizeAccount(term) === wanted),
+  );
+  if (taken) {
+    const isAlias = normalizeAccount(taken.name) !== wanted;
+    return NextResponse.json(
+      {
+        error: isAlias
+          ? `"${name}" is already how we record ${taken.name}`
+          : `"${taken.name}" is already on the list`,
+        name: taken.name,
+      },
+      { status: 409 },
+    );
   }
 
   const created = await prisma.account.create({
