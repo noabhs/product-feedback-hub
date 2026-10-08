@@ -229,7 +229,7 @@ export async function UsageAnalyticsTab() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-5 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
         {/* Who is doing what */}
         <Card
           title="People"
@@ -293,7 +293,7 @@ export async function UsageAnalyticsTab() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-5 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
         {/* Where people go */}
         <Card title="Most-visited pages" subtitle={`${viewCount} views`}>
           {topPages.length === 0 ? (
@@ -326,7 +326,7 @@ export async function UsageAnalyticsTab() {
         subtitle={`People reading hub data from their own Claude · last ${WINDOW_DAYS} days`}
         className="mb-5"
       >
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="grid grid-cols-2 gap-4 content-start">
             <Stat value={mcpPeople} label="People using it" />
             <Stat value={mcpCallCount} label="Tool calls" />

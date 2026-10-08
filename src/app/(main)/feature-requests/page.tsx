@@ -17,7 +17,7 @@ function fmtDate(iso: string): string {
 export default function FeatureRequestsPage() {
   // useSearchParams (via child hooks) needs a Suspense boundary during prerender.
   return (
-    <Suspense fallback={<div className="p-8" />}>
+    <Suspense fallback={<div className="p-4 md:p-8" />}>
       <FeatureRequests />
     </Suspense>
   );
@@ -66,7 +66,7 @@ function FeatureRequests() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -151,7 +151,7 @@ function FeatureRequests() {
                   )}
                 </button>
                 {expanded === r.id && (
-                  <div className="px-10 pb-4 border-t border-[rgba(50,43,95,0.06)] pt-3 space-y-3">
+                  <div className="px-4 md:px-10 pb-4 border-t border-[rgba(50,43,95,0.06)] pt-3 space-y-3">
                     <div>
                       <p className="text-[11px] font-semibold text-brand-primary opacity-50 uppercase tracking-wide mb-1">Description</p>
                       <div className="text-[13px] text-brand-primary leading-relaxed prose-sm [&_a]:text-brand-secondary-600 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-sm">

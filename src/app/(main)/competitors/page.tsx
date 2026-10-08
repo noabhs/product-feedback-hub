@@ -15,7 +15,7 @@ import type { CompetitorItem, CompetitorInsightItem } from "@/lib/types";
 export default function CompetitorsPage() {
   // useSearchParams (via useUrlReader) needs a Suspense boundary during prerender.
   return (
-    <Suspense fallback={<div className="p-8" />}>
+    <Suspense fallback={<div className="p-4 md:p-8" />}>
       <Competitors />
     </Suspense>
   );
@@ -120,7 +120,7 @@ function Competitors() {
   }, [competitors]);
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className={view === "claims" ? "max-w-6xl mx-auto" : "max-w-4xl mx-auto"}>
         <div className="flex items-start justify-between mb-6">
           <div>

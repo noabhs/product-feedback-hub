@@ -39,7 +39,7 @@ function fmtDate(d: string | null) {
 export default function DiscoveryPage() {
   // useSearchParams needs a Suspense boundary during prerender.
   return (
-    <Suspense fallback={<div className="p-8" />}>
+    <Suspense fallback={<div className="p-4 md:p-8" />}>
       <Discovery />
     </Suspense>
   );
@@ -153,7 +153,7 @@ function Discovery() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
@@ -285,7 +285,7 @@ function Discovery() {
                       </div>
                     </button>
                     {expanded === q.id && (
-                      <div className="px-10 pb-4 border-t border-[rgba(50,43,95,0.06)]">
+                      <div className="px-4 md:px-10 pb-4 border-t border-[rgba(50,43,95,0.06)]">
                         {q.notesIntent && (
                           <p className="text-[13px] text-brand-primary opacity-60 mt-3 italic">{q.notesIntent}</p>
                         )}

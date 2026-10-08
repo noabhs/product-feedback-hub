@@ -56,7 +56,7 @@ export default async function FeedbackInsightsPage() {
   const { items, total, rated, bad, missed } = await loadAsks(showAskers);
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-[28px] font-extrabold text-brand-primary mb-2">Asks log</h1>
@@ -79,7 +79,7 @@ export default async function FeedbackInsightsPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           <Kpi value={total} label="Questions asked" sub={total > LIMIT ? `showing latest ${LIMIT}` : "all time"} Icon={MessageSquare} />
           <Kpi
             value={rated}
