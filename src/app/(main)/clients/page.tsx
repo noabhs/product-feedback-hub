@@ -1,8 +1,9 @@
 "use client";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle, Download } from "lucide-react";
+import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle, Download, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { BriefModal } from "@/components/home/BriefModal";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
 import { AccountRow } from "@/components/clients/AccountRow";
@@ -93,6 +94,12 @@ function Clients() {
   const [sortKey, setSortKey] = useState<SortKey>(url.oneOf("sort", SORT_KEYS, DEFAULT_SORT));
   const [sortDir, setSortDir] = useState<"asc" | "desc">(url.oneOf("dir", SORT_DIRS, "asc"));
   const [panelId, setPanelId] = useState<string | null>(url.str("open") || null);
+  // null = closed. "" = open with the client still to be picked, which is the
+  // header CTA; a name = opened from that client's panel, which skips the pick.
+  const [briefFor, setBriefFor] = useState<string | null>(null);
+  // Only decides whether the modal offers "Send to Slack" — the endpoint checks
+  // the session itself.
+  const [owner, setOwner] = useState(false);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
@@ -254,6 +261,17 @@ function Clients() {
   const handleLiveDateSaved = (id: string, liveDate: string | null) =>
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, liveDate } : a)));
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((d) => !cancelled && setOwner(!!d.owner))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleWebsiteSaved = (id: string, website: string | null) =>
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, website } : a)));
 
@@ -298,6 +316,10 @@ function Clients() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <ShareLink title="Copy a link to this filtered view" />
+            <Button variant="ghost" size="sm" onClick={() => setBriefFor("")}>
+              <Sparkles className="w-4 h-4" />
+              Generate client brief
+            </Button>
             <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!displayed.length}>
               <Download className="w-4 h-4" />
               Export CSV
@@ -495,7 +517,19 @@ function Clients() {
           onLiveDateSaved={handleLiveDateSaved}
           onWebsiteSaved={handleWebsiteSaved}
           onArchiveChanged={handleArchiveChanged}
+          onGenerateBrief={() => setBriefFor(panelAccount.name)}
+          briefOpen={briefFor !== null}
           onClose={() => setPanelId(null)}
+        />
+      )}
+
+      {briefFor !== null && (
+        <BriefModal
+          key={briefFor}
+          kind="client"
+          canSendToSlack={owner}
+          subject={briefFor || undefined}
+          onClose={() => setBriefFor(null)}
         />
       )}
     </div>

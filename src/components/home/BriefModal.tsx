@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { X, Copy, Check, Send, Globe, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
@@ -82,12 +82,30 @@ function bodyText(r: BriefResult): string {
 
 const copyText = (r: BriefResult) => `${r.title}\n\n${bodyText(r)}`;
 
-export function BriefModal({ kind, canSendToSlack = false, onClose }: { kind: BriefKind; canSendToSlack?: boolean; onClose: () => void }) {
+export function BriefModal({
+  kind,
+  canSendToSlack = false,
+  subject,
+  subjectLabel,
+  onClose,
+}: {
+  kind: BriefKind;
+  canSendToSlack?: boolean;
+  /**
+   * Opened from somewhere that already knows the subject — a client's own
+   * panel, say. The picker is skipped and the brief starts writing on open,
+   * because picking the client you just opened is a step with no decision in it.
+   */
+  subject?: string;
+  /** What to call the subject on screen, when the value isn't the name. */
+  subjectLabel?: string;
+  onClose: () => void;
+}) {
   const copy = COPY[kind];
   const { aiHeaders } = useApiKey();
   const [options, setOptions] = useState<Option[]>(kind === "area" ? AREA_OPTIONS : []);
-  const [loadingOptions, setLoadingOptions] = useState(kind !== "area");
-  const [single, setSingle] = useState("");
+  const [loadingOptions, setLoadingOptions] = useState(kind !== "area" && !subject);
+  const [single, setSingle] = useState(subject ?? "");
   const [multi, setMulti] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -97,7 +115,8 @@ export function BriefModal({ kind, canSendToSlack = false, onClose }: { kind: Br
   const [slackError, setSlackError] = useState("");
 
   useEffect(() => {
-    if (kind === "area") return;
+    // Nothing to pick from when the subject is already known.
+    if (kind === "area" || subject) return;
     let cancelled = false;
     const url = kind === "client" ? "/api/accounts" : "/api/competitors";
     fetch(url)
@@ -115,7 +134,7 @@ export function BriefModal({ kind, canSendToSlack = false, onClose }: { kind: Br
     return () => {
       cancelled = true;
     };
-  }, [kind]);
+  }, [kind, subject]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
@@ -147,6 +166,17 @@ export function BriefModal({ kind, canSendToSlack = false, onClose }: { kind: Br
       setBusy(false);
     }
   }
+
+  // Starts on open when the subject came with the click. Guarded by a ref
+  // rather than the busy flag: in dev the effect runs twice, and that would be
+  // two model calls for one click.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!subject || started.current) return;
+    started.current = true;
+    void generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on open
+  }, [subject]);
 
   async function copyBrief() {
     if (!result) return;
@@ -195,7 +225,9 @@ export function BriefModal({ kind, canSendToSlack = false, onClose }: { kind: Br
           <label className="block text-[12px] font-semibold uppercase tracking-wide text-brand-primary opacity-70 mb-1.5">
             {copy.pick}
           </label>
-          {kind === "area" ? (
+          {subject ? (
+            <p className="text-[15px] font-semibold text-brand-primary">{subjectLabel ?? subject}</p>
+          ) : kind === "area" ? (
             // Chips, not a dropdown: a dropdown panel opens inside this
             // scrolling body and gets clipped by it.
             <div className="flex flex-wrap gap-2">

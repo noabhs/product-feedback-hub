@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { X, MessageSquare, AlertTriangle, Check, Archive, ArchiveRestore } from "lucide-react";
+import { X, MessageSquare, AlertTriangle, Check, Archive, ArchiveRestore, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { EntityIcon } from "@/components/ui/EntityIcon";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,12 @@ interface AccountPanelProps {
   onWebsiteSaved: (id: string, website: string | null) => void;
   /** Called after archiving or restoring, so the row moves tabs behind the panel. */
   onArchiveChanged: (id: string, archivedAt: string | null) => void;
+  /** Opens the brief for this client. The modal belongs to the page, not here:
+   *  nested inside this panel it would sit under the panel's own overlay. */
+  onGenerateBrief: () => void;
+  /** True while that brief is on screen, so Escape closes the brief alone —
+   *  both listen on the document, and otherwise one key closes both. */
+  briefOpen: boolean;
   onClose: () => void;
 }
 
@@ -52,7 +58,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchiveChanged, onClose }: AccountPanelProps) {
+export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchiveChanged, onGenerateBrief, briefOpen, onClose }: AccountPanelProps) {
   const [liveDraft, setLiveDraft] = useState(dateInputValue(account.liveDate));
   const [siteDraft, setSiteDraft] = useState(account.website ?? "");
   const [savingSite, setSavingSite] = useState(false);
@@ -64,11 +70,11 @@ export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchi
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !briefOpen) onClose();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, briefOpen]);
 
   async function saveLiveDate() {
     setSaving(true);
@@ -173,13 +179,19 @@ export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchi
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded text-brand-primary opacity-40 hover:opacity-80 transition-opacity shrink-0"
-            title="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="sm" onClick={onGenerateBrief}>
+              <Sparkles className="w-4 h-4" />
+              Generate brief
+            </Button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded text-brand-primary opacity-40 hover:opacity-80 transition-opacity"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
