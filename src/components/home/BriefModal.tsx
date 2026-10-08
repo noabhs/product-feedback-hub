@@ -1,6 +1,6 @@
 "use client";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { X, Copy, Check, Send, Globe, AlertCircle } from "lucide-react";
+import { X, Copy, Check, Send, Globe, AlertCircle, FileText } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
@@ -128,6 +128,9 @@ export function BriefModal({
   const [copied, setCopied] = useState(false);
   const [slack, setSlack] = useState<"idle" | "sending" | "sent">("idle");
   const [slackError, setSlackError] = useState("");
+  const [doc, setDoc] = useState<
+    { state: "idle" } | { state: "creating" } | { state: "created"; url: string } | { state: "error"; message: string }
+  >({ state: "idle" });
 
   useEffect(() => {
     // Nothing to pick from when the subject is already known.
@@ -171,6 +174,7 @@ export function BriefModal({
     setResult(null);
     setSlack("idle");
     setSlackError("");
+    setDoc({ state: "idle" });
     try {
       const res = await fetch("/api/briefs", {
         method: "POST",
@@ -225,6 +229,29 @@ export function BriefModal({
     } catch (e) {
       setSlack("idle");
       setSlackError((e as Error).message);
+    }
+  }
+
+  async function createDoc() {
+    // Once made, the button just reopens the doc rather than making a duplicate.
+    if (doc.state === "created") {
+      window.open(doc.url, "_blank", "noreferrer");
+      return;
+    }
+    if (!result || doc.state === "creating") return;
+    setDoc({ state: "creating" });
+    try {
+      const res = await fetch("/api/briefs/doc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: result.title, markdown: bodyText(result) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+      setDoc({ state: "created", url: data.url });
+      window.open(data.url, "_blank", "noreferrer");
+    } catch (e) {
+      setDoc({ state: "error", message: (e as Error).message });
     }
   }
 
@@ -378,6 +405,16 @@ export function BriefModal({
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? "Copied" : "Copy"}
             </Button>
+            <Button variant="ghost" onClick={createDoc} loading={doc.state === "creating"}>
+              {doc.state === "created" ? <Check className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+              {doc.state === "created" ? "Doc created" : "Create Google Doc"}
+            </Button>
+            {doc.state === "created" && (
+              <a href={doc.url} target="_blank" rel="noreferrer" className="text-[12px] text-brand-secondary-600 hover:underline">
+                Open doc
+              </a>
+            )}
+            {doc.state === "error" && <span className="text-[12px] text-red-700">{doc.message}</span>}
             {canSendToSlack && (
               <>
             <Button variant="ghost" onClick={sendToSlack} loading={slack === "sending"} disabled={slack === "sent"}>
