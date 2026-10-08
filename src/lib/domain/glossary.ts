@@ -1,4 +1,5 @@
 import type { GlossaryTerm, Resource } from "./types";
+import { GLOSSARY_PAYMENT_ORGS } from "./glossary-payment-orgs";
 
 /**
  * Pilot batch of definitions (Risk adjustment, Quality + Stars, and the few
@@ -58,7 +59,7 @@ const CMS_RADV: Resource = {
   source: "CMS",
 };
 
-export const GLOSSARY: GlossaryTerm[] = [
+const CORE_TERMS: GlossaryTerm[] = [
   // ── Anchor terms ─────────────────────────────────────────────────────────
   {
     term: "Value-based care",
@@ -332,6 +333,8 @@ export const GLOSSARY: GlossaryTerm[] = [
     sources: [],
   },
 ];
+
+export const GLOSSARY: GlossaryTerm[] = [...CORE_TERMS, ...GLOSSARY_PAYMENT_ORGS];
 
 export function getTerm(term: string): GlossaryTerm | undefined {
   return GLOSSARY.find((t) => t.term === term);

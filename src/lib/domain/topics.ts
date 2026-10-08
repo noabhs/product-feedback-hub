@@ -1,8 +1,12 @@
 import type { Topic } from "./types";
+import { VBC_FUNDAMENTALS } from "./topic-vbc-fundamentals";
+import { CARE_ORGANIZATIONS } from "./topic-care-organizations";
+import { INSURANCE_MODELS } from "./topic-insurance-models";
 
 /**
- * Pilot batch: Risk adjustment and Quality + Star Ratings are written out in
- * full. The other topics carry a summary only and are marked "planned" so the
+ * Written in full: VBC fundamentals, Care organizations, Insurance models,
+ * Risk adjustment, and Quality + Star Ratings (the first three live in their own
+ * files). The remaining topics carry a summary only and are marked "planned" so the
  * landing page shows the whole map without pretending the content exists.
  *
  * Facts that change every year (V28 phase-in, Star Ratings weights, RADV
@@ -10,42 +14,9 @@ import type { Topic } from "./types";
  * Rate Announcement and the Star Ratings.
  */
 export const TOPICS: Topic[] = [
-  {
-    slug: "vbc-fundamentals",
-    title: "VBC fundamentals",
-    tagline: "How payment moves from volume to value, and who carries the risk.",
-    summary:
-      "Fee-for-service pays for each visit and test. Value-based care (VBC) ties payment to cost and quality for a defined group of patients. This topic covers the payment models, the risk spectrum from upside-only to full capitation, and the CMS programs (MSSP, ACO REACH and others).",
-    status: "planned",
-    concepts: [],
-    deepDive: [],
-    resources: [],
-    related: ["care-organizations", "insurance-models", "risk-adjustment"],
-  },
-  {
-    slug: "care-organizations",
-    title: "Care organizations",
-    tagline: "ACO, IPA, CIN, MSO: who they are and who signs the risk contract.",
-    summary:
-      "Primary care is delivered through many organizational shapes. This topic explains how ACOs, IPAs, CINs, MSOs, medical groups and health systems differ, and the hierarchy from payer down to patient.",
-    status: "planned",
-    concepts: [],
-    deepDive: [],
-    resources: [],
-    related: ["vbc-fundamentals", "insurance-models"],
-  },
-  {
-    slug: "insurance-models",
-    title: "Insurance models and payers",
-    tagline: "Medicare, Medicare Advantage, Medicaid and commercial: who pays whom.",
-    summary:
-      "Every patient has a payer, and the payer type decides the rules, the data and the money flow. This topic covers Original Medicare (Parts A, B, D), Medicare Advantage (Part C), Medicaid and managed Medicaid, and commercial plans.",
-    status: "planned",
-    concepts: [],
-    deepDive: [],
-    resources: [],
-    related: ["vbc-fundamentals", "risk-adjustment"],
-  },
+  VBC_FUNDAMENTALS,
+  CARE_ORGANIZATIONS,
+  INSURANCE_MODELS,
   {
     slug: "risk-adjustment",
     title: "Risk adjustment",
