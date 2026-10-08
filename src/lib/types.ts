@@ -84,6 +84,8 @@ export interface AccountDetail {
   lastActivityAt: string | null;
   firstClosedWon: string | null;
   liveDate: string | null;
+  /** The client's own site, for the brand icon. Typed in, not from the report. */
+  website: string | null;
   /** Which accounts report these figures came from; null if no report covered it. */
   reportAsOf: string | null;
   /** When it was archived, or null while active. */

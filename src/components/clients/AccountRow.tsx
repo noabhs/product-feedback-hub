@@ -41,7 +41,7 @@ export function AccountRow({ account, onOpen }: AccountRowProps) {
     >
       <td className="py-3 px-4 align-top">
         <span className="flex items-center gap-2">
-          <EntityIcon name={account.name} />
+          <EntityIcon name={account.name} website={account.website} />
           <span className="text-[14px] font-semibold text-brand-primary group-hover:text-brand-secondary-600 transition-colors leading-snug">
             {account.name}
           </span>

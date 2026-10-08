@@ -111,6 +111,7 @@ export async function loadAccountDetails(): Promise<AccountDetail[]> {
     lastActivityAt: iso(r.lastActivityAt),
     firstClosedWon: iso(r.firstClosedWon),
     liveDate: iso(r.liveDate),
+    website: r.website,
     reportAsOf: iso(r.reportAsOf),
     archivedAt: iso(r.archivedAt),
     feedbackCount: byClient.get(r.name) ?? 0,

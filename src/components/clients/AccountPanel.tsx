@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, MessageSquare, AlertTriangle, Check, Archive, ArchiveRestore } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { Button } from "@/components/ui/Button";
 import { renewalWindow, renewalPhrase, atRenewalRisk, reportIsStale, REPORT_AS_OF } from "@/lib/accounts";
 import { fmtDay, money, moneyExact, members, dateInputValue } from "@/lib/format";
@@ -17,6 +18,8 @@ interface AccountPanelProps {
   account: AccountDetail;
   /** Called with the saved live date so the row behind the panel updates too. */
   onLiveDateSaved: (id: string, liveDate: string | null) => void;
+  /** Same, for the website — the table shows its icon. */
+  onWebsiteSaved: (id: string, website: string | null) => void;
   /** Called after archiving or restoring, so the row moves tabs behind the panel. */
   onArchiveChanged: (id: string, archivedAt: string | null) => void;
   onClose: () => void;
@@ -49,8 +52,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AccountPanel({ account, onLiveDateSaved, onArchiveChanged, onClose }: AccountPanelProps) {
+export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchiveChanged, onClose }: AccountPanelProps) {
   const [liveDraft, setLiveDraft] = useState(dateInputValue(account.liveDate));
+  const [siteDraft, setSiteDraft] = useState(account.website ?? "");
+  const [savingSite, setSavingSite] = useState(false);
+  const [savedSite, setSavedSite] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -84,12 +90,36 @@ export function AccountPanel({ account, onLiveDateSaved, onArchiveChanged, onClo
     }
   }
 
+  async function saveWebsite() {
+    setSavingSite(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/accounts/${account.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ website: siteDraft.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't save that address");
+      // Echoes the stored value back, so the field shows the normalised form
+      // rather than whatever was typed.
+      setSiteDraft(data.website ?? "");
+      onWebsiteSaved(account.id, data.website);
+      setSavedSite(true);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingSite(false);
+    }
+  }
+
   // Same thresholds as the table, from the same helper — the panel used to
   // compute its own and the two could drift apart.
   const phrase = renewalPhrase(account.renewalDate);
   const window = renewalWindow(account.renewalDate);
   const flagged = atRenewalRisk(account);
   const liveDirty = liveDraft !== dateInputValue(account.liveDate);
+  const siteDirty = siteDraft.trim() !== (account.website ?? "");
   // Only meaningful as a gap: CARR above ARR is contracted revenue not yet live.
   const carrGap =
     account.arr !== null && account.carr !== null && account.carr > account.arr
@@ -128,16 +158,19 @@ export function AccountPanel({ account, onLiveDateSaved, onArchiveChanged, onClo
       >
         {/* Header */}
         <div className="shrink-0 flex items-start justify-between gap-3 px-6 py-4 bg-white border-b border-[rgba(50,43,95,0.1)]">
-          <div className="min-w-0">
-            <h2 className="text-[18px] font-bold text-brand-primary leading-snug">{account.name}</h2>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {account.health && <Badge type="health" value={account.health} />}
-              {account.segment && (
-                <span className="text-[12px] text-brand-primary opacity-50">{account.segment}</span>
-              )}
-              {account.ehr && (
-                <span className="text-[12px] text-brand-primary opacity-50">· {account.ehr}</span>
-              )}
+          <div className="flex items-start gap-3 min-w-0">
+            <EntityIcon name={account.name} website={account.website} size={32} />
+            <div className="min-w-0">
+              <h2 className="text-[18px] font-bold text-brand-primary leading-snug">{account.name}</h2>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {account.health && <Badge type="health" value={account.health} />}
+                {account.segment && (
+                  <span className="text-[12px] text-brand-primary opacity-50">{account.segment}</span>
+                )}
+                {account.ehr && (
+                  <span className="text-[12px] text-brand-primary opacity-50">· {account.ehr}</span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -276,6 +309,31 @@ export function AccountPanel({ account, onLiveDateSaved, onArchiveChanged, onClo
               )}
             </div>
             {error && <p className="text-[13px] text-red-700 mt-2">{error}</p>}
+          </Section>
+
+          <Section title="Website">
+            <p className="text-[12px] text-brand-primary opacity-50 mb-3">
+              Only used for the brand icon next to the name, here and in the table.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="url"
+                inputMode="url"
+                placeholder="priviahealth.com"
+                value={siteDraft}
+                onChange={(e) => { setSiteDraft(e.target.value); setSavedSite(false); }}
+                className="h-10 flex-1 min-w-0 rounded-sm bg-white border border-black/15 px-3 text-sm text-brand-primary focus:outline-none focus:border-brand-secondary-500"
+              />
+              <Button size="sm" loading={savingSite} disabled={!siteDirty} onClick={saveWebsite}>
+                Save
+              </Button>
+              {savedSite && !siteDirty && (
+                <span className="inline-flex items-center gap-1 text-[12px] text-emerald-700">
+                  <Check className="w-3.5 h-3.5" />
+                  Saved
+                </span>
+              )}
+            </div>
           </Section>
 
           <Section title="Feedback">

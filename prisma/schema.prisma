@@ -79,6 +79,10 @@ model Account {
   firstClosedWon DateTime?
   /// Go-live date. Not in the report - entered by hand from the client panel.
   liveDate       DateTime?
+  /// Origin of the client's own website, e.g. "https://priviahealth.com". Not
+  /// in the report either - typed in from the client panel, and used only to
+  /// fetch the brand icon shown beside the name.
+  website        String?
   /// Which accounts report these figures came from. An account that drops out of
   /// a later report keeps its row and its old numbers, so the page needs to be
   /// able to say how old they are rather than implying they are current.

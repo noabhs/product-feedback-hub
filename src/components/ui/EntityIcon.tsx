@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { faviconUrl } from "@/lib/competitor-icon";
+import { faviconUrl } from "@/lib/favicon";
 
 const FALLBACK_COLORS = [
   "bg-blue-100 text-blue-700",

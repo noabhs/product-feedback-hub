@@ -254,6 +254,9 @@ function Clients() {
   const handleLiveDateSaved = (id: string, liveDate: string | null) =>
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, liveDate } : a)));
 
+  const handleWebsiteSaved = (id: string, website: string | null) =>
+    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, website } : a)));
+
   // Archiving moves the row to the other tab, so the panel closes with it —
   // leaving it open would show a client the table behind it no longer lists.
   const handleArchiveChanged = (id: string, archivedAt: string | null) => {
@@ -490,6 +493,7 @@ function Clients() {
           key={panelAccount.id}
           account={panelAccount}
           onLiveDateSaved={handleLiveDateSaved}
+          onWebsiteSaved={handleWebsiteSaved}
           onArchiveChanged={handleArchiveChanged}
           onClose={() => setPanelId(null)}
         />
