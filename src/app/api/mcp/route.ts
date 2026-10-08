@@ -21,8 +21,8 @@ async function handle(req: Request): Promise<Response> {
   const caller = await verifyToken(req.headers.get("authorization"));
   if (!caller) return unauthorized();
 
-  const server = createHubMcpServer((tool, args) => {
-    void logEvent(ACTIONS.mcpCall, { actor: caller.owner, target: tool, label: JSON.stringify(args) });
+  const server = createHubMcpServer((tool) => {
+    void logEvent(ACTIONS.mcpCall, { actor: caller.owner, target: tool });
   });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

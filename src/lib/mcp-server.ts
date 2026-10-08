@@ -29,7 +29,7 @@ function toSearchParams(input: Record<string, string | string[] | undefined>): U
   return sp;
 }
 
-export function createHubMcpServer(onCall: (tool: string, args: unknown) => void): McpServer {
+export function createHubMcpServer(onCall: (tool: string) => void): McpServer {
   const server = new McpServer({ name: "navina-insights-hub", version: "1.0.0" });
 
   // Wraps a handler so every call is recorded against the token's owner.
@@ -43,7 +43,7 @@ export function createHubMcpServer(onCall: (tool: string, args: unknown) => void
       name,
       { description, inputSchema: shape, annotations: { readOnlyHint: true, openWorldHint: false } },
       (async (args: z.infer<z.ZodObject<S>>) => {
-        onCall(name, args);
+        onCall(name);
         return result(await handler(args));
       }) as never,
     );
