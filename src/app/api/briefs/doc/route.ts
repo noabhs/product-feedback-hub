@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { createGoogleDoc, NeedsReconnect } from "@/lib/google-doc";
+import { createGoogleDoc, DriveError, NeedsReconnect } from "@/lib/google-doc";
 import { logEvent, ACTIONS } from "@/lib/events";
 
 /** Turn a generated brief into a Google Doc in the requester's own Drive. */
@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Connect Google Docs to create docs.", reconnect: true }, { status: 409 });
     }
     console.error("[briefs/doc]", e);
+    if (e instanceof DriveError) {
+      return NextResponse.json({ error: `Google refused: ${e.detail}` }, { status: 502 });
+    }
     return NextResponse.json({ error: "Couldn't create the Google Doc." }, { status: 502 });
   }
 }
