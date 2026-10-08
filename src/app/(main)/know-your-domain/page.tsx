@@ -35,14 +35,14 @@ export default function KnowYourDomainPage() {
             <span>
               <span className="block text-[15px] font-semibold text-brand-primary">Glossary</span>
               <span className="block text-[13px] text-brand-primary/60">
-                Search {GLOSSARY.length} terms so far, with plain-language explanations. More are added topic by topic.
+                Search {GLOSSARY.length} terms with plain-language explanations, sources and links to related terms.
               </span>
             </span>
           </span>
           <ArrowRight className="w-4 h-4 text-brand-secondary-500 opacity-60 group-hover:opacity-100 transition-opacity" />
         </Link>
 
-        <SectionLabel>Start here</SectionLabel>
+        <SectionLabel>Topics</SectionLabel>
         <div className="grid gap-4 md:grid-cols-2 mb-8">
           {ready.map((t) => (
             <Link
@@ -61,19 +61,23 @@ export default function KnowYourDomainPage() {
           ))}
         </div>
 
-        <SectionLabel>Coming next</SectionLabel>
-        <div className="grid gap-3 md:grid-cols-3">
-          {planned.map((t) => (
-            <Link
-              key={t.slug}
-              href={`/know-your-domain/${t.slug}`}
-              className="rounded-lg bg-white/60 border border-dashed border-[rgba(50,43,95,0.18)] p-4 hover:border-brand-secondary-500/40 transition-all"
-            >
-              <h3 className="text-[14px] font-semibold text-brand-primary mb-1">{t.title}</h3>
-              <p className="text-[12.5px] text-brand-primary/60">{t.tagline}</p>
-            </Link>
-          ))}
-        </div>
+        {planned.length > 0 && (
+          <>
+            <SectionLabel>Coming next</SectionLabel>
+            <div className="grid gap-3 md:grid-cols-3">
+              {planned.map((t) => (
+                <Link
+                  key={t.slug}
+                  href={`/know-your-domain/${t.slug}`}
+                  className="rounded-lg bg-white/60 border border-dashed border-[rgba(50,43,95,0.18)] p-4 hover:border-brand-secondary-500/40 transition-all"
+                >
+                  <h3 className="text-[14px] font-semibold text-brand-primary mb-1">{t.title}</h3>
+                  <p className="text-[12.5px] text-brand-primary/60">{t.tagline}</p>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
