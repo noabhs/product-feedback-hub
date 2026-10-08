@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, BarChart3, Building2, MessageSquare, LogOut, Lightbulb, Swords } from "lucide-react";
+import { Home, Search, BookOpen, Upload, BarChart3, Building2, MessageSquare, LogOut, Lightbulb, Swords, GraduationCap } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -8,7 +8,7 @@ import { PageViewTracker } from "@/components/PageViewTracker";
  * Grouped, not flat. Home on its own, then everything you work in day to day —
  * the feedback and the reference material it is read against — then Analytics
  * and Feature requests, which are about the hub and the roadmap rather than
- * client feedback. Dividers alone, no section headings: nine items don't earn
+ * client feedback. Dividers alone, no section headings: ten items don't earn
  * the extra height.
  */
 const NAV_GROUPS = [
@@ -19,6 +19,7 @@ const NAV_GROUPS = [
     { href: "/competitors", label: "Competitors", icon: Swords },
     { href: "/upload", label: "AI Extract", icon: Upload },
     { href: "/discovery", label: "Discovery", icon: BookOpen },
+    { href: "/know-your-domain", label: "Know your domain", icon: GraduationCap },
   ],
   [
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
