@@ -37,6 +37,7 @@ export const ACTIONS = {
   aiGenerateDoc: "ai.generate_doc",
   briefGenerated: "brief.generated",
   briefSent: "brief.sent",
+  briefDocCreated: "brief.doc_created",
   pageView: "page.view",
   featureRequestCreated: "feature_request.created",
   featureRequestUpdated: "feature_request.updated",
