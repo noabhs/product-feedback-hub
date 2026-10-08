@@ -51,7 +51,7 @@ const SORT_DIRS = ["asc", "desc"] as const;
 export default function FeedbackView({ recap }: { recap?: React.ReactNode }) {
   // useSearchParams needs a Suspense boundary during prerender.
   return (
-    <Suspense fallback={<div className="p-8" />}>
+    <Suspense fallback={<div className="p-4 md:p-8" />}>
       <Feedback recap={recap} />
     </Suspense>
   );
@@ -317,7 +317,7 @@ function Feedback({ recap }: { recap?: React.ReactNode }) {
   const editingItem = modal !== "new" ? modal : null;
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">

@@ -42,7 +42,7 @@ export default async function HomePage() {
   const heardFrom = clients.filter((a) => (entriesByClient.get(a.name) ?? 0) > 0);
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="mb-7">
@@ -71,7 +71,7 @@ export default async function HomePage() {
 
         {/* ── Overview ───────────────────────────────────────────────────── */}
         <SectionHeading title="Overview" />
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard value={totalFeedback} label="Feedback entries" sub="across every source" Icon={MessageSquare} href="/insights" />
           <KpiCard value={heardFrom.length} label="Clients heard from" sub={`of ${clients.length} accounts`} Icon={Users} href="/clients" />
           <KpiCard value={totalCompetitors} label="Competitors" sub="tracked in the hub" Icon={Swords} href="/competitors" />

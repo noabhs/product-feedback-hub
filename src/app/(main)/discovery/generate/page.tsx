@@ -52,7 +52,7 @@ export default function GenerateDocPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <Link href="/discovery" className="inline-flex items-center gap-1.5 text-[13px] text-brand-primary opacity-50 hover:opacity-100 mb-6 transition-opacity">
         <ArrowLeft className="w-3.5 h-3.5" /> Back to questions
       </Link>

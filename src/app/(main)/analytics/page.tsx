@@ -6,7 +6,7 @@ import { UsageAnalyticsTab } from "@/components/analytics/UsageAnalyticsTab";
 
 export default function AnalyticsPage() {
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">

@@ -112,7 +112,7 @@ export function ExtractQuestions() {
   // ── Saved ─────────────────────────────────────────────
   if (savedCount !== null) {
     return (
-      <div className="p-8 max-w-2xl mx-auto">
+      <div className="p-4 md:p-8 max-w-2xl mx-auto">
         <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-8 text-center">
           <div className="w-12 h-12 rounded-full bg-mint-100 flex items-center justify-center mx-auto mb-4">
             <Check className="w-6 h-6 text-teal-strong" />
@@ -145,7 +145,7 @@ export function ExtractQuestions() {
   if (rows) {
     const pending = rows.filter((r) => r.approved === null).length;
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <button
             onClick={() => setRows(null)}
@@ -270,7 +270,7 @@ export function ExtractQuestions() {
 
   // ── Input ─────────────────────────────────────────────
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
 
         <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-6 space-y-5">
