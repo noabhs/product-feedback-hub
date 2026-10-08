@@ -129,7 +129,7 @@ export function BriefModal({
   const [slack, setSlack] = useState<"idle" | "sending" | "sent">("idle");
   const [slackError, setSlackError] = useState("");
   const [doc, setDoc] = useState<
-    { state: "idle" } | { state: "creating" } | { state: "created"; url: string } | { state: "error"; message: string }
+    { state: "idle" } | { state: "creating" } | { state: "created"; url: string } | { state: "reconnect" } | { state: "error"; message: string }
   >({ state: "idle" });
 
   useEffect(() => {
@@ -247,6 +247,10 @@ export function BriefModal({
         body: JSON.stringify({ title: result.title, markdown: bodyText(result) }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data.reconnect) {
+        setDoc({ state: "reconnect" });
+        return;
+      }
       if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
       setDoc({ state: "created", url: data.url });
       window.open(data.url, "_blank", "noreferrer");
@@ -400,7 +404,7 @@ export function BriefModal({
         </div>
 
         {result && !busy && (
-          <div className="px-6 py-3 border-t border-[rgba(50,43,95,0.08)] flex items-center gap-2">
+          <div className="px-6 py-3 border-t border-[rgba(50,43,95,0.08)] flex flex-wrap items-center gap-2 [&_button]:whitespace-nowrap">
             <Button variant="ghost" onClick={copyBrief}>
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? "Copied" : "Copy"}
@@ -412,6 +416,14 @@ export function BriefModal({
             {doc.state === "created" && (
               <a href={doc.url} target="_blank" rel="noreferrer" className="text-[12px] text-brand-secondary-600 hover:underline">
                 Open doc
+              </a>
+            )}
+            {doc.state === "reconnect" && (
+              <a
+                href={`/api/docs/connect?to=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                className="text-[12px] text-brand-secondary-600 hover:underline"
+              >
+                Allow Google Docs access (one-time), then try again
               </a>
             )}
             {doc.state === "error" && <span className="text-[12px] text-red-700">{doc.message}</span>}
