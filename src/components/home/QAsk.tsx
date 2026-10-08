@@ -48,6 +48,17 @@ const KIND_LABEL: Record<SourceKind, string> = {
   web: "Web",
 };
 
+/**
+ * Three questions worth asking, for the blank box. They are the kind Q is
+ * actually good at — a pattern across clients rather than a lookup — and
+ * clicking one asks it, so the first use costs nothing to think up.
+ */
+const EXAMPLES = [
+  "What are clients saying about coding workflows?",
+  "Which themes came up across more than one client?",
+  "Where do we lose to competitors on risk adjustment?",
+];
+
 /** Past this many, the rest collapse behind "Show more" — a long tail of
  *  matched feedback shouldn't push the sources list taller than the answer. */
 const VISIBLE_SOURCES = 5;
@@ -78,8 +89,10 @@ export function QAsk() {
     return () => clearTimeout(timer);
   }, [copied]);
 
-  async function ask() {
-    if (!question.trim() || loading) return;
+  async function ask(preset?: string) {
+    const asking = (preset ?? question).trim();
+    if (!asking || loading) return;
+    if (preset) setQuestion(preset);
     setLoading(true);
     setAnswer("");
     setSources([]);
@@ -92,11 +105,11 @@ export function QAsk() {
       const res = await fetch("/api/ai/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...aiHeaders },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question: asking }),
       });
       const data = await res.json();
       setAnswer(data.answer ?? "");
-      setAsked(question.trim());
+      setAsked(asking);
       setSources(data.sources ?? []);
       setAskId(data.askId ?? null);
       setUsedWebSearch(!!data.usedWebSearch);
@@ -142,13 +155,29 @@ export function QAsk() {
           placeholder="Ask anything about client feedback, competitors, or the roadmap…"
           className="flex-1 h-10 rounded-md border border-[rgba(50,43,95,0.12)] bg-[rgba(50,43,95,0.02)] px-4 text-[13px] text-brand-primary placeholder:text-brand-primary/40 focus:outline-none focus:border-brand-secondary-500 transition-colors"
         />
-        <Button size="sm" onClick={ask} loading={loading}>
+        <Button size="sm" onClick={() => ask()} loading={loading}>
           Ask
         </Button>
       </div>
       <p className="text-[11px] text-brand-primary/40 mt-1.5">
         Add <span className="font-medium">&quot;search web&quot;</span> anywhere in your question to also search the web, not just the hub.
       </p>
+
+      {!answer && !loading && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-3">
+          <span className="text-[11px] text-brand-primary/40">Try</span>
+          {EXAMPLES.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => ask(q)}
+              className="rounded-pill border border-[rgba(50,43,95,0.12)] px-2.5 py-1 text-[12px] text-brand-primary/70 hover:border-brand-secondary-500 hover:text-brand-secondary-600 transition-colors cursor-pointer"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
 
       {answer && (
         <div className="mt-4">
