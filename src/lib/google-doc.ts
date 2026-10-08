@@ -1,25 +1,14 @@
-import { Readable } from "node:stream";
-import { google } from "googleapis";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 /**
- * Creates a Google Doc from a generated brief.
+ * Creates a Google Doc in the signed-in user's own Drive from a generated brief.
  *
- * The doc is created by the hub's service account (the same credentials Drive
- * ingestion uses, with a wider scope) and then shared with whoever clicked, so
- * no one has to re-consent to a new OAuth scope. Drive converts the HTML upload
- * into a native Doc, which keeps headings, bullets and bold.
+ * It uses the user's Google sign-in (the drive.file scope, which only reaches
+ * files this app creates) rather than a shared service account, so the doc is
+ * theirs. Drive converts the HTML upload into a native Doc, which keeps
+ * headings, bullets and bold.
  */
-
-export function docsConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim());
-}
-
-function credentials(): Record<string, unknown> {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim();
-  if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not set");
-  const json = raw.startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
-  return JSON.parse(json);
-}
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -73,31 +62,67 @@ export function markdownToHtml(title: string, markdown: string): string {
   return `<html><body>${out.join("")}</body></html>`;
 }
 
-/** Makes the Doc and shares it with `shareWith` as an editor. Returns its link. */
-export async function createGoogleDoc(opts: {
-  title: string;
-  markdown: string;
-  shareWith: string;
-}): Promise<{ url: string }> {
-  const auth = new google.auth.GoogleAuth({
-    credentials: credentials(),
-    scopes: ["https://www.googleapis.com/auth/drive.file"],
-  });
-  const drive = google.drive({ version: "v3", auth });
+/** Thrown when the user signed in before Docs access existed, or revoked it. */
+export class NeedsReconnect extends Error {}
 
-  const created = await drive.files.create({
-    requestBody: { name: opts.title, mimeType: "application/vnd.google-apps.document" },
-    media: { mimeType: "text/html", body: Readable.from([markdownToHtml(opts.title, opts.markdown)]) },
-    fields: "id,webViewLink",
+/**
+ * A usable access token for this request's user. Google's last an hour but the
+ * session lasts far longer, so an expired one is renewed from the refresh token
+ * (not saved back: the refresh token stays valid, and renewing again is cheap).
+ */
+async function accessTokenFor(req: NextRequest): Promise<string> {
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+    secureCookie: req.nextUrl.protocol === "https:",
   });
-  const id = created.data.id;
-  if (!id) throw new Error("Google didn't return a document id.");
+  const access = token?.googleAccessToken as string | undefined;
+  const refresh = token?.googleRefreshToken as string | undefined;
+  const expiresAt = token?.googleExpiresAt as number | undefined;
+  if (!access && !refresh) throw new NeedsReconnect();
 
-  await drive.permissions.create({
-    fileId: id,
-    sendNotificationEmail: false,
-    requestBody: { type: "user", role: "writer", emailAddress: opts.shareWith },
+  if (access && expiresAt && expiresAt * 1000 > Date.now() + 60_000) return access;
+  if (!refresh) throw new NeedsReconnect();
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.AUTH_GOOGLE_ID ?? "",
+      client_secret: process.env.AUTH_GOOGLE_SECRET ?? "",
+      grant_type: "refresh_token",
+      refresh_token: refresh,
+    }),
   });
+  if (!res.ok) throw new NeedsReconnect();
+  return ((await res.json()) as { access_token: string }).access_token;
+}
 
-  return { url: created.data.webViewLink ?? `https://docs.google.com/document/d/${id}/edit` };
+/** Makes the Doc in the requester's Drive and returns its link. */
+export async function createGoogleDoc(
+  req: NextRequest,
+  opts: { title: string; markdown: string },
+): Promise<{ url: string }> {
+  const accessToken = await accessTokenFor(req);
+
+  const boundary = `brief${Date.now().toString(36)}`;
+  const metadata = JSON.stringify({ name: opts.title, mimeType: "application/vnd.google-apps.document" });
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
+    `--${boundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${markdownToHtml(opts.title, opts.markdown)}\r\n` +
+    `--${boundary}--`;
+
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": `multipart/related; boundary=${boundary}` },
+      body,
+    },
+  );
+  // 401/403 from Drive means the grant is gone or never included Drive.
+  if (res.status === 401 || res.status === 403) throw new NeedsReconnect();
+  if (!res.ok) throw new Error(`Drive returned ${res.status}`);
+  const data = (await res.json()) as { id: string; webViewLink?: string };
+  return { url: data.webViewLink ?? `https://docs.google.com/document/d/${data.id}/edit` };
 }
