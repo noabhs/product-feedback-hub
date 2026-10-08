@@ -158,7 +158,7 @@ function Discovery() {
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Discovery</h1>
+            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Discovery Prep</h1>
             <p className="text-[14px] text-brand-primary opacity-50 max-w-xl">
               Prepare for client discovery calls with structured questions curated from client sessions and product knowledge. Use the question library to generate ready-to-use docs.
             </p>

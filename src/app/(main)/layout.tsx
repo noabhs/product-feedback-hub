@@ -18,8 +18,8 @@ const NAV_GROUPS = [
     { href: "/insights", label: "Product Feedback", icon: Search },
     { href: "/clients", label: "Clients", icon: Building2 },
     { href: "/competitors", label: "Competitors", icon: Swords },
-    { href: "/discovery", label: "Discovery", icon: BookOpen },
     { href: "/know-your-domain", label: "Know your domain", icon: GraduationCap },
+    { href: "/discovery", label: "Discovery Prep", icon: BookOpen },
   ],
   [
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
