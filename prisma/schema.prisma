@@ -384,3 +384,23 @@ model AskLog {
   @@index([createdAt])
   @@index([rating])
 }
+
+/// A personal access token for the hub's MCP endpoint (/api/mcp), so a person's
+/// own Claude can read hub data. Only the SHA-256 of the token is stored: the
+/// plaintext is shown once at creation and cannot be recovered. Revoked rows are
+/// kept (revokedAt) so "who had access" stays answerable.
+model ApiToken {
+  id         String    @id @default(cuid())
+  /// Email of the signed-in user who created it; reads made with the token are
+  /// logged to Event under this address.
+  owner      String
+  label      String
+  tokenHash  String    @unique
+  /// First characters of the token, so a person can tell their tokens apart.
+  prefix     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  @@index([owner])
+}

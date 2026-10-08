@@ -42,6 +42,9 @@ export const ACTIONS = {
   featureRequestUpdated: "feature_request.updated",
   featureRequestDeleted: "feature_request.deleted",
   competitorInsightCreated: "competitor_insight.created",
+  apiTokenCreated: "api_token.created",
+  apiTokenRevoked: "api_token.revoked",
+  mcpCall: "mcp.call",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
@@ -80,6 +83,9 @@ export const ACTION_LABELS: Record<string, string> = {
   "feature_request.updated": "Edited a feature request",
   "feature_request.deleted": "Deleted a feature request",
   "competitor_insight.created": "Added a competitor claim",
+  "api_token.created": "Created a Claude connection token",
+  "api_token.revoked": "Revoked a Claude connection token",
+  "mcp.call": "Read hub data from their own Claude",
 };
 
 /** Actions that consume Anthropic credits — used for the AI usage panel. */
