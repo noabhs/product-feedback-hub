@@ -6,6 +6,9 @@ import {
 import { TOPICS } from "@/lib/domain/topics";
 import { GLOSSARY, termId } from "@/lib/domain/glossary";
 import { DraftNotice, SectionLabel } from "@/components/domain/parts";
+import { DomainBriefAction } from "@/components/domain/DomainBriefAction";
+import { auth } from "@/auth";
+import { isOwner } from "@/lib/people";
 
 export const metadata = { title: "Know your domain · Navina Product Insights Hub" };
 
@@ -31,7 +34,8 @@ const FALLBACK = { Icon: BookA, tint: "bg-lavender text-brand-primary" };
 /** The terms people actually arrive looking for — a way in that isn't a search box. */
 const POPULAR = ["RAF score", "HCC", "ACO", "MSO", "Star Ratings", "Care gap", "PMPM", "MEAT"];
 
-export default function KnowYourDomainPage() {
+export default async function KnowYourDomainPage() {
+  const session = await auth();
   const ready = TOPICS.filter((t) => t.status === "ready");
   const planned = TOPICS.filter((t) => t.status === "planned");
   const links = TOPICS.reduce((n, t) => n + t.resources.length, 0);
@@ -65,7 +69,9 @@ export default function KnowYourDomainPage() {
 
         <DraftNotice />
 
-        <div className="rounded-lg bg-white border border-[rgba(50,43,95,0.08)] p-5 mb-8">
+        {/* The glossary and the brief are the two ways in that are not a topic card. */}
+        <div className="grid gap-4 lg:grid-cols-3 mb-8">
+        <div className="lg:col-span-2 rounded-lg bg-white border border-[rgba(50,43,95,0.08)] p-5">
           <Link href="/know-your-domain/glossary" className="group flex items-center justify-between gap-4">
             <span className="flex items-center gap-4">
               <span className="w-10 h-10 rounded-sm bg-lavender flex items-center justify-center shrink-0">
@@ -94,6 +100,8 @@ export default function KnowYourDomainPage() {
               </Link>
             ))}
           </div>
+        </div>
+        <DomainBriefAction canSendToSlack={isOwner(session?.user?.email)} />
         </div>
 
         <SectionLabel>Topics</SectionLabel>
