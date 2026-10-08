@@ -4,6 +4,7 @@ import { REPORT_AS_OF } from "@/lib/accounts";
 import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
 import type { AccountDetail, CompetitorItem, FeatureRequestItem } from "@/lib/types";
+import type { DomainHit } from "@/lib/domain/search";
 
 /**
  * Trimmed and unquoted before it reaches the SDK.
@@ -87,7 +88,7 @@ export interface WebCitationSource {
  * Reassembles the model's text and numbers its web citations, continuing on
  * from the hub's own [n] sources rather than restarting at [1] — one flat
  * citation sequence across both, same as buildQPrompt already does across its
- * four hub source kinds.
+ * five hub source kinds.
  *
  * When web search is used, Anthropic auto-splits the response into one text
  * block per cited span and attaches a `web_search_result_location` citation
@@ -253,13 +254,13 @@ export type QCompetitor = Pick<
  * The model and prompt behind "Ask Q" on the home page, named so every stored
  * answer records what produced it — same convention as QA_PROMPT_VERSION.
  */
-export const Q_PROMPT_VERSION = "q-5";
+export const Q_PROMPT_VERSION = "q-6";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
  * "Ask the feedback" (QA_SYSTEM_PROMPT above) reads two sources and writes a
  * longer answer with recommendations, for someone already inside the feedback
- * log. Q reads four sources and writes shorter, because the home page is a
+ * log. Q reads five sources and writes shorter, because the home page is a
  * jumping-off point, not a workspace — the reader wants the fact and a place
  * to click through, not a brief.
  */
@@ -269,7 +270,7 @@ export const Q_PROMPT_VERSION = "q-5";
  * from the request entirely, so leaving this out of the prompt by default
  * keeps Q from reaching for the web on questions no one asked it to.
  */
-const WEB_SEARCH_ADDENDUM = `5. THE WEB — the asker added "search web" to this question, so you must run a live search before writing anything. Weigh what it finds alongside the four hub sources rather than defaulting to the hub because it looks sufficient — the asker explicitly wanted the web checked too, even when the hub already has an answer. Every web-sourced sentence is cited automatically the moment you write it — you don't add the citation marker yourself, and you don't need to name the source in prose ("per the vendor's site") either; just write the claim.
+const WEB_SEARCH_ADDENDUM = `6. THE WEB — the asker added "search web" to this question, so you must run a live search before writing anything. Weigh what it finds alongside the five hub sources rather than defaulting to the hub because it looks sufficient — the asker explicitly wanted the web checked too, even when the hub already has an answer. Every web-sourced sentence is cited automatically the moment you write it — you don't add the citation marker yourself, and you don't need to name the source in prose ("per the vendor's site") either; just write the claim.
 
 `;
 
@@ -282,13 +283,14 @@ You answer any product question a PM would ask, by reading everything the hub ho
 2. COMPETITOR — the hub's own competitive research on one company, numbered and cited the same way. Positioning, overview, key facts and differentiation are the hub's research, not something a client said — cite them, but don't call them "feedback".
 3. FEATURE REQUEST — an internally filed idea with a status (New, Under Review, Planned, In Progress, Done, Rejected). Cited the same way. The status field is the only source of truth on where something stands — never infer "in progress" or "shipped" from a description.
 4. THE CLIENT TABLE — Navina's account records as a CSV: health, live products, EHR, segment, ARR/CARR, renewal date, and how much feedback each client has filed. Facts about the accounts, not something anyone said. No citation numbers.
+5. DOMAIN KNOWLEDGE — definitions and explanations from the hub's "Know your domain" section: value-based care, risk adjustment, quality and Star Ratings, payers, CMS rules, clinic roles, data standards. Numbered and cited like the others, and present only when the question touches those subjects. This is general industry education written from public sources, not Navina data and not something a client said: use it to explain a term or concept, say "as of" a year where the text dates a figure, and never present it as evidence about a Navina client or product. The section is still a draft, so where it conflicts with a client's own feedback, say so rather than picking one.
 
-Answer from whichever source fits the question. Most questions need only one of the four — don't pad an answer about a competitor's pricing with unrelated client feedback just because both live in the hub.
+Answer from whichever source fits the question. Most questions need only one of the five — don't pad an answer about a competitor's pricing with unrelated client feedback just because both live in the hub.
 
-${useWebSearch ? WEB_SEARCH_ADDENDUM : ""}Default reader: a product manager deciding what to build, ship, or say. Frame every answer around that — prioritization, scope, tradeoffs, impact — unless the question is plainly about something else, like an account fact.
+${useWebSearch ? WEB_SEARCH_ADDENDUM : ""}Default reader: a product manager deciding what to build, ship, or say. Frame every answer around that — prioritization, scope, tradeoffs, impact — unless the question is plainly about something else, like an account fact or what a term means.
 
 Rules that hold everywhere:
-- Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the four sources. If the hub genuinely doesn't have the subject, write exactly: "Not found in available sources." Do not soften that into a guess.
+- Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the five sources. If the hub genuinely doesn't have the subject, write exactly: "Not found in available sources." Do not soften that into a guess.
 - Before you reach for that sentence, read the Question line again. When it annotates a term in brackets with Navina's own name for it, the hub DOES hold the subject — under that other name — and the sources above were retrieved on that basis. Answer the question. A term being absent from the sources is not the same as the subject being absent, and one Navina product routinely goes by several names (DxC, Dx, RA, risk adjustment, diagnosis insights are all one thing).
 - When the Question line carries such an annotation, open with a short clause naming how you read it — "Reading DxC as Risk Adjustment —" — then answer normally. That teaches the asker the hub's own vocabulary instead of stonewalling them.
 - Roadmap and status claims: state the recorded status label and, when it helps, when it was last updated. Never imply something is planned, in progress, or shipped when the record doesn't say so.
@@ -326,6 +328,8 @@ export function buildQPrompt(
   accounts: AccountDetail[],
   competitors: QCompetitor[],
   featureRequests: FeatureRequestItem[],
+  /** Glossary terms and topic sections matched to the question, numbered after the feature requests. */
+  domain: DomainHit[],
   /**
    * Navina names the model resolved the question onto, from lib/synonyms.ts.
    * Without this, a question about "the DxC engine" arrives with risk
@@ -363,6 +367,10 @@ export function buildQPrompt(
     );
   }
 
+  for (const d of domain) {
+    cited.push(`[${cited.length + 1}] DOMAIN KNOWLEDGE — ${d.label}\n${d.text}`);
+  }
+
   const table = toCsv([...ACCOUNT_TABLE_COLUMNS], accounts.map(accountTableRow));
 
   return [
@@ -394,6 +402,7 @@ export async function answerGlobalQuestion(
   accounts: AccountDetail[],
   competitors: QCompetitor[],
   featureRequests: FeatureRequestItem[],
+  domain: DomainHit[],
   apiKey?: string,
   readAs?: string | null,
   useWebSearch = false,
@@ -407,7 +416,7 @@ export async function answerGlobalQuestion(
     thinking: { type: "adaptive" },
     system: qSystemPrompt(useWebSearch),
     messages: [
-      { role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests, readAs) },
+      { role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests, domain, readAs) },
     ],
     /**
      * Forced, not left to the model's judgment: a first pass that only

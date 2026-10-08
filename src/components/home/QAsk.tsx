@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { MessageSquare, Building2, Lightbulb, Copy, Check, ChevronDown, ChevronUp, Globe } from "lucide-react";
+import { MessageSquare, Building2, Lightbulb, Copy, Check, ChevronDown, ChevronUp, Globe, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { useApiKey } from "@/hooks/useApiKey";
@@ -10,7 +10,7 @@ import { AnswerBody } from "@/components/ask/AnswerBody";
 import { plainAnswer } from "@/lib/answer-format";
 import { QAvatar } from "@/components/home/QAvatar";
 
-type SourceKind = "insight" | "competitor" | "feature-request" | "web";
+type SourceKind = "insight" | "competitor" | "feature-request" | "domain" | "web";
 
 interface Source {
   id: string;
@@ -19,6 +19,8 @@ interface Source {
   client: string | null;
   /** Only "web" sources carry this — the live page the search actually found. */
   url?: string;
+  /** Only "domain" sources carry this — the path to the term or topic in the hub. */
+  href?: string;
 }
 
 /** Where a citation chip and the source list send someone for each kind. */
@@ -26,6 +28,7 @@ function hrefFor(source: Source): string {
   if (source.kind === "web") return source.url ?? "#";
   if (source.kind === "competitor") return `/competitors?open=${source.id}`;
   if (source.kind === "feature-request") return "/feature-requests";
+  if (source.kind === "domain") return source.href ?? "/know-your-domain";
   return `/insights/${source.id}`;
 }
 
@@ -33,6 +36,7 @@ const KIND_ICON: Record<SourceKind, typeof MessageSquare> = {
   insight: MessageSquare,
   competitor: Building2,
   "feature-request": Lightbulb,
+  domain: GraduationCap,
   web: Globe,
 };
 
@@ -40,6 +44,7 @@ const KIND_LABEL: Record<SourceKind, string> = {
   insight: "Feedback",
   competitor: "Competitor",
   "feature-request": "Feature request",
+  domain: "Know your domain",
   web: "Web",
 };
 
