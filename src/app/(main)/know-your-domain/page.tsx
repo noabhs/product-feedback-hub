@@ -43,35 +43,38 @@ export default async function KnowYourDomainPage() {
   return (
     <div className="p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-[30px] font-extrabold text-brand-primary mb-2 leading-tight">Know your domain</h1>
-          <p className="text-[15px] text-brand-primary leading-relaxed max-w-2xl" style={{ opacity: 0.65 }}>
-            The healthcare vocabulary and concepts behind Navina&apos;s work: value-based care, risk adjustment,
-            quality, Star Ratings and more. Each topic has a short overview, a deeper dive, and links to
-            internal and external material.
-          </p>
-          {/* What's actually in here, before anyone has to scroll to find out. */}
-          <div className="flex flex-wrap items-center gap-2 mt-4">
-            {[
-              `${ready.length} topics`,
-              `${GLOSSARY.length} glossary terms`,
-              `${links} linked sources`,
-            ].map((stat) => (
-              <span
-                key={stat}
-                className="rounded-pill bg-white border border-[rgba(50,43,95,0.1)] px-3 py-1 text-[12px] font-medium text-brand-primary/70"
-              >
-                {stat}
-              </span>
-            ))}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[30px] font-extrabold text-brand-primary mb-2 leading-tight">Know your domain</h1>
+            <p className="text-[15px] text-brand-primary leading-relaxed max-w-2xl" style={{ opacity: 0.65 }}>
+              The healthcare vocabulary and concepts behind Navina&apos;s work: value-based care, risk adjustment,
+              quality, Star Ratings and more. Each topic has a short overview, a deeper dive, and links to
+              internal and external material.
+            </p>
+            {/* What's actually in here, before anyone has to scroll to find out. */}
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              {[
+                `${ready.length} topics`,
+                `${GLOSSARY.length} glossary terms`,
+                `${links} linked sources`,
+              ].map((stat) => (
+                <span
+                  key={stat}
+                  className="rounded-pill bg-white border border-[rgba(50,43,95,0.1)] px-3 py-1 text-[12px] font-medium text-brand-primary/70"
+                >
+                  {stat}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="shrink-0">
+            <DomainBriefAction canSendToSlack={isOwner(session?.user?.email)} />
           </div>
         </div>
 
         <DraftNotice />
 
-        {/* The glossary and the brief are the two ways in that are not a topic card. */}
-        <div className="grid gap-4 lg:grid-cols-3 mb-8">
-        <div className="lg:col-span-2 rounded-lg bg-white border border-[rgba(50,43,95,0.08)] p-5">
+        <div className="rounded-lg bg-white border border-[rgba(50,43,95,0.08)] p-5 mb-8">
           <Link href="/know-your-domain/glossary" className="group flex items-center justify-between gap-4">
             <span className="flex items-center gap-4">
               <span className="w-10 h-10 rounded-sm bg-lavender flex items-center justify-center shrink-0">
@@ -100,8 +103,6 @@ export default async function KnowYourDomainPage() {
               </Link>
             ))}
           </div>
-        </div>
-        <DomainBriefAction canSendToSlack={isOwner(session?.user?.email)} />
         </div>
 
         <SectionLabel>Topics</SectionLabel>
