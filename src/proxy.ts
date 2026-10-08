@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
 // Next.js 16 renamed the `middleware` file convention to `proxy`.
-// Gates every page and every API route; /api/auth/*, /signin, /api/cron/* and
-// /api/slack/* are excluded via the matcher below. Sign-in has to stay
+// Gates every page and every API route; /api/auth/*, /signin, /api/cron/*,
+// /api/slack/* and /api/mcp are excluded via the matcher below. Sign-in has to stay
 // reachable, and a cron or Slack request carries no session — each
-// authenticates itself inside its own route instead (CRON_SECRET, and Slack's
-// request signature) before anything else happens there.
+// authenticates itself inside its own route instead (CRON_SECRET, Slack's
+// request signature, a personal bearer token for /api/mcp) before anything else happens there.
 export default auth((req) => {
   if (req.auth) return;
 
@@ -22,6 +22,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/cron|api/slack|signin|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp)$).*)",
+    "/((?!api/auth|api/cron|api/slack|api/mcp|signin|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|ico|webp)$).*)",
   ],
 };

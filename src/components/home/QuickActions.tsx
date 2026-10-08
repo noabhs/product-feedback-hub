@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, Swords, BookOpen, Layers, ArrowRight } from "lucide-react";
+import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight } from "lucide-react";
 import { BriefModal, type BriefKind } from "@/components/home/BriefModal";
 
 const BOX = "block w-full text-left bg-white rounded-lg border border-brand-secondary-500/25 shadow-sm p-5 h-full group hover:border-brand-secondary-500 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer";
@@ -33,13 +33,16 @@ export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: bool
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <button type="button" className={BOX} onClick={() => setOpen(client.kind)}><Box {...client} /></button>
         <button type="button" className={BOX} onClick={() => setOpen(competitor.kind)}><Box {...competitor} /></button>
         <Link href="/discovery/generate" className={BOX}>
           <Box title="Generate discovery doc" sub="Questions and context for a discovery call" Icon={BookOpen} />
         </Link>
         <button type="button" className={BOX} onClick={() => setOpen(area.kind)}><Box {...area} /></button>
+        <Link href="/connect-claude" className={BOX}>
+          <Box title="Use hub data in my Claude" sub="Connect your personal Claude to the raw data" Icon={Plug} />
+        </Link>
       </div>
       {open && <BriefModal key={open} kind={open} canSendToSlack={canSendToSlack} onClose={() => setOpen(null)} />}
     </>
