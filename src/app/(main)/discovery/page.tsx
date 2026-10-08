@@ -11,7 +11,6 @@ import type { Question, Source } from "@/lib/types";
 import { AddQuestionModal } from "@/components/discovery/AddQuestionModal";
 import { AddSourceModal } from "@/components/discovery/AddSourceModal";
 import { ImportCsvModal } from "@/components/ImportCsvModal";
-import { ShareLink } from "@/components/ui/ShareLink";
 import { useUrlReader, useUrlState } from "@/hooks/useUrlState";
 import { AREA_OPTIONS as AREAS, areaLabel , THEME_OPTIONS as THEMES } from "@/lib/labels";
 
@@ -155,35 +154,37 @@ function Discovery() {
   return (
     <div className="p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Discovery Prep</h1>
-            <p className="text-[14px] text-brand-primary opacity-50 max-w-xl">
-              Prepare for client discovery calls with structured questions curated from client sessions and product knowledge. Use the question library to generate ready-to-use docs.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-4">
-            <Button variant="ghost" size="sm" onClick={() => setShowImport(true)}>
-              <Upload className="w-4 h-4" />
-              Import CSV
-            </Button>
-            <Button variant="ghost" size="sm" onClick={exportQuestions}>
-              <Download className="w-4 h-4" />
-              Export CSV
-            </Button>
-            <ShareLink title="Copy a link to this question list" />
-            <Button variant="ghost" size="sm" onClick={() => setShowAddQuestion(true)}>
-              <Plus className="w-4 h-4" />
-              Add question
-            </Button>
-            <Link href="/discovery/generate">
-              <Button size="sm">
-                <FileText className="w-4 h-4" />
-                Generate doc
+        {/* Header. The actions sit on the title's line and wrap under it when
+            they run out of room — five of them in a 4xl column were squeezing
+            "Discovery Prep" onto two lines. The lead goes underneath both,
+            where it has the width to be one paragraph. */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <h1 className="text-[28px] font-extrabold text-brand-primary shrink-0">Discovery Prep</h1>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setShowImport(true)}>
+                <Upload className="w-4 h-4" />
+                Import CSV
               </Button>
-            </Link>
+              <Button variant="ghost" size="sm" onClick={exportQuestions}>
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowAddQuestion(true)}>
+                <Plus className="w-4 h-4" />
+                Add question
+              </Button>
+              <Link href="/discovery/generate">
+                <Button size="sm">
+                  <FileText className="w-4 h-4" />
+                  Generate doc
+                </Button>
+              </Link>
+            </div>
           </div>
+          <p className="text-[14px] text-brand-primary opacity-50 max-w-2xl mt-1.5">
+            Prepare for client discovery calls with structured questions curated from client sessions and product knowledge. Use the question library to generate ready-to-use docs.
+          </p>
         </div>
 
         {/* Tabs */}
