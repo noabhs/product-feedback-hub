@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
-import { Send, Check, Copy, Stethoscope, Sparkles, RefreshCw } from "lucide-react";
+import { Send, Check, Copy, Stethoscope, Sparkles, RefreshCw, ChevronRight } from "lucide-react";
 import type { RecapPick } from "@/lib/weekly-recap";
 
 export interface RecapView {
@@ -288,9 +288,7 @@ export function WeeklyRecapCard({
                   {writing ? "rewriting…" : "rewrite"}
                 </button>
               </div>
-              {/* First topic visible, rest behind a native <details>. One
-                  paragraph per topic: a single <p> collapsed the blank lines the
-                  model writes between them. */}
+              {/* TL;DR visible, the highlights behind a native <details>. */}
               <Brief text={recap.narrative} />
             </div>
           ) : (
@@ -347,15 +345,28 @@ function Brief({ text }: { text: string }) {
   const boundary = trimmed.search(/\n{2,}/);
   const tldr = boundary === -1 ? trimmed : trimmed.slice(0, boundary).trim();
   const bullets = boundary === -1 ? "" : trimmed.slice(boundary).trim();
+  const count = (bullets.match(/^\s*[-*]\s+/gm) ?? []).length;
   return (
     <>
       <div className={BRIEF_PROSE}>
         <ReactMarkdown>{tldr}</ReactMarkdown>
       </div>
       {bullets && (
-        <div className={`${BRIEF_PROSE} mt-2`}>
-          <ReactMarkdown>{bullets}</ReactMarkdown>
-        </div>
+        // Collapsed by default: ten highlights at full length pushed the rest
+        // of the page off the screen, and the TL;DR is the part most readers
+        // need. <details> rather than state — the browser already does this.
+        <details className="group mt-2">
+          <summary className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-secondary-600 cursor-pointer list-none hover:underline">
+            <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
+            <span className="group-open:hidden">
+              {count > 0 ? `Show ${count} highlight${count === 1 ? "" : "s"}` : "Show the rest"}
+            </span>
+            <span className="hidden group-open:inline">{count > 0 ? "Hide highlights" : "Hide"}</span>
+          </summary>
+          <div className={`${BRIEF_PROSE} mt-2`}>
+            <ReactMarkdown>{bullets}</ReactMarkdown>
+          </div>
+        </details>
       )}
     </>
   );
