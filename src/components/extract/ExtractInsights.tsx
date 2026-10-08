@@ -162,7 +162,7 @@ export function ExtractInsights() {
   // ── Saved ──────────────────────────────────────────────────────────────────
   if (stage === "saved") {
     return (
-      <div className="p-8 max-w-xl mx-auto text-center mt-12">
+      <div className="p-4 md:p-8 max-w-xl mx-auto text-center mt-12">
         <div
           className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
             savedCount > 0 ? "bg-[rgba(15,110,86,0.1)]" : "bg-red-50"
@@ -208,7 +208,7 @@ export function ExtractInsights() {
   // ── Review table ───────────────────────────────────────────────────────────
   if (stage === "review") {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -439,7 +439,7 @@ export function ExtractInsights() {
 
   // ── Input stage ────────────────────────────────────────────────────────────
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 max-w-2xl mx-auto">
 
       <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-6 space-y-4">
         <div>

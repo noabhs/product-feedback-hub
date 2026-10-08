@@ -34,7 +34,7 @@ export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: bool
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <button type="button" className={BOX} onClick={() => setOpen(client.kind)}><Box {...client} /></button>
         <button type="button" className={BOX} onClick={() => setOpen(competitor.kind)}><Box {...competitor} /></button>
         <Link href="/discovery/generate" className={BOX}>

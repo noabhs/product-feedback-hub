@@ -66,7 +66,7 @@ async function fetchAccounts(): Promise<AccountDetail[]> {
 export default function ClientsPage() {
   // useSearchParams needs a Suspense boundary during prerender.
   return (
-    <Suspense fallback={<div className="p-8" />}>
+    <Suspense fallback={<div className="p-4 md:p-8" />}>
       <Clients />
     </Suspense>
   );
@@ -300,7 +300,7 @@ function Clients() {
   }, [displayed]);
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">

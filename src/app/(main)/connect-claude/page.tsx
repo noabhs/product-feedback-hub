@@ -73,7 +73,7 @@ export default function ConnectClaudePage() {
   const token = fresh ?? "<your-token>";
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-3xl mx-auto space-y-8">
         <div>
           <h1 className="text-[26px] font-extrabold text-brand-primary mb-2">Use the hub&apos;s data in your own Claude</h1>

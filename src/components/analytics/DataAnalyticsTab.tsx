@@ -98,7 +98,7 @@ export async function DataAnalyticsTab() {
     <div>
       {/* ── Client coverage ────────────────────────────────────────────── */}
       <SectionHeading title="Client coverage" note={`account data as of ${fmtDay(REPORT_AS_OF) ?? REPORT_AS_OF}`} />
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <MeterCard
           Icon={Building2}
           value={`${heardFrom.length}/${clients.length}`}
@@ -157,7 +157,7 @@ export async function DataAnalyticsTab() {
 
       {/* ── What we're hearing ─────────────────────────────────────────── */}
       <SectionHeading title="What we're hearing" />
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <ChartCard title="By product area" href="/insights">
           {byArea.map((r) => (
             <BarRow
@@ -184,7 +184,7 @@ export async function DataAnalyticsTab() {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartCard title="Top clients by entries" href="/clients">
           {topClients.map((r) => (
             <BarRow

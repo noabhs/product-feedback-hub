@@ -3,6 +3,7 @@ import { Home, Search, BookOpen, Upload, BarChart3, Building2, MessageSquare, Lo
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
+import { AppShell } from "@/components/AppShell";
 
 /**
  * Grouped, not flat. Home on its own, then everything you work in day to day —
@@ -31,9 +32,9 @@ const NAV_GROUPS = [
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   return (
-    <div className="flex h-screen bg-surface-app overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 flex flex-col" style={{ background: "#250359" }}>
+    <AppShell
+      sidebar={
+      <aside className="w-full h-full flex flex-col overflow-y-auto" style={{ background: "#250359" }}>
         <div className="px-5 py-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
           <Link href="/home" className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-sm flex items-center justify-center shrink-0 bg-brand-secondary-500">
@@ -95,12 +96,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           </div>
         )}
       </aside>
-
+      }
+    >
       <PageViewTracker />
-
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+      {children}
+    </AppShell>
   );
 }

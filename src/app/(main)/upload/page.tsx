@@ -49,7 +49,7 @@ function ExtractShell() {
 
   return (
     <div>
-      <div className="px-8 pt-8">
+      <div className="px-4 md:px-8 pt-4 md:pt-8">
         <div className="max-w-5xl mx-auto">
           <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">AI extract</h1>
           <p className="text-[14px] text-brand-primary opacity-50 mb-4">{active.hint}. You review everything before it&apos;s saved.</p>
@@ -88,7 +88,7 @@ function ExtractShell() {
 export default function ExtractPage() {
   // useSearchParams needs a Suspense boundary during prerender.
   return (
-    <Suspense fallback={<div className="p-8" />}>
+    <Suspense fallback={<div className="p-4 md:p-8" />}>
       <ExtractShell />
     </Suspense>
   );
