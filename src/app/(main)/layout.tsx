@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, BarChart3, Building2, MessageSquare, LogOut, Lightbulb, Swords, GraduationCap } from "lucide-react";
+import { Home, Search, BookOpen, Upload, BarChart3, Building2, Database, LogOut, Lightbulb, Swords, GraduationCap } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -23,8 +23,8 @@ const NAV_GROUPS = [
   ],
   [
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/hub-data", label: "Hub data", icon: Database },
     { href: "/upload", label: "AI Extract", icon: Upload },
-    { href: "/feedback-insights", label: "Asks log", icon: MessageSquare },
     { href: "/feature-requests", label: "Feature requests", icon: Lightbulb },
   ],
 ];

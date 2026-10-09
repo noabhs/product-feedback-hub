@@ -14,7 +14,7 @@ export function byline(email: string | null | undefined): string {
 }
 
 /**
- * The hub's owner. Asker names on /feedback-insights are visible to this address
+ * The hub's owner. Asker names on the Asks log (Analytics) are visible to this address
  * and nobody else: the page is shared so everyone can learn from what has already
  * been asked, and attaching names to questions changes what people are willing to
  * ask. Change this line to hand the hub over.

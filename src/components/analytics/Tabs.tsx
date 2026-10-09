@@ -9,8 +9,15 @@ import { useState } from "react";
  * Inactive tabs stay mounted (hidden via CSS, not unmounted) so switching back
  * doesn't lose client-side state such as pagination.
  */
-export function Tabs({ tabs }: { tabs: { id: string; label: string; content: React.ReactNode }[] }) {
-  const [active, setActive] = useState(tabs[0]?.id);
+export function Tabs({
+  tabs,
+  initialTab,
+}: {
+  tabs: { id: string; label: string; content: React.ReactNode }[];
+  /** Opens on this tab when it exists, e.g. from a ?tab= link. */
+  initialTab?: string;
+}) {
+  const [active, setActive] = useState(tabs.some((t) => t.id === initialTab) ? initialTab : tabs[0]?.id);
 
   return (
     <div>
