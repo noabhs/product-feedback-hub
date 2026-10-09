@@ -7,7 +7,7 @@ import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { RateAnswer } from "@/components/ask/RateAnswer";
 import { AnswerBody } from "@/components/ask/AnswerBody";
-import { plainAnswer } from "@/lib/answer-format";
+import { plainAnswer, citedSourceNumbers } from "@/lib/answer-format";
 import { QAvatar } from "@/components/home/QAvatar";
 
 type SourceKind = "insight" | "competitor" | "feature-request" | "domain" | "web";
@@ -118,12 +118,22 @@ export function QAsk() {
     }
   }
 
+  // Retrieval can hand the model 50+ matches for a broad question, and most
+  // of them never make it into the answer — listing all of them below reads
+  // as noise. [n]'s position in `sources` is the citation number itself (a
+  // trimmed array would renumber everything after the first cut), so this
+  // keeps the full array for that lookup and only filters what gets shown.
+  const cited = citedSourceNumbers(answer);
+  const visibleSources = sources
+    .map((s, i) => ({ source: s, number: i + 1 }))
+    .filter(({ number }) => cited.has(number));
+
   async function copyAnswer() {
     const lines = [asked, "", plainAnswer(answer)];
-    if (sources.length > 0) {
+    if (visibleSources.length > 0) {
       lines.push("", "Sources:");
-      sources.forEach((s, i) =>
-        lines.push(`[${i + 1}] ${KIND_LABEL[s.kind]} — ${s.client ? `${s.client} — ` : ""}${s.label}`),
+      visibleSources.forEach(({ source: s, number }) =>
+        lines.push(`[${number}] ${KIND_LABEL[s.kind]} — ${s.client ? `${s.client} — ` : ""}${s.label}`),
       );
     }
 
@@ -225,11 +235,11 @@ export function QAsk() {
             </div>
           )}
 
-          {sources.length > 0 && (
+          {visibleSources.length > 0 && (
             <div className="border-t border-[rgba(50,43,95,0.08)] pt-3">
               <p className="text-[11px] text-brand-primary/40 uppercase tracking-wide mb-2">Sources</p>
               <div className="flex flex-col gap-1">
-                {(showAllSources ? sources : sources.slice(0, VISIBLE_SOURCES)).map((s, i) => {
+                {(showAllSources ? visibleSources : visibleSources.slice(0, VISIBLE_SOURCES)).map(({ source: s, number }) => {
                   const Icon = KIND_ICON[s.kind];
                   return (
                     <Link
@@ -239,7 +249,7 @@ export function QAsk() {
                       rel={s.kind === "web" ? "noopener noreferrer" : undefined}
                       className="flex items-center gap-1.5 text-[12px] text-brand-primary/70 hover:text-brand-secondary-500 transition-colors"
                     >
-                      <span className="shrink-0 w-5 text-right text-brand-primary/35 tabular-nums">{i + 1}</span>
+                      <span className="shrink-0 w-5 text-right text-brand-primary/35 tabular-nums">{number}</span>
                       <Icon className="w-3.5 h-3.5 shrink-0 text-brand-primary/35" />
                       <span className="truncate">
                         {s.client ? `${s.client} — ` : ""}
@@ -249,7 +259,7 @@ export function QAsk() {
                   );
                 })}
               </div>
-              {sources.length > VISIBLE_SOURCES && (
+              {visibleSources.length > VISIBLE_SOURCES && (
                 <button
                   onClick={() => setShowAllSources((v) => !v)}
                   className="flex items-center gap-1 mt-2 text-[12px] font-medium text-brand-secondary-600 hover:text-brand-secondary-500 transition-colors"
@@ -262,7 +272,8 @@ export function QAsk() {
                   ) : (
                     <>
                       <ChevronDown className="w-3.5 h-3.5" />
-                      Show {sources.length - VISIBLE_SOURCES} more {sources.length - VISIBLE_SOURCES === 1 ? "source" : "sources"}
+                      Show {visibleSources.length - VISIBLE_SOURCES} more{" "}
+                      {visibleSources.length - VISIBLE_SOURCES === 1 ? "source" : "sources"}
                     </>
                   )}
                 </button>

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { WeeklyRecap } from "@/lib/weekly-recap";
 import type { QSource } from "@/lib/ask-q";
+import { citedSourceNumbers } from "@/lib/answer-format";
 
 const HUB_URL = "https://product-feedback-hub-topaz.vercel.app";
 
@@ -324,11 +325,19 @@ export function qAnswerBlocks(
     blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: "🌐 Also searched the web for this one" }] });
   }
 
-  if (sources.length) {
-    const shown = sources.slice(0, 5);
-    const rest = sources.length - shown.length;
+  // sources is everything retrieval matched, not everything the model cited —
+  // a [n]'s position in the array is its citation number (trimming the array
+  // itself would renumber everything after the first cut), so this filters
+  // what's shown instead of the array it's shown from.
+  const cited = citedSourceNumbers(answer);
+  const numbered = sources.map((s, i) => ({ source: s, number: i + 1 })).filter(({ number }) => cited.has(number));
+
+  if (numbered.length) {
+    const shown = numbered.slice(0, 5);
+    const rest = numbered.length - shown.length;
     const footer =
-      shown.map((s, i) => `[${i + 1}] ${sourceLink(s)}`).join("  ·  ") + (rest > 0 ? `  +${rest} more` : "");
+      shown.map(({ source: s, number }) => `[${number}] ${sourceLink(s)}`).join("  ·  ") +
+      (rest > 0 ? `  +${rest} more` : "");
     blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: footer }] });
   }
 

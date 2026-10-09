@@ -83,3 +83,19 @@ export function plainAnswer(answer: string): string {
     )
     .join("\n");
 }
+
+/**
+ * Which [n] numbers the model actually cited, out of however many sources the
+ * search matched. runQ's sources list is everything retrieval fed the model —
+ * the home page and Slack are both guilty of listing all of it below the
+ * answer, which for a broad question can be 50+ entries the model never once
+ * referenced. The sources array itself can't be filtered down to match
+ * (its position is the citation number — [6] means sources[5], trimming the
+ * array would renumber everything after the first cut), so callers filter
+ * what they render instead, by checking membership here.
+ */
+export function citedSourceNumbers(answer: string): Set<number> {
+  const numbers = new Set<number>();
+  for (const match of answer.matchAll(/\[(\d{1,2})\]/g)) numbers.add(Number(match[1]));
+  return numbers;
+}
