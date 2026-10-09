@@ -61,6 +61,28 @@
       transform: translateY(0);
     }
   }
+
+  /* The "under construction" page. Slow and small on purpose: it sits on screen
+     for as long as someone reads it, and anything faster would nag. */
+  --animate-bob: bob 2.8s ease-in-out infinite;
+  --animate-sway: sway 3.4s ease-in-out infinite;
+  --animate-sweep: sweep 2.2s ease-in-out infinite;
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  @keyframes sway {
+    0%, 100% { transform: rotate(-4deg); }
+    50% { transform: rotate(4deg); }
+  }
+
+  /* A loading bar that never finishes, which is the honest animation here. */
+  @keyframes sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(320%); }
+  }
 }
 
 * {
@@ -76,4 +98,16 @@ body {
 
 ::selection {
   background: #F0E6FE;
+}
+
+/* Honour the system setting: decoration should never be the reason someone
+   feels unwell on a page they have to use for work. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

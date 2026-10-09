@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Search, BookOpen, Upload, BarChart3, Building2, Database, LogOut, Lightbulb, Swords, GraduationCap } from "lucide-react";
+import { Home, Search, BookOpen, Upload, BarChart3, Building2, Database, LogOut, Lightbulb, Swords, GraduationCap, Boxes } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -19,6 +19,7 @@ const NAV_GROUPS = [
     { href: "/clients", label: "Clients", icon: Building2 },
     { href: "/competitors", label: "Competitors", icon: Swords },
     { href: "/know-your-domain", label: "Know your domain", icon: GraduationCap },
+    { href: "/know-your-product", label: "Know your product", icon: Boxes },
     { href: "/discovery", label: "Discovery Prep", icon: BookOpen },
   ],
   [
