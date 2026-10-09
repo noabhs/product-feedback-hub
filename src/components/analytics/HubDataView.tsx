@@ -6,15 +6,31 @@ import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PROSE } from "@/components/domain/parts";
 
+/**
+ * One markdown document styled as a page rather than a dump: sections ruled
+ * off from each other, and the tables — which are most of this doc — given a
+ * header band, row hover and a leading column that reads as a label.
+ */
 const ARTICLE =
   PROSE +
-  " [&_h2]:text-[20px] [&_h2]:font-extrabold [&_h2]:text-brand-primary [&_h2]:mt-8 [&_h2]:mb-3" +
-  " [&_h3]:text-[16px] [&_h3]:font-bold [&_h3]:text-brand-primary [&_h3]:mt-6 [&_h3]:mb-2" +
+  // A rule above each section, so the doc has visible parts. The first one
+  // would draw a line directly under the card's top edge.
+  " [&_h2]:text-[18px] [&_h2]:font-extrabold [&_h2]:text-brand-primary [&_h2]:mt-10 [&_h2]:mb-4" +
+  " [&_h2]:pt-6 [&_h2]:border-t [&_h2]:border-[rgba(50,43,95,0.08)]" +
+  " [&_h2:first-child]:mt-0 [&_h2:first-child]:pt-0 [&_h2:first-child]:border-0" +
+  " [&_h3]:text-[15px] [&_h3]:font-bold [&_h3]:text-brand-primary [&_h3]:mt-6 [&_h3]:mb-2" +
   " [&_code]:text-[12.5px] [&_code]:bg-[rgba(50,43,95,0.06)] [&_code]:rounded [&_code]:px-1" +
   " [&_a]:text-brand-secondary-600 [&_a]:underline [&_em]:opacity-70" +
-  " [&_table]:w-full [&_table]:text-[13px] [&_table]:border-collapse [&_table]:mb-4" +
-  " [&_th]:text-left [&_th]:font-semibold [&_th]:py-2 [&_th]:pr-4 [&_th]:border-b [&_th]:border-[rgba(50,43,95,0.15)]" +
-  " [&_td]:align-top [&_td]:py-2 [&_td]:pr-4 [&_td]:border-b [&_td]:border-[rgba(50,43,95,0.08)]";
+  // Tables: boxed, with their own header band rather than a bare underline.
+  " [&_table]:w-full [&_table]:text-[13px] [&_table]:border-collapse [&_table]:my-4" +
+  " [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:ring-1 [&_table]:ring-[rgba(50,43,95,0.08)]" +
+  " [&_thead]:bg-[rgba(50,43,95,0.035)]" +
+  " [&_th]:text-left [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wide" +
+  " [&_th]:text-brand-primary/60 [&_th]:py-2.5 [&_th]:px-3" +
+  " [&_tbody_tr]:border-t [&_tbody_tr]:border-[rgba(50,43,95,0.07)]" +
+  " [&_tbody_tr:hover]:bg-[rgba(93,7,226,0.02)]" +
+  " [&_td]:align-top [&_td]:py-2.5 [&_td]:px-3 [&_td]:leading-snug" +
+  " [&_td:first-child]:font-semibold [&_td:first-child]:text-brand-primary";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -52,15 +68,17 @@ export function HubDataView({
   }
 
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <p className="text-[13px] text-brand-primary" style={{ opacity: 0.55 }}>
+    <div className="max-w-4xl">
+      {/* The page header already says what this doc is; repeating it here was
+          the same sentence twice down the page. */}
+      <div className="flex items-center justify-between gap-4 mb-3 min-h-[32px]">
+        <p className="text-[12.5px] text-brand-primary/50">
           {meta.updatedAt
             ? `Last edited ${fmt(meta.updatedAt)}${meta.updatedBy ? ` by ${meta.updatedBy}` : ""}`
-            : "What's in the hub, where it comes from, and when it updates."}
+            : ""}
         </p>
         {canEdit && !editing && (
-          <Button variant="ghost" onClick={() => { setDraft(body); setEditing(true); }}>
+          <Button variant="ghost" size="sm" onClick={() => { setDraft(body); setEditing(true); }}>
             <Pencil className="w-3.5 h-3.5" /> Edit
           </Button>
         )}
@@ -84,7 +102,7 @@ export function HubDataView({
           </div>
         </div>
       ) : (
-        <article className={ARTICLE}>
+        <article className={`${ARTICLE} rounded-lg bg-white border border-[rgba(50,43,95,0.08)] p-6 md:p-8`}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
         </article>
       )}
