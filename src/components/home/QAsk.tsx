@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { MessageSquare, Building2, Lightbulb, Copy, Check, ChevronDown, ChevronUp, Globe, GraduationCap } from "lucide-react";
+import { MessageSquare, Building2, Lightbulb, Copy, Check, ChevronDown, ChevronUp, Globe, GraduationCap, FileText, Send } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { RateAnswer } from "@/components/ask/RateAnswer";
 import { AnswerBody } from "@/components/ask/AnswerBody";
-import { plainAnswer } from "@/lib/answer-format";
+import { plainAnswer, citedSourceNumbers } from "@/lib/answer-format";
 import { QAvatar } from "@/components/home/QAvatar";
 
 type SourceKind = "insight" | "competitor" | "feature-request" | "domain" | "web";
@@ -63,6 +63,10 @@ const EXAMPLES = [
  *  matched feedback shouldn't push the sources list taller than the answer. */
 const VISIBLE_SOURCES = 5;
 
+/** The three answer actions are one control repeated, so they share a class. */
+const BTN =
+  "shrink-0 flex items-center gap-1.5 rounded-sm border border-[rgba(50,43,95,0.12)] bg-[rgba(50,43,95,0.02)] px-2.5 py-1.5 text-[12px] font-medium text-brand-primary/70 hover:bg-[rgba(50,43,95,0.06)] hover:text-brand-primary transition-colors disabled:opacity-50 disabled:cursor-default";
+
 /**
  * The home page's ask box — "Q" over the whole hub (feedback, competitors,
  * feature requests, the client table), not just feedback. Structurally the
@@ -70,7 +74,7 @@ const VISIBLE_SOURCES = 5;
  * and copied. Kept separate because the sources here span three kinds, each
  * linking somewhere different, where AIQABar only ever links to /insights.
  */
-export function QAsk() {
+export function QAsk({ canSendToSlack = false }: { canSendToSlack?: boolean }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [asked, setAsked] = useState("");
@@ -81,6 +85,11 @@ export function QAsk() {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
   const [showAllSources, setShowAllSources] = useState(false);
+  const [doc, setDoc] = useState<
+    { state: "idle" } | { state: "creating" } | { state: "created"; url: string } | { state: "reconnect" } | { state: "error"; message: string }
+  >({ state: "idle" });
+  const [slack, setSlack] = useState<"idle" | "sending" | "sent">("idle");
+  const [slackError, setSlackError] = useState("");
   const { aiHeaders } = useApiKey();
 
   useEffect(() => {
@@ -101,6 +110,9 @@ export function QAsk() {
     setCopied(false);
     setCopyError("");
     setShowAllSources(false);
+    setDoc({ state: "idle" });
+    setSlack("idle");
+    setSlackError("");
     try {
       const res = await fetch("/api/ai/ask", {
         method: "POST",
@@ -118,21 +130,83 @@ export function QAsk() {
     }
   }
 
-  async function copyAnswer() {
-    const lines = [asked, "", plainAnswer(answer)];
-    if (sources.length > 0) {
+  // Retrieval can hand the model 50+ matches for a broad question, and most
+  // of them never make it into the answer — listing all of them below reads
+  // as noise. [n]'s position in `sources` is the citation number itself (a
+  // trimmed array would renumber everything after the first cut), so this
+  // keeps the full array for that lookup and only filters what gets shown.
+  const cited = citedSourceNumbers(answer);
+  const visibleSources = sources
+    .map((s, i) => ({ source: s, number: i + 1 }))
+    .filter(({ number }) => cited.has(number));
+
+  /** The answer and its sources as text. Shared by copy, doc and Slack, so
+   *  the three can't drift into saying different things. */
+  function answerText(withQuestion: boolean): string {
+    const lines = withQuestion ? [asked, ""] : [];
+    lines.push(plainAnswer(answer));
+    if (visibleSources.length > 0) {
       lines.push("", "Sources:");
-      sources.forEach((s, i) =>
-        lines.push(`[${i + 1}] ${KIND_LABEL[s.kind]} — ${s.client ? `${s.client} — ` : ""}${s.label}`),
+      visibleSources.forEach(({ source: s, number }) =>
+        lines.push(`[${number}] ${KIND_LABEL[s.kind]} — ${s.client ? `${s.client} — ` : ""}${s.label}`),
       );
     }
+    return lines.join("\n");
+  }
 
+  async function copyAnswer() {
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
+      await navigator.clipboard.writeText(answerText(true));
       setCopied(true);
       setCopyError("");
     } catch {
       setCopyError("Couldn't copy — select the text and press Cmd+C.");
+    }
+  }
+
+  async function createDoc() {
+    // Once made, the button reopens that doc rather than making a duplicate.
+    if (doc.state === "created") {
+      window.open(doc.url, "_blank", "noreferrer");
+      return;
+    }
+    if (!answer || doc.state === "creating") return;
+    setDoc({ state: "creating" });
+    try {
+      const res = await fetch("/api/briefs/doc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: asked, markdown: answerText(false) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data.reconnect) {
+        setDoc({ state: "reconnect" });
+        return;
+      }
+      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+      setDoc({ state: "created", url: data.url });
+      window.open(data.url, "_blank", "noreferrer");
+    } catch (e) {
+      setDoc({ state: "error", message: (e as Error).message });
+    }
+  }
+
+  async function sendToSlack() {
+    if (!answer || slack !== "idle") return;
+    setSlack("sending");
+    setSlackError("");
+    try {
+      const res = await fetch("/api/briefs/slack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: asked, markdown: answerText(false) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+      setSlack("sent");
+    } catch (e) {
+      setSlack("idle");
+      setSlackError((e as Error).message);
     }
   }
 
@@ -190,27 +264,78 @@ export function QAsk() {
             ) : (
               <span />
             )}
-            <button
-              onClick={copyAnswer}
-              title="Copy the answer and its sources"
-              className="shrink-0 flex items-center gap-1.5 rounded-sm border border-[rgba(50,43,95,0.12)] bg-[rgba(50,43,95,0.02)] px-2.5 py-1.5 text-[12px] font-medium text-brand-primary/70 hover:bg-[rgba(50,43,95,0.06)] hover:text-brand-primary transition-colors"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy
-                </>
+            {/* Three ways out of an answer, same text in each: the clipboard,
+                a Google Doc in your own Drive, and the team's Slack channel.
+                Slack is owner-only, and the endpoint checks that too. */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={copyAnswer} title="Copy the answer and its sources" className={BTN}>
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={createDoc}
+                disabled={doc.state === "creating"}
+                title="Put this answer in a Google Doc in your Drive"
+                className={BTN}
+              >
+                {doc.state === "created" ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    Open doc
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-3.5 h-3.5" />
+                    {doc.state === "creating" ? "Generating…" : "Generate doc"}
+                  </>
+                )}
+              </button>
+
+              {canSendToSlack && (
+                <button
+                  onClick={sendToSlack}
+                  disabled={slack !== "idle"}
+                  title="Post this answer to the team's Slack channel"
+                  className={BTN}
+                >
+                  {slack === "sent" ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      Sent
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      {slack === "sending" ? "Sending…" : "Send to Slack"}
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           </div>
 
           <AnswerBody answer={answer} sources={answerSources} tone="light" />
           {copyError && <p className="text-[12px] text-red-700 mt-3">{copyError}</p>}
+          {doc.state === "reconnect" && (
+            <a
+              href={`/api/docs/connect?to=${encodeURIComponent("/home")}`}
+              className="block text-[12px] text-brand-secondary-600 hover:underline mt-3"
+            >
+              Allow Google Docs access (one-time), then try again
+            </a>
+          )}
+          {doc.state === "error" && <p className="text-[12px] text-red-700 mt-3">{doc.message}</p>}
+          {slackError && <p className="text-[12px] text-red-700 mt-3">{slackError}</p>}
 
           {askId && (
             <div className="flex items-start gap-3 mt-4 mb-3">
@@ -225,11 +350,11 @@ export function QAsk() {
             </div>
           )}
 
-          {sources.length > 0 && (
+          {visibleSources.length > 0 && (
             <div className="border-t border-[rgba(50,43,95,0.08)] pt-3">
               <p className="text-[11px] text-brand-primary/40 uppercase tracking-wide mb-2">Sources</p>
               <div className="flex flex-col gap-1">
-                {(showAllSources ? sources : sources.slice(0, VISIBLE_SOURCES)).map((s, i) => {
+                {(showAllSources ? visibleSources : visibleSources.slice(0, VISIBLE_SOURCES)).map(({ source: s, number }) => {
                   const Icon = KIND_ICON[s.kind];
                   return (
                     <Link
@@ -239,7 +364,7 @@ export function QAsk() {
                       rel={s.kind === "web" ? "noopener noreferrer" : undefined}
                       className="flex items-center gap-1.5 text-[12px] text-brand-primary/70 hover:text-brand-secondary-500 transition-colors"
                     >
-                      <span className="shrink-0 w-5 text-right text-brand-primary/35 tabular-nums">{i + 1}</span>
+                      <span className="shrink-0 w-5 text-right text-brand-primary/35 tabular-nums">{number}</span>
                       <Icon className="w-3.5 h-3.5 shrink-0 text-brand-primary/35" />
                       <span className="truncate">
                         {s.client ? `${s.client} — ` : ""}
@@ -249,7 +374,7 @@ export function QAsk() {
                   );
                 })}
               </div>
-              {sources.length > VISIBLE_SOURCES && (
+              {visibleSources.length > VISIBLE_SOURCES && (
                 <button
                   onClick={() => setShowAllSources((v) => !v)}
                   className="flex items-center gap-1 mt-2 text-[12px] font-medium text-brand-secondary-600 hover:text-brand-secondary-500 transition-colors"
@@ -262,7 +387,8 @@ export function QAsk() {
                   ) : (
                     <>
                       <ChevronDown className="w-3.5 h-3.5" />
-                      Show {sources.length - VISIBLE_SOURCES} more {sources.length - VISIBLE_SOURCES === 1 ? "source" : "sources"}
+                      Show {visibleSources.length - VISIBLE_SOURCES} more{" "}
+                      {visibleSources.length - VISIBLE_SOURCES === 1 ? "source" : "sources"}
                     </>
                   )}
                 </button>
