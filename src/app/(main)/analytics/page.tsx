@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { Tabs } from "@/components/analytics/Tabs";
 import { DataAnalyticsTab } from "@/components/analytics/DataAnalyticsTab";
 import { UsageAnalyticsTab } from "@/components/analytics/UsageAnalyticsTab";
+import { HubDataTab } from "@/components/analytics/HubDataTab";
 
 export default function AnalyticsPage() {
   return (
@@ -20,6 +21,7 @@ export default function AnalyticsPage() {
           tabs={[
             { id: "data", label: "Data analytics", content: <DataAnalyticsTab /> },
             { id: "usage", label: "Usage analytics", content: <UsageAnalyticsTab /> },
+            { id: "hub-data", label: "Hub data", content: <HubDataTab /> },
           ]}
         />
       </div>

@@ -46,6 +46,7 @@ export const ACTIONS = {
   apiTokenCreated: "api_token.created",
   apiTokenRevoked: "api_token.revoked",
   mcpCall: "mcp.call",
+  hubDataEdited: "hub_data.edited",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
@@ -87,6 +88,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "api_token.created": "Created a Claude connection token",
   "api_token.revoked": "Revoked a Claude connection token",
   "mcp.call": "Read hub data from their own Claude",
+  "hub_data.edited": "Edited the Hub data page",
 };
 
 /** Actions that consume Anthropic credits — used for the AI usage panel. */
