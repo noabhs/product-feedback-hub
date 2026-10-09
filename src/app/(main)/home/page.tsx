@@ -78,7 +78,7 @@ export default async function HomePage() {
 
         {/* ── Ask ─────────────────────────────────────────────────────────── */}
         <div className="mb-8">
-          <QAsk />
+          <QAsk canSendToSlack={isOwner(session?.user?.email)} />
         </div>
 
         {/* ── Quick actions ──────────────────────────────────────────────── */}
