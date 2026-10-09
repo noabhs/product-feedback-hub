@@ -58,7 +58,7 @@ with elevated permissions.
 ## Layout
 
 - `src/app/(main)/*` — authenticated pages (analytics, clients, competitors,
-  discovery, feature-requests, feedback-insights, home, insights, upload).
+  discovery, feature-requests, hub-data, home, insights, upload; the Asks log is a tab in analytics).
 - `src/app/api/*` — route handlers, roughly one folder per domain area, plus
   `slack/` (`/ask` slash command) and `cron/`.
 - `src/lib/*` — business logic and query helpers, one file per concern

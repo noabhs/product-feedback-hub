@@ -136,7 +136,7 @@ export function AIQABar() {
               <RateAnswer key={askId} askId={askId} rating={null} note={null} tone="dark" />
               <p className="text-[11.5px] text-white/40 leading-relaxed pt-1.5">
                 Rate it — questions and answers are kept on{" "}
-                <Link href="/feedback-insights" className="text-teal hover:text-mint-200 underline underline-offset-2">
+                <Link href="/analytics?tab=asks" className="text-teal hover:text-mint-200 underline underline-offset-2">
                   Asks log
                 </Link>
                 .

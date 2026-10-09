@@ -1,5 +1,5 @@
 /**
- * Starting text for the Hub data page (Analytics → Hub data). Shown until the
+ * Starting text for the Hub data page (the Hub data page). Shown until the
  * hub owner saves an edit, after which the PageContent row takes over. Plain
  * markdown, so the owner can rewrite it in the editor without a deploy.
  */

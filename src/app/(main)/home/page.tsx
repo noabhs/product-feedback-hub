@@ -104,7 +104,7 @@ export default async function HomePage() {
             label="Questions asked"
             sub={asksThisWeek ? `+${asksThisWeek} in the last 7 days` : "of the feedback, by the team"}
             Icon={Sparkles}
-            href="/feedback-insights"
+            href="/analytics?tab=asks"
           />
         </div>
 

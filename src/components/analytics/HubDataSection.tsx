@@ -8,7 +8,7 @@ import { HubDataView } from "@/components/analytics/HubDataView";
  * What's in the hub and when it changes. Readable by everyone signed in; only the
  * hub owner gets the editor (the API route checks again).
  */
-export async function HubDataTab() {
+export async function HubDataSection() {
   const [session, row] = await Promise.all([
     auth(),
     prisma.pageContent.findUnique({ where: { slug: HUB_DATA_SLUG } }),
