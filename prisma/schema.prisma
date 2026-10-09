@@ -408,3 +408,14 @@ model ApiToken {
 
   @@index([owner])
 }
+
+/// A page whose text the hub owner edits in the app (see lib/hub-data-default.ts
+/// for the first one). Keyed by slug; absent row means "show the built-in default".
+model PageContent {
+  slug      String   @id
+  /// Markdown.
+  body      String
+  /// Email of whoever saved it last. Only the hub owner can.
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
