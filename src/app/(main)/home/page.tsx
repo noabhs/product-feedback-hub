@@ -5,8 +5,6 @@ import { MessageSquare, Users, Swords, Sparkles, ArrowRight } from "lucide-react
 import { SectionHeading, KpiCard } from "@/components/home/cards";
 import { QuickActions } from "@/components/home/QuickActions";
 import { QAsk } from "@/components/home/QAsk";
-import { auth } from "@/auth";
-import { isOwner } from "@/lib/people";
 import { prisma } from "@/lib/prisma";
 import { ADVISORS, matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
@@ -15,7 +13,6 @@ import { loadAccounts } from "@/lib/accounts-db";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default async function HomePage() {
-  const session = await auth();
   const now = new Date();
   const weekAgo = new Date(now.getTime() - WEEK_MS);
   const [
@@ -78,13 +75,13 @@ export default async function HomePage() {
 
         {/* ── Ask ─────────────────────────────────────────────────────────── */}
         <div className="mb-8">
-          <QAsk canSendToSlack={isOwner(session?.user?.email)} />
+          <QAsk canSendToSlack />
         </div>
 
         {/* ── Quick actions ──────────────────────────────────────────────── */}
         <SectionHeading title="Quick actions" />
         <div className="mb-8">
-          <QuickActions canSendToSlack={isOwner(session?.user?.email)} />
+          <QuickActions canSendToSlack />
         </div>
 
         {/* ── Overview ───────────────────────────────────────────────────── */}

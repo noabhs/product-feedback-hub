@@ -30,25 +30,11 @@ function Competitors() {
   // the header CTA; an id = opened from that competitor's panel, which skips
   // the pick. The brief is keyed by id, so the name travels separately.
   const [briefFor, setBriefFor] = useState<string | null>(null);
-  // Only decides whether the modal offers "Send to Slack" — the endpoint
-  // checks the session itself.
-  const [owner, setOwner] = useState(false);
   const [claim, setClaim] = useState<CompetitorInsightItem | null>(null);
   const [search, setSearch] = useState(url.str("search"));
   // Kept in the URL like the other filters, so a link to the claims view lands
   // there rather than on the grid.
   const [view, setView] = useState(url.str("view") === "claims" ? "claims" : "competitors");
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then((d) => !cancelled && setOwner(!!d.owner))
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -258,7 +244,7 @@ function Competitors() {
         <BriefModal
           key={briefFor}
           kind="competitor"
-          canSendToSlack={owner}
+          canSendToSlack
           subject={briefFor || undefined}
           subjectLabel={competitors.find((c) => c.id === briefFor)?.name}
           onClose={() => setBriefFor(null)}

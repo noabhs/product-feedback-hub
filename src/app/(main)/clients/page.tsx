@@ -97,9 +97,6 @@ function Clients() {
   // null = closed. "" = open with the client still to be picked, which is the
   // header CTA; a name = opened from that client's panel, which skips the pick.
   const [briefFor, setBriefFor] = useState<string | null>(null);
-  // Only decides whether the modal offers "Send to Slack" — the endpoint checks
-  // the session itself.
-  const [owner, setOwner] = useState(false);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
@@ -260,17 +257,6 @@ function Clients() {
   // date doesn't reset the scroll position or reshuffle a sort mid-read.
   const handleLiveDateSaved = (id: string, liveDate: string | null) =>
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, liveDate } : a)));
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then((d) => !cancelled && setOwner(!!d.owner))
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const handleWebsiteSaved = (id: string, website: string | null) =>
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, website } : a)));
@@ -527,7 +513,7 @@ function Clients() {
         <BriefModal
           key={briefFor}
           kind="client"
-          canSendToSlack={owner}
+          canSendToSlack
           subject={briefFor || undefined}
           onClose={() => setBriefFor(null)}
         />
