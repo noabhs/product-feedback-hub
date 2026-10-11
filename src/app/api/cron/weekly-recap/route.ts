@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { isOwner } from "@/lib/people";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { buildWeeklyRecap } from "@/lib/weekly-recap";
 import { weeklyRecapBlocks, postToSlack, postDmToUser } from "@/lib/slack";
@@ -145,8 +144,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // The button is owner-only for now; keep the endpoint in step with it.
-  if (!isOwner(session.user.email)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Any signed-in user can press this now: it only ever DMs the person who
+  // clicked, so there's no shared-channel blast radius to restrict for.
   const period = req.nextUrl.searchParams.get("period") === "month" ? "month" : "week";
   // "Send to Slack" now previews to the signed-in user's own DM rather than
   // the shared channel — the real weekly post still only happens from the

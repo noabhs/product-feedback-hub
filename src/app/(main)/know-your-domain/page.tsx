@@ -7,8 +7,6 @@ import { TOPICS } from "@/lib/domain/topics";
 import { GLOSSARY, termId } from "@/lib/domain/glossary";
 import { DraftNotice, SectionLabel } from "@/components/domain/parts";
 import { DomainBriefAction } from "@/components/domain/DomainBriefAction";
-import { auth } from "@/auth";
-import { isOwner } from "@/lib/people";
 
 export const metadata = { title: "Know your domain · Navina Product Insights Hub" };
 
@@ -35,7 +33,6 @@ const FALLBACK = { Icon: BookA, tint: "bg-lavender text-brand-primary" };
 const POPULAR = ["RAF score", "HCC", "ACO", "MSO", "Star Ratings", "Care gap", "PMPM", "MEAT"];
 
 export default async function KnowYourDomainPage() {
-  const session = await auth();
   const ready = TOPICS.filter((t) => t.status === "ready");
   const planned = TOPICS.filter((t) => t.status === "planned");
   const links = TOPICS.reduce((n, t) => n + t.resources.length, 0);
@@ -68,7 +65,7 @@ export default async function KnowYourDomainPage() {
             </div>
           </div>
           <div className="shrink-0">
-            <DomainBriefAction canSendToSlack={isOwner(session?.user?.email)} />
+            <DomainBriefAction canSendToSlack />
           </div>
         </div>
 
