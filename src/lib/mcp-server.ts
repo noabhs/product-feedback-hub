@@ -2,14 +2,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { insightWhere } from "@/lib/insight-filters";
-import { loadAccountDetails } from "@/lib/accounts-db";
+import { loadAccountDetails, resolveClient } from "@/lib/accounts-db";
+import { clientBrief } from "@/lib/briefs";
 import { AREA_LABELS, THEME_LABELS, COMPETITOR_TOPIC_LABELS, CONFIDENCE_LABELS } from "@/lib/labels";
 import { COMPETITOR_CATEGORIES } from "@/lib/competitor-categories";
 import { FEATURE_REQUEST_STATUSES } from "@/lib/feature-request-status";
 
 /**
- * Read-only tools over the hub's data, for a person's own Claude. Raw rows
- * only — no Ask Q here: the caller's Claude does the reasoning.
+ * Read-only tools over the hub's data, for a person's own Claude. Raw rows,
+ * so the caller's Claude does the reasoning — except generate_client_brief,
+ * which runs the hub's own client brief (the one behind the Brief button) so
+ * every teammate gets the same brief, written from the same prompt.
  */
 
 const MAX_LIMIT = 100;
@@ -120,6 +123,18 @@ export function createHubMcpServer(onCall: (tool: string) => void): McpServer {
       return all.filter(
         (a) => (includeArchived || !a.archivedAt) && (!q || a.name.toLowerCase().includes(q)),
       );
+    },
+  );
+
+  tool(
+    "generate_client_brief",
+    "Generate the hub's client brief for one client: markdown with [n] citations, written from that client's feedback and Salesforce snapshot. Pass the client's name as it appears on the calendar or in an email domain; it is matched to a hub account, and if nothing matches the result says so instead of guessing. Takes ~20-60 seconds and spends the hub's Claude quota, so call it once per client, not in a loop over every account.",
+    { client: z.string().min(1).describe("Client or account name, e.g. 'Acme Health'") },
+    async ({ client }) => {
+      const name = await resolveClient(client);
+      if (!name) return { error: `No hub account matches "${client}". Call list_clients to see valid names.` };
+      const brief = await clientBrief(name);
+      return { client: name, title: brief.title, hubEntries: brief.hubEntries, markdown: brief.markdown };
     },
   );
 
