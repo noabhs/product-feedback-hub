@@ -11,12 +11,13 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 export function ClientQuote({ quote }: { quote: RecapQuote }) {
   const long = quote.text.length > 180;
   return (
-    <figure className="relative bg-white rounded-lg border border-[rgba(50,43,95,0.08)] px-6 md:px-10 py-7 md:py-8 overflow-hidden">
+    <figure className="relative bg-white rounded-lg border border-[rgba(50,43,95,0.08)] px-6 md:px-8 py-5 md:py-6 overflow-hidden">
       <span aria-hidden className="absolute left-0 top-0 bottom-0 w-1 bg-brand-secondary-500" />
-      <figcaption className="flex items-baseline gap-2.5 mb-4">
+      <figcaption className="flex items-baseline gap-2.5 mb-3">
         <span className="text-[12px] font-semibold text-brand-secondary-500 uppercase tracking-wide">
-          Voice of the client
+          Quote of the week
         </span>
+        <span className="text-[11px] text-brand-primary/40">· Voice of the client</span>
         <span className="text-[11px] text-brand-primary/40">
           {new Date(quote.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </span>
@@ -25,14 +26,14 @@ export function ClientQuote({ quote }: { quote: RecapQuote }) {
       <blockquote className="relative">
         <span
           aria-hidden
-          className="absolute -left-1 md:-left-3 -top-5 text-[64px] leading-none text-brand-secondary-500/25 select-none"
+          className="absolute -left-1 md:-left-3 -top-4 text-[44px] leading-none text-brand-secondary-500/25 select-none"
           style={{ fontFamily: SERIF }}
         >
           “
         </span>
         <p
           className={`relative italic text-brand-primary leading-snug ${
-            long ? "text-[19px] md:text-[22px]" : "text-[22px] md:text-[27px]"
+            long ? "text-[15px] md:text-[17px]" : "text-[17px] md:text-[20px]"
           }`}
           style={{ fontFamily: SERIF }}
         >
@@ -40,7 +41,7 @@ export function ClientQuote({ quote }: { quote: RecapQuote }) {
         </p>
       </blockquote>
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="h-px w-8 bg-brand-primary/25" aria-hidden />
         <span className="text-[13.5px] text-brand-primary">
           {quote.speaker && <span className="font-semibold">{quote.speaker}</span>}

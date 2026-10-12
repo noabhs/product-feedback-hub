@@ -801,12 +801,12 @@ export async function pickClientQuote(
 
 Below are numbered quotes from clients, each with the account and the text that introduced it. Pick the one the product team would most want to read this week.
 
-Prefer a quote that:
-- is a real client talking about Navina, their work or their patients — not a Navina employee, and not a third party;
-- is vivid, specific and stands on its own without the surrounding notes;
-- carries a feeling or a stake (praise, frustration, a request, a risk), rather than a status update.
+Prefer, in this order:
+1. A positive quote about Navina as a whole — the value it brings, how it feels to work with, the team, the partnership, a result.
+2. Failing that, a strong, emotional quote about Navina in general, even if critical.
+Avoid quotes about one specific feature, code, rule or bug — those belong in the feedback list, not the headline. The quote must be a real client talking, vivid, and stand on its own without surrounding notes.
 
-Skip anything that is not a client speaking: internal suggestions, our own notes, system or note boilerplate, quoted field names. If none of the quotes qualifies, return index -1 — an empty slot beats a weak quote.
+Skip anything that is not a client speaking: internal suggestions, our own notes, system or note boilerplate, quoted field names. If none qualifies — including when every quote is about a specific feature — return index -1; an empty slot beats a weak quote.
 
 Return the index of your pick, and "speaker": who said it, as name and role if the introducing text gives them (e.g. "Dr. Jane Smith, CMO"), otherwise null. Never guess a name.`,
       messages: [{ role: "user", content: list }],
