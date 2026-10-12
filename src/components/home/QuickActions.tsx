@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap } from "lucide-react";
+import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, CalendarClock } from "lucide-react";
 import { BriefModal, type BriefKind } from "@/components/home/BriefModal";
 
 const BOX = "block w-full text-left bg-white rounded-lg border border-brand-secondary-500/25 shadow-sm p-5 h-full group hover:border-brand-secondary-500 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer";
@@ -46,6 +46,9 @@ export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: bool
         <button type="button" className={BOX} onClick={() => setOpen(domain.kind)}><Box {...domain} /></button>
         <Link href="/connect-claude" className={BOX}>
           <Box title="Use hub data in my Claude" sub="Connect your personal Claude to the raw data" Icon={Plug} tint="bg-amber-100 text-amber-700" />
+        </Link>
+        <Link href="/daily-briefs" className={BOX}>
+          <Box title="Daily client briefs in Slack" sub="Get a brief before each external meeting. Set up in 5 minutes" Icon={CalendarClock} tint="bg-teal-100 text-teal-700" />
         </Link>
       </div>
       {open && <BriefModal key={open} kind={open} canSendToSlack={canSendToSlack} onClose={() => setOpen(null)} />}
