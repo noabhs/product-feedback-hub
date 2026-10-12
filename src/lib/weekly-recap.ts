@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { ACTIONS } from "@/lib/events";
 import { areaLabel } from "@/lib/labels";
-import { summarizeWeek, BRIEF_VERSION } from "@/lib/claude";
-import { matchAccount } from "@/lib/accounts";
+import { summarizeWeek, pickClientQuote, BRIEF_VERSION } from "@/lib/claude";
+import { extractQuotes } from "@/lib/quotes";
+import { matchAccount, ADVISORS } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
 import { crossClientThemes, themeLabel, type RecapTheme } from "@/lib/themes";
 import {
@@ -24,6 +25,16 @@ export interface RecapPick {
   oneLiner: string;
   client: string | null;
   areas: string[];
+}
+
+export interface RecapQuote {
+  text: string;
+  /** Who said it, when the entry names them. */
+  speaker: string | null;
+  client: string | null;
+  entryId: string;
+  /** When the client said it (ISO) — the quote may be from an earlier week. */
+  date: string;
 }
 
 export interface WeeklyRecap {
@@ -49,6 +60,8 @@ export interface WeeklyRecap {
   narrative: string | null;
   /** Why there is no narrative, when one was asked for. Shown to the user. */
   narrativeError: string | null;
+  /** The week's "voice of the client" quote. Weeks only; null when none was found. */
+  quote: RecapQuote | null;
   /** What several clients said the same thing about — the real highlight. */
   themes: { label: string; clients: string[]; entries: number; example: RecapPick }[];
   /** Entries worth quoting, used only when no theme spans two accounts. */
@@ -73,6 +86,79 @@ export interface WeeklyRecap {
 const feedbackIn = (range: { gte?: Date; lt: Date }) => ({
   OR: [{ date: range }, { date: null, createdAt: range }],
 });
+
+/**
+ * The week's "voice of the client" quote — a verbatim line from a client, chosen
+ * by the model from quotes lifted out of the week's feedback.
+ *
+ * Cached per completed week like the narrative, so it is chosen once. "cached"
+ * never calls the model, which is what the home page uses.
+ */
+export async function getWeeklyQuote(
+  now: Date = new Date(),
+  mode: "generate" | "regenerate" | "cached" = "cached",
+): Promise<RecapQuote | null> {
+  const week = lastCompleteWeek(now);
+  const target = `${BRIEF_VERSION}:quote:week:${week.key}`;
+
+  if (mode !== "regenerate") {
+    const cached = await prisma.event.findFirst({
+      where: { action: ACTIONS.recapQuote, target },
+      select: { label: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (cached?.label) {
+      try {
+        return JSON.parse(cached.label) as RecapQuote;
+      } catch {
+        // A malformed cached row falls through to a fresh pick below.
+      }
+    }
+    if (mode === "cached") return null;
+  }
+
+  const accounts = await loadAccounts();
+
+  // Last week first; a quiet week may have no quotable client speech at all, so
+  // it widens to the last two months before giving up. Recent still wins — the
+  // wider pool is only reached when the narrow one yields nothing.
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  let quote: RecapQuote | null = null;
+  for (const weeks of [1, 8]) {
+    const range = { gte: new Date(week.end.getTime() - weeks * WEEK), lt: week.end };
+    const pool = await prisma.insight.findMany({
+      // Pasted notes use curly quotes as often as straight ones.
+      where: {
+        AND: [feedbackIn(range), { OR: [{ content: { contains: "\"" } }, { content: { contains: "\u201c" } }] }],
+      },
+      select: { id: true, client: true, content: true, date: true, createdAt: true },
+      orderBy: [{ date: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+    });
+    const dates = new Map(pool.map((e) => [e.id, (e.date ?? e.createdAt).toISOString()]));
+    const candidates = pool
+      .flatMap((e) => extractQuotes(e.id, e.client, e.content))
+      // Advisors are our own advisory panel, not a client.
+      .filter((c) => !c.client || matchAccount(c.client, accounts) !== ADVISORS)
+      .slice(0, 60);
+    const { pick } = await pickClientQuote(candidates);
+    if (pick) {
+      const chosen = candidates[pick.index];
+      quote = {
+        text: chosen.quote,
+        speaker: pick.speaker,
+        client: chosen.client ? matchAccount(chosen.client, accounts) ?? chosen.client : null,
+        entryId: chosen.entryId,
+        date: dates.get(chosen.entryId) ?? week.end.toISOString(),
+      };
+      break;
+    }
+  }
+  if (!quote) return null;
+  await prisma.event.create({
+    data: { actor: "system", action: ACTIONS.recapQuote, target, label: JSON.stringify(quote) },
+  });
+  return quote;
+}
 
 export async function buildWeeklyRecap(
   now: Date = new Date(),
@@ -241,6 +327,16 @@ export async function buildWeeklyRecap(
     }
   }
 
+  // Weeks only — a month-to-date has no single voice to feature.
+  let quote: RecapQuote | null = null;
+  if (week.kind === "week" && narrativeMode !== "off") {
+    try {
+      quote = await getWeeklyQuote(now, narrativeMode === "cached" ? "cached" : narrativeMode);
+    } catch (e) {
+      console.error("[recap] quote failed:", (e as Error).message);
+    }
+  }
+
   return {
     week,
     previousLabel: prev.label,
@@ -253,6 +349,7 @@ export async function buildWeeklyRecap(
     asks,
     narrative,
     narrativeError,
+    quote,
     themes,
     picks,
     mostClientsAreNew,

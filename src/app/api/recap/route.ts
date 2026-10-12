@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     asks: recap.asks,
     narrative: recap.narrative,
     narrativeError: recap.narrativeError,
+    quote: recap.quote,
     themes: recap.themes,
     picks: recap.picks,
     mostClientsAreNew: recap.mostClientsAreNew,

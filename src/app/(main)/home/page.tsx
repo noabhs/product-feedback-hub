@@ -5,6 +5,8 @@ import { MessageSquare, Users, Swords, Sparkles, ArrowRight } from "lucide-react
 import { SectionHeading, KpiCard } from "@/components/home/cards";
 import { QuickActions } from "@/components/home/QuickActions";
 import { QAsk } from "@/components/home/QAsk";
+import { ClientQuote } from "@/components/home/ClientQuote";
+import { getWeeklyQuote } from "@/lib/weekly-recap";
 import { prisma } from "@/lib/prisma";
 import { ADVISORS, matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
@@ -17,7 +19,7 @@ export default async function HomePage() {
   const weekAgo = new Date(now.getTime() - WEEK_MS);
   const [
     totalFeedback, totalCompetitors, totalAsks, feedbackByClient, accounts, matchable,
-    feedbackThisWeek, asksThisWeek, latest,
+    feedbackThisWeek, asksThisWeek, latest, quote,
   ] =
     await Promise.all([
       prisma.insight.count(),
@@ -40,6 +42,9 @@ export default async function HomePage() {
         take: 5,
         select: { id: true, oneLiner: true, client: true, createdAt: true },
       }),
+      // Read from the cache the weekly brief fills — a page load never calls the
+      // model — and a failure here must not take the home page down with it.
+      getWeeklyQuote(now, "cached").catch(() => null),
     ]);
 
   // Keyed by the account each stored value resolves to, not by the raw string:
@@ -72,6 +77,13 @@ export default async function HomePage() {
             across clients, sharpen discovery, and turn scattered signals into product decisions.
           </p>
         </div>
+
+        {/* ── Voice of the client ────────────────────────────────────────── */}
+        {quote && (
+          <div className="mb-8">
+            <ClientQuote quote={quote} />
+          </div>
+        )}
 
         {/* ── Ask ─────────────────────────────────────────────────────────── */}
         <div className="mb-8">
