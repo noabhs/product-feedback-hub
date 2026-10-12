@@ -4,46 +4,33 @@ import type { RecapQuote } from "@/lib/weekly-recap";
 const SERIF = "Georgia, 'Times New Roman', serif";
 
 /**
- * The weekly "voice of the client" quote, set like the pull-quote in a
- * newsletter: a kicker, the words large and in serif, then who said it.
+ * The weekly "voice of the client" quote, set like a newsletter pull-quote but
+ * kept compact: a small label, the words in serif italic, then who said it.
  * Rendered only when the week's brief picked one.
  */
 export function ClientQuote({ quote }: { quote: RecapQuote }) {
-  const long = quote.text.length > 180;
   return (
-    <figure className="relative bg-white rounded-lg border border-[rgba(50,43,95,0.08)] px-6 md:px-8 py-5 md:py-6 overflow-hidden">
-      <span aria-hidden className="absolute left-0 top-0 bottom-0 w-1 bg-brand-secondary-500" />
-      <figcaption className="flex items-baseline gap-2.5 mb-3">
-        <span className="text-[12px] font-semibold text-brand-secondary-500 uppercase tracking-wide">
+    <figure className="relative bg-white rounded-lg border border-[rgba(50,43,95,0.08)] pl-5 pr-5 py-3.5 overflow-hidden">
+      <span aria-hidden className="absolute left-0 top-0 bottom-0 w-[3px] bg-brand-secondary-500" />
+      <figcaption className="flex items-baseline gap-2 mb-1.5">
+        <span className="text-[10.5px] font-semibold text-brand-secondary-500 uppercase tracking-wide">
           Quote of the week
         </span>
-        <span className="text-[11px] text-brand-primary/40">· Voice of the client</span>
-        <span className="text-[11px] text-brand-primary/40">
+        <span className="text-[10.5px] text-brand-primary/40">
           {new Date(quote.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </span>
       </figcaption>
 
-      <blockquote className="relative">
-        <span
-          aria-hidden
-          className="absolute -left-1 md:-left-3 -top-4 text-[44px] leading-none text-brand-secondary-500/25 select-none"
-          style={{ fontFamily: SERIF }}
-        >
-          “
-        </span>
-        <p
-          className={`relative italic text-brand-primary leading-snug ${
-            long ? "text-[15px] md:text-[17px]" : "text-[17px] md:text-[20px]"
-          }`}
-          style={{ fontFamily: SERIF }}
-        >
-          {quote.text}”
-        </p>
+      <blockquote
+        className="italic text-brand-primary text-[14.5px] md:text-[15.5px] leading-snug"
+        style={{ fontFamily: SERIF }}
+      >
+        “{quote.text}”
       </blockquote>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="h-px w-8 bg-brand-primary/25" aria-hidden />
-        <span className="text-[13.5px] text-brand-primary">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
+        <span className="text-brand-primary/40">—</span>
+        <span className="text-brand-primary">
           {quote.speaker && <span className="font-semibold">{quote.speaker}</span>}
           {quote.speaker && quote.client && <span className="text-brand-primary/40">, </span>}
           {quote.client && (
@@ -52,7 +39,7 @@ export function ClientQuote({ quote }: { quote: RecapQuote }) {
         </span>
         <Link
           href={`/insights/${quote.entryId}`}
-          className="ml-auto text-[12px] font-medium text-brand-secondary-600 hover:underline"
+          className="ml-auto text-[11.5px] font-medium text-brand-secondary-600 hover:underline"
         >
           See the feedback →
         </Link>
