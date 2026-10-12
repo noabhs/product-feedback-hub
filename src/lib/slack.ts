@@ -43,6 +43,11 @@ function pushMrkdwnSections(blocks: unknown[], text: string): void {
   }
 }
 
+function quoteMrkdwn(q: NonNullable<WeeklyRecap["quote"]>): string {
+  const who = [q.speaker, q.client].filter(Boolean).join(" · ");
+  return `*Voice of the client*\n>_“${q.text}”_${who ? `\n>— ${who}` : ""}`;
+}
+
 /**
  * Block Kit for the Sunday recap. Deliberately short: a header, the numbers, the
  * week's read, and a link. Anyone who wants detail clicks through.
@@ -91,6 +96,11 @@ export function weeklyRecapBlocks(recap: WeeklyRecap): unknown[] {
     if (aside.length) numbers.push(aside.join("  ·  "));
 
     blocks.push({ type: "section", text: { type: "mrkdwn", text: numbers.join("\n") } });
+
+    // The week's client quote leads, like the pull-quote in a newsletter.
+    if (recap.quote) {
+      blocks.push({ type: "section", text: { type: "mrkdwn", text: quoteMrkdwn(recap.quote) } });
+    }
 
     // The AI read when there is one, the entries themselves when there isn't.
     if (recap.narrative) {
@@ -161,6 +171,8 @@ export function recapMarkdown(recap: WeeklyRecap): string {
     if (recap.questions) aside.push(`*${recap.questions}* discovery question${recap.questions === 1 ? "" : "s"} added`);
     if (recap.asks) aside.push(`*${recap.asks}* question${recap.asks === 1 ? "" : "s"} asked of the hub`);
     if (aside.length) lines.push(aside.join("  ·  "));
+
+    if (recap.quote) lines.push("", quoteMrkdwn(recap.quote));
 
     if (recap.narrative) {
       lines.push("", "*What stood out*", markdownToSlackMrkdwn(recap.narrative));

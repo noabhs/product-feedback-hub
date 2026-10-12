@@ -758,6 +758,74 @@ Rules:
   }
 }
 
+export interface PickedQuote {
+  /** Index into the candidates passed in. */
+  index: number;
+  /** Who said it — name and role when the entry gives them, else null. */
+  speaker: string | null;
+}
+
+const QUOTE_PICK_SCHEMA = {
+  type: "object",
+  properties: {
+    index: { type: "integer" },
+    speaker: nullableString,
+  },
+  required: ["index", "speaker"],
+  additionalProperties: false,
+};
+
+/**
+ * Chooses the week's "voice of the client" quote from quotes already lifted
+ * verbatim out of the feedback — the model selects, it never writes, so what is
+ * shown in quotation marks is always something a client said.
+ *
+ * Never throws; the quote is a nicety and the brief goes out without it.
+ */
+export async function pickClientQuote(
+  candidates: { quote: string; client: string | null; lead: string }[],
+): Promise<{ pick: PickedQuote | null; error: string | null }> {
+  if (!candidates.length) return { pick: null, error: null };
+  if (!cleanKey(process.env.ANTHROPIC_API_KEY)) {
+    return { pick: null, error: "No ANTHROPIC_API_KEY is set on the server." };
+  }
+  const list = candidates
+    .map((c, i) => `${i}. [${c.client ?? "Unknown client"}] ${c.lead ? `${c.lead} ` : ""}“${c.quote}”`)
+    .join("\n\n");
+  try {
+    const res = await getClient().messages.create({
+      model: QA_MODEL,
+      max_tokens: 2000,
+      output_config: { effort: "low", format: jsonFormat(QUOTE_PICK_SCHEMA) },
+      system: `You choose the "voice of the client" quote for the top of Navina's weekly product-feedback newsletter.
+
+Below are numbered quotes from clients, each with the account and the text that introduced it. Pick the one the product team would most want to read this week.
+
+Prefer a quote that:
+- is a real client talking about Navina, their work or their patients — not a Navina employee, and not a third party;
+- is vivid, specific and stands on its own without the surrounding notes;
+- carries a feeling or a stake (praise, frustration, a request, a risk), rather than a status update.
+
+Skip anything that is not a client speaking: internal suggestions, our own notes, system or note boilerplate, quoted field names. If none of the quotes qualifies, return index -1 — an empty slot beats a weak quote.
+
+Return the index of your pick, and "speaker": who said it, as name and role if the introducing text gives them (e.g. "Dr. Jane Smith, CMO"), otherwise null. Never guess a name.`,
+      messages: [{ role: "user", content: list }],
+    });
+    const raw = res.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text;
+    if (!raw) return { pick: null, error: `The model returned no text (stop_reason: ${res.stop_reason}).` };
+    const parsed = parseJSON(raw) as PickedQuote;
+    if (parsed.index === -1) return { pick: null, error: null };
+    if (!Number.isInteger(parsed.index) || parsed.index < 0 || parsed.index >= candidates.length) {
+      return { pick: null, error: "The model picked a quote that wasn't on the list." };
+    }
+    return { pick: { index: parsed.index, speaker: parsed.speaker ?? null }, error: null };
+  } catch (e) {
+    const message = (e as Error).message ?? "unknown error";
+    console.error("[recap] pickClientQuote failed:", message);
+    return { pick: null, error: `Couldn't reach Claude: ${message.slice(0, 120)}` };
+  }
+}
+
 export interface BriefOutput {
   text: string;
   usedWebSearch: boolean;
