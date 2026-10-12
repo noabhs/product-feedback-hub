@@ -80,7 +80,7 @@ export default async function HomePage() {
 
         {/* ── Voice of the client ────────────────────────────────────────── */}
         {quote && (
-          <div className="mb-8">
+          <div className="mb-5">
             <ClientQuote quote={quote} />
           </div>
         )}
