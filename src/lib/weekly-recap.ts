@@ -27,6 +27,8 @@ export interface RecapPick {
   areas: string[];
 }
 
+const QUOTE_VERSION = "q2";
+
 export interface RecapQuote {
   text: string;
   /** Who said it, when the entry names them. */
@@ -99,7 +101,8 @@ export async function getWeeklyQuote(
   mode: "generate" | "regenerate" | "cached" = "cached",
 ): Promise<RecapQuote | null> {
   const week = lastCompleteWeek(now);
-  const target = `${BRIEF_VERSION}:quote:week:${week.key}`;
+  // Own version, so changing what counts as a good quote re-picks it.
+  const target = `${QUOTE_VERSION}:quote:week:${week.key}`;
 
   if (mode !== "regenerate") {
     const cached = await prisma.event.findFirst({

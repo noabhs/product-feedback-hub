@@ -45,7 +45,7 @@ function pushMrkdwnSections(blocks: unknown[], text: string): void {
 
 function quoteMrkdwn(q: NonNullable<WeeklyRecap["quote"]>): string {
   const who = [q.speaker, q.client].filter(Boolean).join(" · ");
-  return `*Voice of the client*\n>_“${q.text}”_${who ? `\n>— ${who}` : ""}`;
+  return `*Quote of the week*\n>_“${q.text}”_${who ? `\n>— ${who}` : ""}`;
 }
 
 /**
