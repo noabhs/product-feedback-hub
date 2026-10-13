@@ -385,8 +385,28 @@ model AskLog {
   ratedAt       DateTime?
   createdAt     DateTime  @default(now())
 
+  comments AskLogComment[]
+
   @@index([createdAt])
   @@index([rating])
+}
+
+/// A teammate's comment on a logged question and answer — follow-ups, "this one
+/// is wrong because…", or an @mention that pulls someone into the thread. Same
+/// shape as Comment; kept as its own table so each keeps a real foreign key and
+/// cascades away with its parent.
+model AskLogComment {
+  id        String   @id @default(cuid())
+  askLogId  String
+  /// Email of the author; only they may edit or delete the comment.
+  author    String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  askLog AskLog @relation(fields: [askLogId], references: [id], onDelete: Cascade)
+
+  @@index([askLogId])
 }
 
 /// A personal access token for the hub's MCP endpoint (/api/mcp), so a person's

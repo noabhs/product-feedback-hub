@@ -41,7 +41,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
     if (!insight) return;
     const before = resolveMentions(comment!.body, await listPeople());
-    await notifyMentions({ body: updated.body, author: updated.author, insight, alreadyNotified: before });
+    await notifyMentions({
+      body: updated.body,
+      author: updated.author,
+      target: { noun: "feedback", title: insight.oneLiner, subtitle: insight.client, url: `/insights?open=${insight.id}` },
+      alreadyNotified: before,
+    });
   });
   return NextResponse.json(updated);
 }

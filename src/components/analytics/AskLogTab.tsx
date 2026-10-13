@@ -10,7 +10,11 @@ const LIMIT = 300;
 
 async function loadAsks(showAskers: boolean) {
   const [rows, total] = await Promise.all([
-    prisma.askLog.findMany({ orderBy: { createdAt: "desc" }, take: LIMIT }),
+    prisma.askLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: LIMIT,
+      include: { _count: { select: { comments: true } } },
+    }),
     prisma.askLog.count(),
   ]);
 
@@ -36,6 +40,7 @@ async function loadAsks(showAskers: boolean) {
     matchedCount: r.matchedCount,
     rating: r.rating as Rating,
     ratingNote: r.ratingNote,
+    commentCount: r._count.comments,
     createdAt: r.createdAt.toISOString(),
     sources: (citedBy.get(r.id) ?? [])
       .map((id) => byId.get(id))
@@ -52,7 +57,7 @@ async function loadAsks(showAskers: boolean) {
  * Every question asked of the hub and the answer it got. Asker names are withheld
  * on the server for everyone but the hub owner.
  */
-export async function AskLogTab() {
+export async function AskLogTab({ open }: { open?: string }) {
   const session = await auth();
   const showAskers = isOwner(session?.user?.email);
   const { items, total, rated, bad, missed } = await loadAsks(showAskers);
@@ -87,7 +92,13 @@ export async function AskLogTab() {
         </div>
 
         {/* Same gate as the asker names, and enforced again in the DELETE route. */}
-        <AskLogList rows={items} showAskers={showAskers} canDelete={showAskers} />
+        <AskLogList
+          rows={items}
+          showAskers={showAskers}
+          canDelete={showAskers}
+          currentUser={session?.user?.email ?? null}
+          initialOpen={open ?? null}
+        />
     </div>
   );
 }

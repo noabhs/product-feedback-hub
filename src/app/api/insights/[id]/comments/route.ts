@@ -31,6 +31,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   void logEvent(ACTIONS.commentCreated, { target: id, label: comment.body, actor: author });
   // after() keeps the DMs running past the response without making the commenter wait on Slack.
-  after(() => notifyMentions({ body: comment.body, author, insight }));
+  after(() => notifyMentions({
+      body: comment.body,
+      author,
+      target: { noun: "feedback", title: insight.oneLiner, subtitle: insight.client, url: `/insights?open=${insight.id}` },
+    }));
   return NextResponse.json(comment, { status: 201 });
 }
