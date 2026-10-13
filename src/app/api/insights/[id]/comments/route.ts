@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { logEvent, ACTIONS } from "@/lib/events";
+import { notifyMentions } from "@/lib/comment-notify";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,12 +23,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!body?.trim()) return NextResponse.json({ error: "Comment can't be empty" }, { status: 400 });
 
   // Guard against commenting on an entry that was deleted in another tab.
-  const insight = await prisma.insight.findUnique({ where: { id }, select: { id: true } });
+  const insight = await prisma.insight.findUnique({ where: { id }, select: { id: true, oneLiner: true, client: true } });
   if (!insight) return NextResponse.json({ error: "Feedback entry not found" }, { status: 404 });
 
   const comment = await prisma.comment.create({
     data: { insightId: id, author, body: body.trim() },
   });
   void logEvent(ACTIONS.commentCreated, { target: id, label: comment.body, actor: author });
+  // after() keeps the DMs running past the response without making the commenter wait on Slack.
+  after(() => notifyMentions({ body: comment.body, author, insight }));
   return NextResponse.json(comment, { status: 201 });
 }

@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { MentionTextarea, loadPeople } from "@/components/insights/MentionTextarea";
+import { splitBody } from "@/lib/mentions";
 
 type Comment = {
   id: string;
@@ -28,6 +30,7 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [error, setError] = useState("");
+  const [people, setPeople] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -43,6 +46,7 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
   }, [insightId]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadPeople().then(setPeople); }, []);
 
   async function post() {
     if (!draft.trim()) return;
@@ -158,9 +162,10 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
 
                 {editingId === c.id ? (
                   <div>
-                    <textarea
+                    <MentionTextarea
                       value={editDraft}
-                      onChange={(e) => setEditDraft(e.target.value)}
+                      onChange={setEditDraft}
+                      currentUser={currentUser}
                       rows={3}
                       className="w-full rounded-sm bg-white border border-black/15 px-3 py-2 text-[14px] text-brand-primary focus:outline-none focus:border-brand-secondary-500 focus:ring-1 focus:ring-brand-secondary-500 resize-none transition-all"
                     />
@@ -170,7 +175,17 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
                     </div>
                   </div>
                 ) : (
-                  <p className="text-[14px] text-brand-primary leading-relaxed whitespace-pre-wrap">{c.body}</p>
+                  <p className="text-[14px] text-brand-primary leading-relaxed whitespace-pre-wrap">
+                    {splitBody(c.body, people).map((part, i) =>
+                      part.mention ? (
+                        <span key={i} className="rounded bg-[rgba(50,43,95,0.08)] px-1 font-medium text-brand-secondary-500">
+                          {part.text}
+                        </span>
+                      ) : (
+                        part.text
+                      ),
+                    )}
+                  </p>
                 )}
               </div>
             );
@@ -179,11 +194,12 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
       )}
 
       <div>
-        <textarea
+        <MentionTextarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
+          currentUser={currentUser}
           rows={3}
-          placeholder="Add a comment…"
+          placeholder="Add a comment… type @ to tag a teammate"
           className="w-full rounded-sm bg-white border border-black/15 px-3 py-2.5 text-[14px] text-brand-primary placeholder:text-brand-primary/40 focus:outline-none focus:border-brand-secondary-500 focus:ring-1 focus:ring-brand-secondary-500 resize-none transition-all"
         />
         <div className="flex justify-end mt-2">
