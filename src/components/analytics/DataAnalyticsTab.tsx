@@ -4,7 +4,7 @@ import { SectionHeading, MeterCard, ChartCard, BarRow } from "@/components/home/
 import { prisma } from "@/lib/prisma";
 import { areaLabel, themeLabel, areaColor } from "@/lib/labels";
 import { shortName } from "@/lib/people";
-import { ADVISORS, HEALTH_ORDER, REPORT_AS_OF, matchAccount } from "@/lib/accounts";
+import { ADVISORS, HEALTH_ORDER, latestReportDate, matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
 import { fmtDay } from "@/lib/format";
 
@@ -45,9 +45,15 @@ export async function DataAnalyticsTab() {
       take: 6,
       select: { id: true, oneLiner: true, productAreas: true, client: true, createdAt: true, createdBy: true },
     }),
-    prisma.account.findMany({ select: { name: true, health: true, arr: true } }),
+    prisma.account.findMany({ select: { name: true, health: true, arr: true, reportAsOf: true } }),
     loadAccounts(),
   ]);
+
+  // The newest report in the data rather than a constant, so this follows an
+  // upload from the clients page.
+  const asOf = latestReportDate(
+    accounts.map((a) => ({ reportAsOf: a.reportAsOf?.toISOString() ?? null })),
+  );
 
   // Keyed by the account each stored value resolves to, not by the raw string:
   // entries filed as "NOMS — Dr. Bower" belong to NOMS, and keying on the raw
@@ -97,7 +103,7 @@ export async function DataAnalyticsTab() {
   return (
     <div>
       {/* ── Client coverage ────────────────────────────────────────────── */}
-      <SectionHeading title="Client coverage" note={`account data as of ${fmtDay(REPORT_AS_OF) ?? REPORT_AS_OF}`} />
+      <SectionHeading title="Client coverage" note={`account data as of ${fmtDay(asOf) ?? asOf}`} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <MeterCard
           Icon={Building2}

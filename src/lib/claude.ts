@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AREA_LABELS, THEME_LABELS } from "@/lib/labels";
-import { REPORT_AS_OF } from "@/lib/accounts";
+import { latestReportDate } from "@/lib/accounts";
 import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
 import type { AccountDetail, CompetitorItem, FeatureRequestItem } from "@/lib/types";
@@ -219,7 +219,7 @@ export function buildQaPrompt(question: string, insights: QaInsight[], accounts:
   return [
     `FEEDBACK (${insights.length} ${insights.length === 1 ? "entry" : "entries"} matched):`,
     feedback,
-    `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${REPORT_AS_OF}):`,
+    `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${latestReportDate(accounts)}):`,
     table,
     `Question: ${question}`,
   ].join("\n\n");
@@ -378,7 +378,7 @@ export function buildQPrompt(
       ? `CITED SOURCES (${cited.length}; cite every claim drawn from these with its [number]):`
       : "CITED SOURCES: none matched this question.",
     cited.join("\n\n---\n\n"),
-    `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${REPORT_AS_OF}, uncited):`,
+    `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${latestReportDate(accounts)}, uncited):`,
     table,
     readAs
       ? `Question: ${question}\n[Read as: ${readAs} — Navina's own name for what this question asks about. The sources above were retrieved on that basis and do cover it.]`

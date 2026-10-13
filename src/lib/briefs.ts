@@ -3,7 +3,7 @@ import { generateBriefText, type WebCitationSource } from "@/lib/claude";
 import { loadAccountDetails } from "@/lib/accounts-db";
 import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
-import { REPORT_AS_OF } from "@/lib/accounts";
+
 import { AREA_LABELS, areaLabel, themeLabel, competitorTopicLabel } from "@/lib/labels";
 import { getTopic } from "@/lib/domain/topics";
 import type { Topic } from "@/lib/domain/types";
@@ -94,7 +94,12 @@ export async function clientBrief(name: string, apiKey?: string): Promise<Brief>
   const prompt = [
     `Write a client brief for ${name}: who they are commercially, what they have told us, and what to be ready for in the next conversation with them.`,
     `Suggested sections: Snapshot (health, products, ARR, renewal, owner/CSM), What they keep telling us (grouped themes), Risks & opportunities, Suggested talking points.`,
-    `ACCOUNT RECORD (Salesforce snapshot ${REPORT_AS_OF}; blank = not in that report):`,
+    // This client's own snapshot date, not the newest report: a client that
+    // dropped out of the latest one has real figures from an earlier month, and
+    // a brief that dates them to today would overstate them.
+    account.reportAsOf
+      ? `ACCOUNT RECORD (Salesforce snapshot ${account.reportAsOf.slice(0, 10)}; blank = not recorded):`
+      : `ACCOUNT RECORD (no accounts report has covered this client, so these are blank):`,
     toCsv([...ACCOUNT_TABLE_COLUMNS], [accountTableRow(account)]),
     `FEEDBACK FROM ${name} (${insights.length} entries, newest first):`,
     feedback,

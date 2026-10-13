@@ -211,7 +211,28 @@ function escape(s: string): string {
  * When the Salesforce accounts report the per-account data came from was run.
  * Shown on /clients so nobody reads a stale ARR as today's number.
  */
+/**
+ * Fallback report date, for a database where no account has been stamped. The
+ * live answer comes from latestReportDate() over the accounts themselves.
+ */
 export const REPORT_AS_OF = "2026-10-04";
+
+/**
+ * The most recent report any account carries, which is what "current" means.
+ *
+ * Derived rather than read from REPORT_AS_OF: reports are uploaded from the
+ * clients page now, so a constant in the source would be out of date the first
+ * time Noa imports one without a deploy. The constant stays as the answer for a
+ * database where no account has been stamped yet.
+ */
+export function latestReportDate(accounts: { reportAsOf?: string | null }[]): string {
+  let latest = "";
+  for (const a of accounts) {
+    const d = a.reportAsOf?.slice(0, 10);
+    if (d && d > latest) latest = d;
+  }
+  return latest || REPORT_AS_OF;
+}
 
 /**
  * Figures from an earlier report than the current one — the account was in a
@@ -221,9 +242,12 @@ export const REPORT_AS_OF = "2026-10-04";
  * absent, not stale, and saying "as of August" about a blank row would be a
  * claim about nothing. ISO dates compare correctly as strings.
  */
-export function reportIsStale(reportAsOf: string | null | undefined): boolean {
+export function reportIsStale(
+  reportAsOf: string | null | undefined,
+  latest: string = REPORT_AS_OF,
+): boolean {
   if (!reportAsOf) return false;
-  return reportAsOf.slice(0, 10) < REPORT_AS_OF;
+  return reportAsOf.slice(0, 10) < latest.slice(0, 10);
 }
 
 /** Worst first — a health filter and a health sort both want this order. */

@@ -8,6 +8,8 @@ import type { AccountDetail } from "@/lib/types";
 
 interface AccountRowProps {
   account: AccountDetail;
+  /** The newest report in the data, so "stale" means older than that. */
+  asOf: string;
   /** Opens the detail panel, where the rest of the report data lives. */
   onOpen: (account: AccountDetail) => void;
 }
@@ -22,7 +24,7 @@ const RISK_TEXT: Record<string, string> = {
   soon: "text-amber-700",
 };
 
-export function AccountRow({ account, onOpen }: AccountRowProps) {
+export function AccountRow({ account, asOf, onOpen }: AccountRowProps) {
   const live = fmtDay(account.liveDate);
   const renewal = fmtDay(account.renewalDate);
   const phrase = renewalPhrase(account.renewalDate);
@@ -32,7 +34,7 @@ export function AccountRow({ account, onOpen }: AccountRowProps) {
   const flagged = atRenewalRisk(account);
   // Only set when the figures pre-date the current report, so a row can't imply
   // its month-old numbers are this month's.
-  const stale = reportIsStale(account.reportAsOf) ? fmtDay(account.reportAsOf) : null;
+  const stale = reportIsStale(account.reportAsOf, asOf) ? fmtDay(account.reportAsOf) : null;
 
   return (
     <tr

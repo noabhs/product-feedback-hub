@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle, Download, Sparkles } from "lucide-react";
+import { Plus, Search, ArrowUp, ArrowDown, AlertTriangle, Download, Upload, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { BriefModal } from "@/components/home/BriefModal";
@@ -8,7 +8,7 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
 import { AccountRow } from "@/components/clients/AccountRow";
 import { AccountPanel } from "@/components/clients/AccountPanel";
-import { HEALTH_ORDER, PRODUCTS, SEGMENTS, REPORT_AS_OF, RENEWAL_WINDOW_DAYS, atRenewalRisk } from "@/lib/accounts";
+import { HEALTH_ORDER, PRODUCTS, SEGMENTS, RENEWAL_WINDOW_DAYS, atRenewalRisk, latestReportDate } from "@/lib/accounts";
 import {
   matchesAccountFilters,
   accountFiltersToParams,
@@ -16,6 +16,7 @@ import {
   type AccountFilters,
 } from "@/lib/account-filters";
 import { ShareLink } from "@/components/ui/ShareLink";
+import { ImportReportModal } from "@/components/clients/ImportReportModal";
 import { useUrlReader, useUrlMirror } from "@/hooks/useUrlState";
 import { money } from "@/lib/format";
 import type { AccountDetail } from "@/lib/types";
@@ -91,6 +92,7 @@ function Clients() {
   // Seeded from the same params as the filters, so an archived-tab link opens on
   // that tab; accountFiltersToParams writes it back, so it travels in the URL.
   const [tab, setTab] = useState<"active" | "archived">(seeded.archived ? "archived" : "active");
+  const [showImport, setShowImport] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>(url.oneOf("sort", SORT_KEYS, DEFAULT_SORT));
   const [sortDir, setSortDir] = useState<"asc" | "desc">(url.oneOf("dir", SORT_DIRS, "asc"));
   const [panelId, setPanelId] = useState<string | null>(url.str("open") || null);
@@ -127,6 +129,10 @@ function Clients() {
     () => accounts.filter((a) => (tab === "archived" ? a.archivedAt !== null : a.archivedAt === null)),
     [accounts, tab],
   );
+  // Whichever report is newest in the data — not a constant, so an uploaded
+  // report changes what counts as current straight away.
+  const asOf = useMemo(() => latestReportDate(accounts), [accounts]);
+
   const tabCounts = useMemo(() => ({
     active: accounts.filter((a) => a.archivedAt === null).length,
     archived: accounts.filter((a) => a.archivedAt !== null).length,
@@ -297,7 +303,7 @@ function Clients() {
               account behind it. Open any client for its full picture.
             </p>
             <p className="text-[12px] text-brand-primary opacity-35 max-w-2xl mt-1.5">
-              Account data is a snapshot of the Salesforce accounts report from {REPORT_AS_OF}.
+              Account data is a snapshot of the Salesforce accounts report from {asOf}.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -309,6 +315,10 @@ function Clients() {
             <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!displayed.length}>
               <Download className="w-4 h-4" />
               Export CSV
+            </Button>
+            <Button size="sm" onClick={() => setShowImport(true)}>
+              <Upload className="w-4 h-4" />
+              Upload report
             </Button>
           </div>
         </div>
@@ -466,7 +476,7 @@ function Clients() {
               </thead>
               <tbody>
                 {displayed.map((a) => (
-                  <AccountRow key={a.id} account={a} onOpen={(acct) => setPanelId(acct.id)} />
+                  <AccountRow key={a.id} account={a} asOf={asOf} onOpen={(acct) => setPanelId(acct.id)} />
                 ))}
               </tbody>
             </table>
@@ -496,10 +506,18 @@ function Clients() {
         </section>
       </div>
 
+      {showImport && (
+        <ImportReportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => load()}
+        />
+      )}
+
       {panelAccount && (
         <AccountPanel
           key={panelAccount.id}
           account={panelAccount}
+          asOf={asOf}
           onLiveDateSaved={handleLiveDateSaved}
           onWebsiteSaved={handleWebsiteSaved}
           onArchiveChanged={handleArchiveChanged}

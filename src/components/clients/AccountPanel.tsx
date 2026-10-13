@@ -5,7 +5,7 @@ import { X, MessageSquare, AlertTriangle, Check, Archive, ArchiveRestore, Sparkl
 import { Badge } from "@/components/ui/Badge";
 import { EntityIcon } from "@/components/ui/EntityIcon";
 import { Button } from "@/components/ui/Button";
-import { renewalWindow, renewalPhrase, atRenewalRisk, reportIsStale, REPORT_AS_OF } from "@/lib/accounts";
+import { renewalWindow, renewalPhrase, atRenewalRisk, reportIsStale } from "@/lib/accounts";
 import { fmtDay, money, moneyExact, members, dateInputValue } from "@/lib/format";
 import type { AccountDetail } from "@/lib/types";
 
@@ -16,6 +16,8 @@ import type { AccountDetail } from "@/lib/types";
  */
 interface AccountPanelProps {
   account: AccountDetail;
+  /** The newest report in the data, so "stale" means older than that. */
+  asOf: string;
   /** Called with the saved live date so the row behind the panel updates too. */
   onLiveDateSaved: (id: string, liveDate: string | null) => void;
   /** Same, for the website — the table shows its icon. */
@@ -58,7 +60,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchiveChanged, onGenerateBrief, briefOpen, onClose }: AccountPanelProps) {
+export function AccountPanel({ account, asOf, onLiveDateSaved, onWebsiteSaved, onArchiveChanged, onGenerateBrief, briefOpen, onClose }: AccountPanelProps) {
   const [liveDraft, setLiveDraft] = useState(dateInputValue(account.liveDate));
   const [siteDraft, setSiteDraft] = useState(account.website ?? "");
   const [savingSite, setSavingSite] = useState(false);
@@ -150,7 +152,7 @@ export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchi
     }
   }
 
-  const stale = reportIsStale(account.reportAsOf) ? fmtDay(account.reportAsOf) : null;
+  const stale = reportIsStale(account.reportAsOf, asOf) ? fmtDay(account.reportAsOf) : null;
   const hasReportData = account.health !== null || account.arr !== null;
 
   return (
@@ -199,7 +201,7 @@ export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchi
           {stale && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-[13px] text-amber-900">
-                Not in the {REPORT_AS_OF} accounts report. Everything below is from {stale}, the last
+                Not in the {asOf} accounts report. Everything below is from {stale}, the last
                 report that covered this client — treat the health, ARR and renewal date as that old.
                 The client stays on the list so its feedback keeps resolving.
               </p>
@@ -209,7 +211,7 @@ export function AccountPanel({ account, onLiveDateSaved, onWebsiteSaved, onArchi
           {!hasReportData && (
             <div className="rounded-md border border-[rgba(50,43,95,0.12)] bg-white px-4 py-3">
               <p className="text-[13px] text-brand-primary opacity-60">
-                No account data for this one. The {REPORT_AS_OF} report covered active direct
+                No account data for this one. The {asOf} report covered active direct
                 accounts only, so anything outside that — churned, indirect, or the internal
                 advisory panel — shows up here as a name and nothing more.
               </p>
