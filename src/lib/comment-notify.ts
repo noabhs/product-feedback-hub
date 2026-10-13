@@ -22,7 +22,7 @@ export async function notifyMentions(opts: {
 }): Promise<void> {
   try {
     const { body, author, insight, alreadyNotified = [] } = opts;
-    const skip = new Set([author.toLowerCase(), ...alreadyNotified.map((e) => e.toLowerCase())]);
+    const skip = new Set(alreadyNotified.map((e) => e.toLowerCase()));
     const targets = resolveMentions(body, await listPeople()).filter((e) => !skip.has(e));
     if (targets.length === 0) return;
 

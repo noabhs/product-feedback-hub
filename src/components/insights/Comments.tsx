@@ -165,7 +165,6 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
                     <MentionTextarea
                       value={editDraft}
                       onChange={setEditDraft}
-                      currentUser={currentUser}
                       rows={3}
                       className="w-full rounded-sm bg-white border border-black/15 px-3 py-2 text-[14px] text-brand-primary focus:outline-none focus:border-brand-secondary-500 focus:ring-1 focus:ring-brand-secondary-500 resize-none transition-all"
                     />
@@ -197,7 +196,6 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
         <MentionTextarea
           value={draft}
           onChange={setDraft}
-          currentUser={currentUser}
           rows={3}
           placeholder="Add a comment… type @ to tag a teammate"
           className="w-full rounded-sm bg-white border border-black/15 px-3 py-2.5 text-[14px] text-brand-primary placeholder:text-brand-primary/40 focus:outline-none focus:border-brand-secondary-500 focus:ring-1 focus:ring-brand-secondary-500 resize-none transition-all"
