@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useApiKey } from "@/hooks/useApiKey";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { RateAnswer } from "@/components/ask/RateAnswer";
+import { Comments } from "@/components/insights/Comments";
 import { AnswerBody } from "@/components/ask/AnswerBody";
 import { plainAnswer, citedSourceNumbers } from "@/lib/answer-format";
 import { QAvatar } from "@/components/home/QAvatar";
@@ -91,6 +92,14 @@ export function QAsk({ canSendToSlack = false }: { canSendToSlack?: boolean }) {
   const [slack, setSlack] = useState<"idle" | "sending" | "sent">("idle");
   const [slackError, setSlackError] = useState("");
   const { aiHeaders } = useApiKey();
+  // Only needed so the thread knows which comments are yours to edit.
+  const [me, setMe] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setMe(d?.email ?? null))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!copied) return;
@@ -347,6 +356,13 @@ export function QAsk({ canSendToSlack = false }: { canSendToSlack?: boolean }) {
                 </Link>
                 .
               </p>
+            </div>
+          )}
+
+          {askId && (
+            <div className="border-t border-[rgba(50,43,95,0.08)] pt-3 mb-3">
+              {/* key: a new question gets a fresh thread, not the previous one's comments. */}
+              <Comments key={askId} scope={{ kind: "ask", id: askId }} currentUser={me} embedded />
             </div>
           )}
 
