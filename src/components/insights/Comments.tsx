@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { MentionTextarea, loadPeople } from "@/components/insights/MentionTextarea";
@@ -22,7 +22,24 @@ function fmtWhen(iso: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function Comments({ insightId, currentUser }: { insightId: string; currentUser: string | null }) {
+/** What the thread hangs off: a feedback entry, or a logged question on the Asks log. */
+export type CommentScope = { kind: "insight" | "ask"; id: string };
+
+export function Comments({
+  scope,
+  currentUser,
+  embedded = false,
+  onCountChange,
+}: {
+  scope: CommentScope;
+  currentUser: string | null;
+  /** Drop the card chrome when the thread already sits inside one. */
+  embedded?: boolean;
+  onCountChange?: (count: number) => void;
+}) {
+  const isAsk = scope.kind === "ask";
+  const listUrl = isAsk ? `/api/ask-log/${scope.id}/comments` : `/api/insights/${scope.id}/comments`;
+  const itemBase = isAsk ? "/api/ask-comments" : "/api/comments";
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -34,7 +51,7 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/insights/${insightId}/comments`);
+      const res = await fetch(listUrl);
       if (!res.ok) throw new Error("Couldn't load comments");
       const data = await res.json();
       setComments(data.comments ?? []);
@@ -43,9 +60,13 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
     } finally {
       setLoading(false);
     }
-  }, [insightId]);
+  }, [listUrl]);
 
   useEffect(() => { load(); }, [load]);
+  // Held in a ref so a parent passing a fresh callback each render doesn't retrigger the effect.
+  const countRef = useRef(onCountChange);
+  useEffect(() => { countRef.current = onCountChange; });
+  useEffect(() => { if (!loading) countRef.current?.(comments.length); }, [comments.length, loading]);
   useEffect(() => { loadPeople().then(setPeople); }, []);
 
   async function post() {
@@ -53,7 +74,7 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
     setPosting(true);
     setError("");
     try {
-      const res = await fetch(`/api/insights/${insightId}/comments`, {
+      const res = await fetch(listUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: draft }),
@@ -76,7 +97,7 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
     setComments((prev) => prev.map((c) => (c.id === id ? { ...c, body: editDraft } : c)));
     setEditingId(null);
     try {
-      const res = await fetch(`/api/comments/${id}`, {
+      const res = await fetch(`${itemBase}/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: editDraft }),
@@ -96,7 +117,7 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
     setError("");
     setComments((prev) => prev.filter((c) => c.id !== id));
     try {
-      const res = await fetch(`/api/comments/${id}`, { method: "DELETE" });
+      const res = await fetch(`${itemBase}/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error((await res.json()).error ?? "Couldn't delete comment");
     } catch (e) {
       setComments(snapshot);
@@ -105,7 +126,7 @@ export function Comments({ insightId, currentUser }: { insightId: string; curren
   }
 
   return (
-    <div className="bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-6 mt-5">
+    <div className={embedded ? "" : "bg-white rounded-lg border border-[rgba(50,43,95,0.08)] p-6 mt-5"}>
       <div className="flex items-center gap-2 mb-4">
         <MessageSquare className="w-4 h-4 text-brand-primary opacity-40" />
         <h2 className="text-[14px] font-semibold text-brand-primary">

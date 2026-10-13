@@ -17,36 +17,37 @@ function esc(s: string): string {
 export async function notifyMentions(opts: {
   body: string;
   author: string;
-  insight: { id: string; oneLiner: string; client: string | null };
+  /** What was commented on: shown in the DM and linked to. */
+  target: { noun: string; title: string; subtitle?: string | null; url: string };
   alreadyNotified?: string[];
 }): Promise<void> {
   try {
-    const { body, author, insight, alreadyNotified = [] } = opts;
+    const { body, author, target, alreadyNotified = [] } = opts;
     const skip = new Set(alreadyNotified.map((e) => e.toLowerCase()));
-    const targets = resolveMentions(body, await listPeople()).filter((e) => !skip.has(e));
-    if (targets.length === 0) return;
+    const recipients = resolveMentions(body, await listPeople()).filter((e) => !skip.has(e));
+    if (recipients.length === 0) return;
 
     const who = shortName(author);
-    const link = `${HUB_URL}/insights?open=${insight.id}`;
+    const link = `${HUB_URL}${target.url}`;
     const snippet = body.length > 500 ? `${body.slice(0, 500)}…` : body;
     const blocks = [
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*${esc(who)}* mentioned you in a comment on <${link}|${esc(insight.oneLiner)}>${
-            insight.client ? ` _(${esc(insight.client)})_` : ""
+          text: `*${esc(who)}* mentioned you in a comment on ${target.noun} <${link}|${esc(target.title)}>${
+            target.subtitle ? ` _(${esc(target.subtitle)})_` : ""
           }`,
         },
       },
       { type: "section", text: { type: "mrkdwn", text: `>${esc(snippet).replace(/\n/g, "\n>")}` } },
       { type: "context", elements: [{ type: "mrkdwn", text: `<${link}|Open in the Insights Hub>` }] },
     ];
-    const fallback = `${who} mentioned you in a comment on “${insight.oneLiner}”`;
+    const fallback = `${who} mentioned you in a comment on “${target.title}”`;
 
-    const results = await Promise.all(targets.map((email) => postDmToUser(email, blocks, fallback)));
+    const results = await Promise.all(recipients.map((email) => postDmToUser(email, blocks, fallback)));
     results.forEach((r, i) => {
-      if (!r.ok) console.error(`[mentions] DM to ${targets[i]} failed: ${r.error}`);
+      if (!r.ok) console.error(`[mentions] DM to ${recipients[i]} failed: ${r.error}`);
     });
   } catch (e) {
     console.error("[mentions] notify failed", e);

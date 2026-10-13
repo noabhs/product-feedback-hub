@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Search, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquare, Search, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { Comments } from "@/components/insights/Comments";
 import { RateAnswer, type Rating } from "@/components/ask/RateAnswer";
 import { AnswerBody } from "@/components/ask/AnswerBody";
 import { plainAnswer } from "@/lib/answer-format";
@@ -18,6 +19,7 @@ export interface AskRow {
   matchedCount: number;
   rating: Rating;
   ratingNote: string | null;
+  commentCount: number;
   /** ISO string — Dates don't survive the server→client boundary as Dates. */
   createdAt: string;
   sources: { id: string; oneLiner: string; client: string | null }[];
@@ -44,9 +46,15 @@ export function AskLogList({
   rows,
   showAskers,
   canDelete = false,
+  currentUser,
+  initialOpen = null,
 }: {
   rows: AskRow[];
   showAskers: boolean;
+  /** Whose comments are editable, and who an @mention list excludes. */
+  currentUser: string | null;
+  /** A row to open on arrival — what a Slack mention links to. */
+  initialOpen?: string | null;
   /** Owner only. The server checks this too — see api/ask-log/[id]. */
   canDelete?: boolean;
 }) {
@@ -55,7 +63,7 @@ export function AskLogList({
   const [filter, setFilter] = useState<Filter>("all");
   const [asker, setAsker] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(initialOpen);
 
   const askers = useMemo(
     () => Array.from(new Set(items.map((r) => r.actor).filter((a): a is string => !!a))).sort(),
@@ -80,6 +88,10 @@ export function AskLogList({
   /** Keep the row in step with what the API saved, so filters re-evaluate. */
   function applyRating(id: string, rating: Rating, note: string | null) {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, rating, ratingNote: note } : r)));
+  }
+
+  function applyCommentCount(id: string, commentCount: number) {
+    setItems((prev) => prev.map((r) => (r.id === id && r.commentCount !== commentCount ? { ...r, commentCount } : r)));
   }
 
   async function remove(id: string, question: string) {
@@ -207,6 +219,15 @@ export function AskLogList({
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
+                {r.commentCount > 0 && (
+                  <span
+                    className="shrink-0 mt-0.5 flex items-center gap-1 text-[11.5px] text-brand-primary opacity-45"
+                    title={`${r.commentCount} comment${r.commentCount === 1 ? "" : "s"}`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    {r.commentCount}
+                  </span>
+                )}
                 {r.rating && !open && (
                   <span
                     className={`shrink-0 mt-0.5 ${r.rating === "up" ? "text-emerald-600" : "text-red-600"}`}
@@ -249,6 +270,15 @@ export function AskLogList({
                       rating={r.rating}
                       note={r.ratingNote}
                       onChange={(rating, note) => applyRating(r.id, rating, note)}
+                    />
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-[rgba(50,43,95,0.06)]">
+                    <Comments
+                      scope={{ kind: "ask", id: r.id }}
+                      currentUser={currentUser}
+                      embedded
+                      onCountChange={(n) => applyCommentCount(r.id, n)}
                     />
                   </div>
                 </div>

@@ -179,7 +179,7 @@ export function FeedbackPanel({ item, currentUser, onEdit, onDelete, onClose }: 
             </div>
           </div>
 
-          <Comments insightId={item.id} currentUser={currentUser} />
+          <Comments scope={{ kind: "insight", id: item.id }} currentUser={currentUser} />
         </div>
       </aside>
     </div>

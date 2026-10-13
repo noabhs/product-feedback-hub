@@ -5,8 +5,8 @@ import { DataAnalyticsTab } from "@/components/analytics/DataAnalyticsTab";
 import { UsageAnalyticsTab } from "@/components/analytics/UsageAnalyticsTab";
 import { AskLogTab } from "@/components/analytics/AskLogTab";
 
-export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab } = await searchParams;
+export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ tab?: string; open?: string }> }) {
+  const { tab, open } = await searchParams;
   return (
     <div className="p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -23,7 +23,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           tabs={[
             { id: "data", label: "Data analytics", content: <DataAnalyticsTab /> },
             { id: "usage", label: "Usage analytics", content: <UsageAnalyticsTab /> },
-            { id: "asks", label: "Asks log", content: <AskLogTab /> },
+            { id: "asks", label: "Asks log", content: <AskLogTab open={open} /> },
           ]}
         />
       </div>
