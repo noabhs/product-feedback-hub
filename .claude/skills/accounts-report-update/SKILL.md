@@ -34,23 +34,24 @@ how much damage they do:
 
 ## First: Noa can now do this herself
 
-`/clients` has an **Upload report** button that takes the export as CSV, previews
-what would change, lets her name any new clients, and applies it. It uses the
-same rules as this skill — `src/lib/account-report.ts` is the shared logic, and
-`POST /api/accounts/import` writes. No migration, no deploy.
+`/clients` has an **Upload report** button that takes the Salesforce export as it
+comes — `.xlsx` or `.csv`, no converting — previews what would change, lets her
+name any new clients, and applies it. It uses the same rules as this skill:
+`src/lib/account-report.ts` holds the shared logic, `src/lib/xlsx.ts` reads the
+spreadsheet, and `POST /api/accounts/import` writes. No migration, no deploy.
 
 So reach for the scripts below only when the UI genuinely can't do the job:
 
-- the file is `.xlsx` and converting it to CSV isn't practical;
 - the report has a shape the parser rejects and needs a look;
 - the plan surfaces something that needs deciding in SQL — two rows onto one
   account, a client to merge, a batch to archive;
 - or Noa asks for a migration so the change is reviewable in the repo.
 
-When she drops a file into the chat, converting it to CSV and telling her to use
-the button is usually the better answer than writing a migration. If the parser
-needed a change to read her file, that change belongs in
-`src/lib/account-report.ts`, not in a script here.
+When she drops a file into the chat, pointing her at the button is usually the
+better answer than writing a migration — it takes the `.xlsx` directly. If the
+parser needed a change to read her file, that change belongs in
+`src/lib/account-report.ts` or `src/lib/xlsx.ts`, where the app reads it too,
+not in a script here.
 
 ## Running it
 

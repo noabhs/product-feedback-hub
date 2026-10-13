@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Upload, AlertCircle, X, Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { parseCsv } from "@/lib/csv";
 
 interface NewAccount {
   rawName: string;
@@ -50,7 +49,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 export function ImportReportModal({ onClose, onImported }: ImportReportModalProps) {
-  const [rows, setRows] = useState<string[][] | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -60,30 +59,32 @@ export function ImportReportModal({ onClose, onImported }: ImportReportModalProp
   const [error, setError] = useState("");
 
   /**
-   * One call for both passes. `date` is taken as an argument rather than read
-   * from state because the first preview runs in the same tick as the file
-   * picker sets it.
+   * One call for both passes. The file goes up each time, because the endpoint
+   * keeps nothing between preview and apply — and it reads .xlsx and .csv the
+   * same way, so there is nothing to parse here.
    */
-  async function send(parsed: string[][], date: string, apply: boolean) {
+  async function send(picked: File, date: string, apply: boolean) {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/accounts/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rows: parsed,
-          asOf: date,
-          apply,
-          newAccounts: apply
-            ? (preview?.newAccounts ?? []).map((n) => ({
-                rawName: n.rawName,
-                name: names[n.rawName] ?? n.name,
-                aliases: n.aliases,
-              }))
-            : undefined,
-        }),
-      });
+      const form = new FormData();
+      form.set("file", picked);
+      form.set("asOf", date);
+      form.set("apply", String(apply));
+      if (apply) {
+        form.set(
+          "newAccounts",
+          JSON.stringify(
+            (preview?.newAccounts ?? []).map((n) => ({
+              rawName: n.rawName,
+              name: names[n.rawName] ?? n.name,
+              aliases: n.aliases,
+            })),
+          ),
+        );
+      }
+
+      const res = await fetch("/api/accounts/import", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) {
         // Two rows onto one client is the one failure worth spelling out, since
@@ -111,25 +112,19 @@ export function ImportReportModal({ onClose, onImported }: ImportReportModalProp
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = ""; // let the same file be re-picked after a fix
-    if (!file) return;
-    setFileName(file.name);
+    if (!picked) return;
+    setFileName(picked.name);
+    setFile(picked);
     setError("");
     setPreview(null);
     setApplied(false);
-    try {
-      const parsed = parseCsv(await file.text());
-      if (parsed.length < 2) throw new Error("That file has no rows below the header.");
-      setRows(parsed);
-      // These exports are named for their date, which saves retyping it.
-      const dated = file.name.match(/\d{4}-\d{2}-\d{2}/);
-      const date = dated ? dated[0] : asOf;
-      setAsOf(date);
-      await send(parsed, date, false);
-    } catch (err) {
-      setError((err as Error).message);
-    }
+    // These exports are named for their date, which saves retyping it.
+    const dated = picked.name.match(/\d{4}-\d{2}-\d{2}/);
+    const date = dated ? dated[0] : asOf;
+    setAsOf(date);
+    await send(picked, date, false);
   }
 
   const movedFields = Object.entries(preview?.fieldChanges ?? {})
@@ -157,8 +152,9 @@ export function ImportReportModal({ onClose, onImported }: ImportReportModalProp
           {!preview && (
             <>
               <p className="text-[13px] text-brand-primary opacity-60 leading-relaxed">
-                The Salesforce accounts report, as CSV. Columns are read by name, so the export can
-                be in any order — it just needs its own header row, with{" "}
+                The Salesforce accounts report, straight from the export —{" "}
+                <span className="font-medium">.xlsx or .csv</span>, no converting. Columns are read
+                by name, so the export can be in any order; it just needs its own header row, with{" "}
                 <span className="font-medium">Account Name</span> among the columns.
               </p>
               <label
@@ -170,9 +166,16 @@ export function ImportReportModal({ onClose, onImported }: ImportReportModalProp
               >
                 <Upload className="w-5 h-5 text-brand-primary opacity-40" />
                 <span className="text-[14px] font-medium text-brand-primary">
-                  {busy ? `Reading ${fileName}…` : "Choose a CSV file"}
+                  {busy ? `Reading ${fileName}…` : "Choose a report file"}
                 </span>
-                <input type="file" accept=".csv,text/csv" onChange={handleFile} disabled={busy} className="hidden" />
+                <span className="text-[12px] text-brand-primary opacity-40">.xlsx or .csv</span>
+                <input
+                  type="file"
+                  accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={handleFile}
+                  disabled={busy}
+                  className="hidden"
+                />
               </label>
             </>
           )}
@@ -318,7 +321,7 @@ export function ImportReportModal({ onClose, onImported }: ImportReportModalProp
               <Button variant="ghost" size="sm" onClick={() => { setPreview(null); setError(""); }}>
                 Pick another file
               </Button>
-              <Button size="sm" loading={busy} onClick={() => rows && send(rows, asOf, true)}>
+              <Button size="sm" loading={busy} onClick={() => file && send(file, asOf, true)}>
                 Apply to {preview.reportRows} client{preview.reportRows === 1 ? "" : "s"}
               </Button>
             </>

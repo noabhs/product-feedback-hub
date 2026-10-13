@@ -104,7 +104,7 @@ export function parseReportRows(rows: string[][]): ReportRow[] {
   );
   if (headerIndex === -1) {
     throw new Error(
-      'No header row found — no column is called "Account Name". Export the report as CSV without reshaping it.',
+      'No header row found — no column is called "Account Name". Upload the Salesforce export as it comes, without reshaping it.',
     );
   }
 

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { logEvent, ACTIONS } from "@/lib/events";
 import { parseReportRows, planReport, type ReportRow } from "@/lib/account-report";
+import { parseCsv } from "@/lib/csv";
+import { readXlsxRows, looksLikeXlsx } from "@/lib/xlsx";
 
 /** Noon UTC, so a date-only value can't shift a day when it's read back. */
 const atNoon = (iso: string) => new Date(`${iso}T12:00:00.000Z`);
@@ -64,21 +66,77 @@ function changedFields(row: ReportRow, current: Record<string, unknown>): Tracke
  * import can never be undone by re-importing an older file. Nothing is deleted,
  * nothing is renamed, and liveDate and archivedAt are never written.
  */
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const rows: unknown = body.rows;
-  const asOf: unknown = body.asOf;
+/** A Salesforce export is tens of kilobytes; past this it isn't one. */
+const MAX_BYTES = 10 * 1024 * 1024;
 
-  if (!Array.isArray(rows)) {
-    return NextResponse.json({ error: "rows must be an array" }, { status: 400 });
+interface Submission {
+  rows: string[][];
+  asOf: string;
+  apply: boolean;
+  newAccounts: Decision[];
+  fileName: string | null;
+}
+
+/**
+ * The upload, from either a form post carrying the file or a JSON body carrying
+ * rows already parsed.
+ *
+ * The file is sent again with the apply, because the endpoint keeps nothing
+ * between the two passes. That is the right trade for a file this size: no
+ * server-side scratch state to expire, go stale, or be applied by someone else.
+ */
+async function read(req: NextRequest): Promise<Submission> {
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new Error("No file was attached");
+    if (file.size === 0) throw new Error("That file is empty");
+    if (file.size > MAX_BYTES) throw new Error("That file is too large to be an accounts report");
+
+    const bytes = Buffer.from(await file.arrayBuffer());
+    // By content, not by filename: a report saved as .xls or with no extension
+    // is still whatever it actually is.
+    const rows = looksLikeXlsx(bytes) ? readXlsxRows(bytes) : parseCsv(bytes.toString("utf8"));
+
+    const newAccountsRaw = form.get("newAccounts");
+    return {
+      rows,
+      asOf: String(form.get("asOf") ?? ""),
+      apply: form.get("apply") === "true",
+      newAccounts: typeof newAccountsRaw === "string" && newAccountsRaw ? JSON.parse(newAccountsRaw) : [],
+      fileName: file.name || null,
+    };
   }
-  if (typeof asOf !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+
+  const body = await req.json();
+  if (!Array.isArray(body.rows)) throw new Error("rows must be an array");
+  return {
+    rows: body.rows as string[][],
+    asOf: String(body.asOf ?? ""),
+    apply: !!body.apply,
+    newAccounts: Array.isArray(body.newAccounts) ? (body.newAccounts as Decision[]) : [],
+    fileName: null,
+  };
+}
+
+export async function POST(req: NextRequest) {
+  let submission: Submission;
+  try {
+    submission = await read(req);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+  }
+  const { rows, asOf } = submission;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
     return NextResponse.json({ error: "A report date (yyyy-mm-dd) is required" }, { status: 400 });
   }
 
   let report: ReportRow[];
   try {
-    report = parseReportRows(rows as string[][]);
+    report = parseReportRows(rows);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
@@ -135,15 +193,13 @@ export async function POST(req: NextRequest) {
     fieldChanges,
   };
 
-  if (!body.apply) {
+  if (!submission.apply) {
     return NextResponse.json({ preview: true, ...summary });
   }
 
   // Display names come back from the preview, where they could be edited. A new
   // account with no decision is refused rather than guessed at.
-  const decisions = new Map<string, Decision>(
-    (Array.isArray(body.newAccounts) ? (body.newAccounts as Decision[]) : []).map((d) => [d.rawName, d]),
-  );
+  const decisions = new Map<string, Decision>(submission.newAccounts.map((d) => [d.rawName, d]));
   const undecided = plan.newAccounts.filter((n) => !decisions.get(n.rawName)?.name?.trim());
   if (undecided.length) {
     return NextResponse.json(
