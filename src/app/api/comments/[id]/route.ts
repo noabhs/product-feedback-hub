@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { logEvent, ACTIONS } from "@/lib/events";
+import { notifyMentions } from "@/lib/comment-notify";
+import { listPeople } from "@/lib/people-directory";
+import { resolveMentions } from "@/lib/mentions";
 
 /** Only the comment's author may modify it — checked server-side, not just in the UI. */
 async function authorize(id: string) {
@@ -19,7 +22,7 @@ async function authorize(id: string) {
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { error } = await authorize(id);
+  const { error, comment } = await authorize(id);
   if (error) return error;
 
   const { body } = await req.json();
@@ -30,6 +33,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: { body: body.trim() },
   });
   void logEvent(ACTIONS.commentUpdated, { target: id, label: updated.body });
+  // Only people the edit newly adds get a DM; those already tagged were told the first time.
+  after(async () => {
+    const insight = await prisma.insight.findUnique({
+      where: { id: updated.insightId },
+      select: { id: true, oneLiner: true, client: true },
+    });
+    if (!insight) return;
+    const before = resolveMentions(comment!.body, await listPeople());
+    await notifyMentions({ body: updated.body, author: updated.author, insight, alreadyNotified: before });
+  });
   return NextResponse.json(updated);
 }
 

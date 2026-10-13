@@ -3,7 +3,7 @@ import type { WeeklyRecap } from "@/lib/weekly-recap";
 import type { QSource } from "@/lib/ask-q";
 import { citedSourceNumbers } from "@/lib/answer-format";
 
-const HUB_URL = "https://product-feedback-hub-topaz.vercel.app";
+export const HUB_URL ="https://product-feedback-hub-topaz.vercel.app";
 
 /** "12 entries (5 the week before)" — with the direction called out only when
  *  there is one, so a flat period doesn't get a misleading arrow. The period
