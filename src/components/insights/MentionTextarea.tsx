@@ -24,13 +24,11 @@ function activeQuery(value: string, caret: number): { start: number; query: stri
 export function MentionTextarea({
   value,
   onChange,
-  currentUser,
   className,
   ...rest
 }: {
   value: string;
   onChange: (v: string) => void;
-  currentUser: string | null;
   className?: string;
 } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange">) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -47,7 +45,6 @@ export function MentionTextarea({
   const matches = useMemo(() => {
     if (!q) return [];
     return people
-      .filter((e) => e !== currentUser?.toLowerCase())
       .filter((e) => e.split("@")[0].toLowerCase().includes(q.query))
       .sort((a, b) => {
         // Names starting with what was typed come first.
@@ -56,7 +53,7 @@ export function MentionTextarea({
         return as - bs || a.localeCompare(b);
       })
       .slice(0, 6);
-  }, [people, q, currentUser]);
+  }, [people, q]);
 
   function pick(email: string) {
     if (!q) return;
