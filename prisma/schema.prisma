@@ -339,6 +339,12 @@ model CompetitorInsight {
   asOf DateTime?
   tags String    @default("[]")
 
+  /// Where the claim came from when there is no `document` — a Slack permalink
+  /// from the sync, or a link typed in by hand. Null for document-backed claims,
+  /// whose source is the document. See lib/claim-source.ts.
+  sourceUrl   String?
+  sourceLabel String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

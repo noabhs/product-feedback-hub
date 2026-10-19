@@ -294,7 +294,7 @@ export function CompetitorInsightsTable({ onOpen }: { onOpen: (claim: Competitor
                             <ExternalLink className="w-2.5 h-2.5 shrink-0 mt-1" />
                           </a>
                         ) : (
-                          <span className="text-[12px] text-brand-primary opacity-30">Entered by hand</span>
+                          <span className="text-[12px] text-brand-primary opacity-30">No source link</span>
                         )}
                         {c.asOf && (
                           <span className="block text-[11px] text-brand-primary opacity-40 mt-0.5">

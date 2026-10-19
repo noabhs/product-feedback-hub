@@ -164,7 +164,7 @@ export interface CompetitorInsightItem {
   /** Denormalised so the cross-competitor table can show it without a join. */
   competitorName: string;
   documentId: string | null;
-  /** Title and link of the document it came from, for provenance in one hop. */
+  /** Where it came from, for provenance in one hop: its document, else the claim's own source link. */
   documentTitle: string | null;
   documentUrl: string | null;
   oneLiner: string;
