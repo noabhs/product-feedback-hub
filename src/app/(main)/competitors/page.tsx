@@ -6,6 +6,7 @@ import { CompetitorPanel } from "@/components/competitors/CompetitorPanel";
 import { EntityIcon } from "@/components/ui/EntityIcon";
 import { ClaimPanel } from "@/components/competitors/ClaimPanel";
 import { CompetitorInsightsTable } from "@/components/competitors/CompetitorInsightsTable";
+import { WeeklyCompetitorBrief } from "@/components/competitors/WeeklyCompetitorBrief";
 import { Button } from "@/components/ui/Button";
 import { BriefModal } from "@/components/home/BriefModal";
 import { Input } from "@/components/ui/Input";
@@ -139,6 +140,8 @@ function Competitors() {
             </Button>
           </div>
         </div>
+
+        <WeeklyCompetitorBrief />
 
         {/* Two views over the same competitors: the roster, and every claim the
             hub has read about any of them. */}
