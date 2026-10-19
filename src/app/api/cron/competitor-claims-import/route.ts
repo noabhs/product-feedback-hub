@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logEvent, ACTIONS } from "@/lib/events";
+import { cleanSourceLabel, cleanSourceUrl } from "@/lib/claim-source";
 import { COMPETITOR_TOPIC_LABELS, CONFIDENCE_LABELS, normalizeAreas } from "@/lib/labels";
 
 /**
@@ -12,7 +13,9 @@ import { COMPETITOR_TOPIC_LABELS, CONFIDENCE_LABELS, normalizeAreas } from "@/li
  * the bearer FEEDBACK_IMPORT_SECRET is the only check.
  *
  * Body: { claims: [{ competitor, oneLiner, content, topics?, productAreas?,
- * confidence?, sensitivity?, sensitivityReason?, asOf? }] }. The competitor is
+ * confidence?, sensitivity?, sensitivityReason?, asOf?, sourceUrl?, sourceLabel? }] }.
+ * `sourceUrl` (http/https only) is where the claim came from — a Slack permalink,
+ * say — and shows as the Source link on /competitors. The competitor is
  * matched by name, case-insensitively, and created (category "Other") when it
  * is new. A claim whose one-liner the competitor already has is skipped, so a
  * repeat push cannot duplicate.
@@ -56,6 +59,7 @@ export async function POST(req: NextRequest) {
         if (exists) { skipped++; continue; }
 
         const internal = c.sensitivity !== "external";
+        const sourceUrl = cleanSourceUrl(c.sourceUrl);
         await prisma.competitorInsight.create({
           data: {
             competitorId,
@@ -70,6 +74,8 @@ export async function POST(req: NextRequest) {
             sensitivity: internal ? "internal" : "external",
             sensitivityReason: internal ? (c.sensitivityReason?.trim() || "Added by the feedback sync; not reviewed") : null,
             asOf: c.asOf ? new Date(c.asOf) : null,
+            sourceUrl,
+            sourceLabel: cleanSourceLabel(c.sourceLabel, sourceUrl),
           },
         });
         created++;

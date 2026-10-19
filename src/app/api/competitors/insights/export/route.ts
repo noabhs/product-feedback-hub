@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { claimSource } from "@/lib/claim-source";
 import { toCsv, csvDownloadHeaders } from "@/lib/csv";
 
 /** Every competitor claim — the "What we know" tab on /competitors. */
@@ -36,8 +37,8 @@ export async function GET() {
       i.sensitivity,
       i.sensitivityReason,
       i.asOf ? new Date(i.asOf).toISOString().slice(0, 10) : "",
-      i.document?.title,
-      i.document?.url,
+      claimSource(i).title,
+      claimSource(i).url,
     ]),
   );
 

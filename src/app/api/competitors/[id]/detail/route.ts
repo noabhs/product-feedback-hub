@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { claimSource } from "@/lib/claim-source";
 import type { CompetitorDocumentItem, CompetitorInsightItem } from "@/lib/types";
 
 const iso = (d: Date | null) => d?.toISOString() ?? null;
@@ -58,22 +59,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     claimCount: _count.insights,
   }));
 
-  const insightItems: CompetitorInsightItem[] = insights.map((i) => ({
-    id: i.id,
-    competitorId: i.competitorId,
-    competitorName: i.competitor.name,
-    documentId: i.documentId,
-    documentTitle: i.document?.title ?? null,
-    documentUrl: i.document?.url ?? null,
-    oneLiner: i.oneLiner,
-    content: i.content,
-    topics: i.topics,
-    productAreas: i.productAreas,
-    confidence: i.confidence,
-    sensitivity: i.sensitivity,
-    sensitivityReason: i.sensitivityReason,
-    asOf: iso(i.asOf),
-  }));
+  const insightItems: CompetitorInsightItem[] = insights.map((i) => {
+    const source = claimSource(i);
+    return {
+      id: i.id,
+      competitorId: i.competitorId,
+      competitorName: i.competitor.name,
+      documentId: i.documentId,
+      documentTitle: source.title,
+      documentUrl: source.url,
+      oneLiner: i.oneLiner,
+      content: i.content,
+      topics: i.topics,
+      productAreas: i.productAreas,
+      confidence: i.confidence,
+      sensitivity: i.sensitivity,
+      sensitivityReason: i.sensitivityReason,
+      asOf: iso(i.asOf),
+    };
+  });
 
   return NextResponse.json({ documents: documentItems, insights: insightItems });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logEvent, ACTIONS } from "@/lib/events";
+import { cleanSourceLabel, cleanSourceUrl, claimSource } from "@/lib/claim-source";
 import type { CompetitorInsightItem } from "@/lib/types";
 
 const iso = (d: Date | null) => d?.toISOString() ?? null;
@@ -25,22 +26,25 @@ export async function GET() {
     orderBy: [{ competitor: { name: "asc" } }, { createdAt: "asc" }],
   });
 
-  const items: CompetitorInsightItem[] = insights.map((i) => ({
-    id: i.id,
-    competitorId: i.competitorId,
-    competitorName: i.competitor.name,
-    documentId: i.documentId,
-    documentTitle: i.document?.title ?? null,
-    documentUrl: i.document?.url ?? null,
-    oneLiner: i.oneLiner,
-    content: i.content,
-    topics: i.topics,
-    productAreas: i.productAreas,
-    confidence: i.confidence,
-    sensitivity: i.sensitivity,
-    sensitivityReason: i.sensitivityReason,
-    asOf: iso(i.asOf),
-  }));
+  const items: CompetitorInsightItem[] = insights.map((i) => {
+    const source = claimSource(i);
+    return {
+      id: i.id,
+      competitorId: i.competitorId,
+      competitorName: i.competitor.name,
+      documentId: i.documentId,
+      documentTitle: source.title,
+      documentUrl: source.url,
+      oneLiner: i.oneLiner,
+      content: i.content,
+      topics: i.topics,
+      productAreas: i.productAreas,
+      confidence: i.confidence,
+      sensitivity: i.sensitivity,
+      sensitivityReason: i.sensitivityReason,
+      asOf: iso(i.asOf),
+    };
+  });
 
   return NextResponse.json({ insights: items });
 }
@@ -63,9 +67,12 @@ export async function POST(req: NextRequest) {
   if (!oneLiner) return NextResponse.json({ error: "oneLiner is required" }, { status: 400 });
   if (!content) return NextResponse.json({ error: "content is required" }, { status: 400 });
 
+  const sourceUrl = cleanSourceUrl(body.sourceUrl);
   const insight = await prisma.competitorInsight.create({
     data: {
       competitorId,
+      sourceUrl,
+      sourceLabel: cleanSourceLabel(body.sourceLabel, sourceUrl),
       documentId: null,
       oneLiner,
       content,
