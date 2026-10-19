@@ -826,6 +826,83 @@ Return the index of your pick, and "speaker": who said it, as name and role if t
   }
 }
 
+const COMPETITIVE_SCREEN_SCHEMA = {
+  type: "object",
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          index: { type: "integer" },
+          competitive: { type: "boolean" },
+          competitor: nullableString,
+        },
+        required: ["index", "competitive", "competitor"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["verdicts"],
+  additionalProperties: false,
+};
+
+/**
+ * Screens feedback that merely contains a tracked company's name, keeping only
+ * what is genuinely competitive intelligence.
+ *
+ * A name match cannot tell "the client is weighing athenahealth's HCC tool
+ * against ours" from "Aledade suggestions now show in Navina" or "athenahealth
+ * is the EMR they run on" — and a writer given all three presents the second
+ * and third as rivals. So the writer never sees them: this narrow yes/no call
+ * runs first. It throws on failure rather than returning "none are competitive",
+ * so a broken screen shows as an error and not as a quietly empty brief.
+ */
+export async function screenCompetitiveFeedback(
+  entries: { client: string | null; oneLiner: string; content: string; named: string[] }[],
+  apiKey?: string,
+): Promise<{ competitive: boolean; competitor: string | null }[]> {
+  if (!entries.length) return [];
+  const list = entries
+    .map(
+      (e, i) =>
+        `${i}. [${e.client ?? "Unknown client"}] Names: ${e.named.join(", ")}\n${e.oneLiner}\n${e.content.slice(0, 700)}`,
+    )
+    .join("\n\n---\n\n");
+
+  const res = await getClient(apiKey).messages.create({
+    model: QA_MODEL,
+    max_tokens: 4000,
+    output_config: { effort: "low", format: jsonFormat(COMPETITIVE_SCREEN_SCHEMA) },
+    system: `You screen client feedback for Navina, a clinical-intelligence platform, before it goes into a competitor brief.
+
+Each numbered entry mentions a company that Navina tracks as a competitor. Most of these mentions are NOT competitive. Return one verdict per entry.
+
+competitive = true ONLY when the entry shows a client or prospect weighing another company's product against Navina: comparing the two, evaluating or choosing between them, saying they are switching to or from it, being pitched by it, or reporting what that product does, lacks or costs.
+
+competitive = false for everything else, including:
+- Navina's own features, scores, reports and integrations, even when they involve a listed company (a risk score, "Aledade suggestions now appear in the EMR", a data feed from an EHR).
+- A listed company named only as the EHR, partner, payer or ACO the client works with or runs on.
+- Bugs, feature requests, data issues, onboarding and workflow feedback.
+
+When unsure, answer false. "competitor" is the company the comparison is about, or null when competitive is false.`,
+    messages: [{ role: "user", content: list }],
+  });
+  const raw = res.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text;
+  if (!raw) throw new Error(`The competitive screen returned no text (stop_reason: ${res.stop_reason}).`);
+  const parsed = parseJSON(raw) as { verdicts: { index: number; competitive: boolean; competitor: string | null }[] };
+
+  // An entry the model skipped counts as not competitive: leaving something out
+  // is the safe direction, the reverse is the mistake this exists to prevent.
+  const out = entries.map(() => ({ competitive: false, competitor: null as string | null }));
+  for (const v of parsed.verdicts ?? []) {
+    if (Number.isInteger(v.index) && v.index >= 0 && v.index < out.length) {
+      out[v.index] = { competitive: v.competitive === true, competitor: v.competitor ?? null };
+    }
+  }
+  return out;
+}
+
 export interface BriefOutput {
   text: string;
   usedWebSearch: boolean;
