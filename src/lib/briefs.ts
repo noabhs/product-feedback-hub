@@ -9,6 +9,7 @@ import { getTopic } from "@/lib/domain/topics";
 import type { Topic } from "@/lib/domain/types";
 import { GLOSSARY } from "@/lib/domain/glossary";
 import type { WeekWindow } from "@/lib/week";
+import { claimSource } from "@/lib/claim-source";
 
 export type BriefKind = "client" | "competitor" | "area" | "domain";
 
@@ -352,7 +353,7 @@ export async function competitorWeeklyBrief(
     }),
     prisma.competitorInsight.findMany({
       where: { createdAt: range },
-      include: { competitor: { select: { name: true } }, document: { select: { url: true } } },
+      include: { competitor: { select: { name: true } }, document: { select: { title: true, url: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.competitorDocument.findMany({
@@ -412,11 +413,13 @@ export async function competitorWeeklyBrief(
     ? claims
         .slice(0, WEEKLY_CLAIM_CAP)
         .map((c) => {
+          // A claim pushed by the Slack sync has no document, only its own link.
+          const source = claimSource(c);
           const n = cite({
             kind: "claim",
             title: c.oneLiner,
-            meta: `${c.competitor.name} · ${c.confidence.toLowerCase()}`,
-            url: c.document?.url ?? null,
+            meta: `${c.competitor.name} · ${c.confidence.toLowerCase()}${source.title ? ` · ${source.title}` : ""}`,
+            url: source.url,
           });
           return `[${n}] ${c.competitor.name} | ${c.confidence}${c.sensitivity === "internal" ? " · INTERNAL" : ""} | Topics: ${c.topics.map(competitorTopicLabel).join(", ") || "none"} | As of ${day(c.asOf)}\n${c.oneLiner}\n${clip(c.content, 600)}`;
         })
