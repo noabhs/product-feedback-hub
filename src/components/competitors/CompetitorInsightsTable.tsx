@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { Search, ArrowUp, ArrowDown, Lock, Info } from "lucide-react";
+import { Search, ArrowUp, ArrowDown, Lock, Info, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RowCount } from "@/components/ui/RowCount";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
-import { CONFIDENCE_STYLE } from "@/components/competitors/ClaimRow";
+import { CONFIDENCE_STYLE, day } from "@/components/competitors/ClaimRow";
 import {
   COMPETITOR_TOPIC_OPTIONS, CONFIDENCE_OPTIONS, AREA_OPTIONS,
   competitorTopicLabel, confidenceLabel, areaLabel, CONFIDENCE_LABELS, CONFIDENCE_DESCRIPTIONS,
@@ -31,7 +31,7 @@ const SENSITIVITY_OPTIONS = [
   { value: "external", label: "Shareable" },
 ];
 
-type SortKey = "competitorName" | "oneLiner" | "topics" | "productAreas" | "confidence" | "sensitivity";
+type SortKey = "competitorName" | "oneLiner" | "content" | "documentTitle" | "topics" | "productAreas" | "confidence" | "sensitivity";
 
 const PAGE_SIZE = 25;
 
@@ -39,6 +39,18 @@ const PAGE_SIZE = 25;
 const COLUMNS: { key: SortKey; label: string; width?: string; hint?: string }[] = [
   { key: "competitorName", label: "Competitor", width: "9rem" },
   { key: "oneLiner", label: "Claim" },
+  {
+    key: "content",
+    label: "Reported data",
+    width: "17rem",
+    hint: "The detail behind the claim, with figures carried exactly as the source gave them.",
+  },
+  {
+    key: "documentTitle",
+    label: "Source",
+    width: "10rem",
+    hint: "The document this claim was read out of. Opens in a new tab.",
+  },
   { key: "topics", label: "Topics", width: "9.5rem" },
   { key: "productAreas", label: "Areas", width: "9rem" },
   {
@@ -59,8 +71,11 @@ const COLUMNS: { key: SortKey; label: string; width?: string; hint?: string }[] 
 
 function sortValue(c: CompetitorInsightItem, key: SortKey): string {
   const v = c[key];
-  return Array.isArray(v) ? (v[0] ?? "") : v;
+  return Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
 }
+
+/** Only http(s) becomes a link; the URL is data from an import, not trusted markup. */
+const isWebUrl = (u: string | null): u is string => !!u && /^https?:\/\//i.test(u);
 
 export function CompetitorInsightsTable({ onOpen }: { onOpen: (claim: CompetitorInsightItem) => void }) {
   const [sortKey, setSortKey] = useState<SortKey>("competitorName");
@@ -197,7 +212,7 @@ export function CompetitorInsightsTable({ onOpen }: { onOpen: (claim: Competitor
         </div>
       ) : (
         <div className="bg-white rounded-md border border-[rgba(50,43,95,0.08)] overflow-x-auto">
-          <table className="w-full table-fixed min-w-[960px]">
+          <table className="w-full table-fixed min-w-[1240px]">
             <colgroup>
               {COLUMNS.map((col) => (
                 <col key={col.key} style={col.width ? { width: col.width } : undefined} />
@@ -256,6 +271,36 @@ export function CompetitorInsightsTable({ onOpen }: { onOpen: (claim: Competitor
                         >
                           {c.oneLiner}
                         </span>
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        <span
+                          className="text-[12.5px] text-brand-primary opacity-70 leading-snug line-clamp-3 break-words"
+                          title={c.content}
+                        >
+                          {c.content}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 align-top">
+                        {isWebUrl(c.documentUrl) ? (
+                          <a
+                            href={c.documentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title={c.documentTitle ?? c.documentUrl}
+                            className="inline-flex items-start gap-1 text-[12px] text-brand-secondary-600 hover:underline"
+                          >
+                            <span className="line-clamp-2 break-words">{c.documentTitle ?? "Open source"}</span>
+                            <ExternalLink className="w-2.5 h-2.5 shrink-0 mt-1" />
+                          </a>
+                        ) : (
+                          <span className="text-[12px] text-brand-primary opacity-30">Entered by hand</span>
+                        )}
+                        {c.asOf && (
+                          <span className="block text-[11px] text-brand-primary opacity-40 mt-0.5">
+                            as of {day(c.asOf)}
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-3 align-top">
                         <div className="flex flex-wrap gap-1">
