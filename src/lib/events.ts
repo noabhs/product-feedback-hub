@@ -26,6 +26,7 @@ export const ACTIONS = {
   recapPosted: "recap.posted",
   recapNarrative: "recap.narrative",
   recapQuote: "recap.quote",
+  competitorWeeklyBrief: "competitor_brief.weekly",
   clientUpdated: "client.updated",
   clientArchived: "client.archived",
   accountsReportImported: "accounts_report.imported",
@@ -63,6 +64,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "recap.posted": "Posted the weekly recap",
   "recap.narrative": "Wrote a recap brief",
   "recap.quote": "Picked the weekly client quote",
+  "competitor_brief.weekly": "Wrote the weekly competitor brief",
   "client.updated": "Edited a client",
   "client.archived": "Archived a client",
   "accounts_report.imported": "Imported an accounts report",
@@ -103,6 +105,7 @@ export const AI_ACTIONS: string[] = [
   ACTIONS.aiAsk,
   ACTIONS.aiGenerateDoc,
   ACTIONS.briefGenerated,
+  ACTIONS.competitorWeeklyBrief,
 ];
 
 export async function logEvent(

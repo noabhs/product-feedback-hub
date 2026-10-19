@@ -8,6 +8,7 @@ import { AREA_LABELS, areaLabel, themeLabel, competitorTopicLabel } from "@/lib/
 import { getTopic } from "@/lib/domain/topics";
 import type { Topic } from "@/lib/domain/types";
 import { GLOSSARY } from "@/lib/domain/glossary";
+import type { WeekWindow } from "@/lib/week";
 
 export type BriefKind = "client" | "competitor" | "area" | "domain";
 
@@ -299,4 +300,156 @@ export class BriefError extends Error {
   constructor(message: string, public status = 500) {
     super(message);
   }
+}
+
+/** A hub row the weekly competitor brief cites as [n], so the reader can open it. */
+export interface WeeklyBriefSource {
+  n: number;
+  kind: "feedback" | "claim";
+  title: string;
+  /** Who said it / which competitor, and when. */
+  meta: string;
+  url: string | null;
+}
+
+const WEEKLY_FEEDBACK_CAP = 40;
+const WEEKLY_CLAIM_CAP = 40;
+/** Web search is several model turns per competitor; past this it is slow and costly. */
+const WEEKLY_WEB_CAP = 8;
+
+/**
+ * Competitor rows that are a topic, not a company: nothing to match a name
+ * against and nothing to search the web for.
+ */
+const NOT_A_COMPANY = new Set(["Market & regulatory"]);
+
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const clip = (t: string, max: number) => (t.length > max ? `${t.slice(0, max)}…` : t);
+
+/**
+ * The weekly competitor brief: what clients said about competitors in a week,
+ * what changed in the hub's competitor data, and public news on the
+ * competitors that came up.
+ *
+ * Returns null for a week with nothing to say — no feedback naming a
+ * competitor, no new claims, no source document edited — rather than asking the
+ * model to fill a page. Claims were loaded in two large batches, so most weeks
+ * are quiet and the honest brief is a short one.
+ */
+export async function competitorWeeklyBrief(
+  week: WeekWindow,
+  apiKey?: string,
+): Promise<{ brief: Brief; hubSources: WeeklyBriefSource[] } | null> {
+  const range = { gte: week.start, lt: week.end };
+
+  const [competitors, insights, claims, documents] = await Promise.all([
+    prisma.competitor.findMany({ select: { id: true, name: true } }),
+    // The same week rule as the feedback recap: the date the client said it,
+    // else the date it was imported.
+    prisma.insight.findMany({
+      where: { OR: [{ date: range }, { date: null, createdAt: range }] },
+      orderBy: [{ date: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+    }),
+    prisma.competitorInsight.findMany({
+      where: { createdAt: range },
+      include: { competitor: { select: { name: true } }, document: { select: { url: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.competitorDocument.findMany({
+      where: { sourceUpdatedAt: range },
+      include: { competitor: { select: { name: true } } },
+      orderBy: { sourceUpdatedAt: "desc" },
+    }),
+  ]);
+
+  // Names are matched as whole words, case-insensitively. A competitor whose
+  // name is also an ordinary word will over-match; the prompt tells the model
+  // to drop entries that are not about the competitor.
+  const matchers = competitors.filter((c) => !NOT_A_COMPANY.has(c.name)).map((c) => ({
+    name: c.name,
+    re: new RegExp(`(?<![A-Za-z0-9])${escapeRe(c.name)}(?![A-Za-z0-9])`, "i"),
+  }));
+  const mentions = insights
+    .map((i) => ({ i, named: matchers.filter((m) => m.re.test(`${i.oneLiner}\n${i.content}`)).map((m) => m.name) }))
+    .filter((m) => m.named.length);
+
+  if (!mentions.length && !claims.length && !documents.length) return null;
+
+  const hubSources: WeeklyBriefSource[] = [];
+  const cite = (s: Omit<WeeklyBriefSource, "n">) => {
+    const n = hubSources.length + 1;
+    hubSources.push({ n, ...s });
+    return n;
+  };
+
+  const feedbackText = mentions.length
+    ? mentions
+        .slice(0, WEEKLY_FEEDBACK_CAP)
+        .map(({ i, named }) => {
+          const n = cite({
+            kind: "feedback",
+            title: i.oneLiner,
+            meta: `${i.client ?? "Unknown client"} · ${day(i.date ?? i.createdAt)}`,
+            url: i.sourceUrl,
+          });
+          return `[${n}] ${i.client ?? "Unknown client"} | ${day(i.date ?? i.createdAt)} | Matched: ${named.join(", ")}\n${i.oneLiner}\n${clip(i.content, 800)}`;
+        })
+        .join("\n\n---\n\n")
+    : "(No client feedback logged this week names a competitor.)";
+
+  const claimText = claims.length
+    ? claims
+        .slice(0, WEEKLY_CLAIM_CAP)
+        .map((c) => {
+          const n = cite({
+            kind: "claim",
+            title: c.oneLiner,
+            meta: `${c.competitor.name} · ${c.confidence.toLowerCase()}`,
+            url: c.document?.url ?? null,
+          });
+          return `[${n}] ${c.competitor.name} | ${c.confidence}${c.sensitivity === "internal" ? " · INTERNAL" : ""} | Topics: ${c.topics.map(competitorTopicLabel).join(", ") || "none"} | As of ${day(c.asOf)}\n${c.oneLiner}\n${clip(c.content, 600)}`;
+        })
+        .join("\n\n---\n\n") +
+      (claims.length > WEEKLY_CLAIM_CAP ? `\n\n(${claims.length - WEEKLY_CLAIM_CAP} more claims were added and are not shown.)` : "") +
+      // Hundreds in one week is a bulk load of existing documents, not hundreds
+      // of new developments, and reading it as the latter would mislead.
+      (claims.length > 100 ? `\n\nNote: ${claims.length} claims in one week is a bulk import of existing source documents, not new developments. Say so in one line; do not summarise the claims as news.` : "")
+    : "(No competitor claims were added this week.)";
+
+  const documentText = documents.length
+    ? documents.map((d) => `- ${d.competitor.name}: "${d.title}" edited ${day(d.sourceUpdatedAt)}`).join("\n")
+    : "(No competitor source document was edited this week.)";
+
+  // Public news is searched only for competitors that actually came up: all 59
+  // every week would be slow and mostly noise.
+  const active = [
+    ...new Set([
+      ...mentions.flatMap((m) => m.named),
+      ...claims.map((c) => c.competitor.name),
+      ...documents.map((d) => d.competitor.name),
+    ]),
+  ];
+  const webList = active.filter((n) => !NOT_A_COMPANY.has(n)).slice(0, WEEKLY_WEB_CAP);
+
+  const prompt = [
+    `Write the weekly competitor brief for the week of ${week.label}.`,
+    `Suggested sections: Headline (2-3 sentences: the single most important thing), What clients said about competitors (name the client and the competitor), What changed in our competitor data, In the news (web; only ${webList.join(", ") || "competitors above"}; say when there is nothing recent), What to do about it (at most 3 bullets).`,
+    `Leave out any section the data does not support. Feedback was matched by competitor name only, so use an entry only when the client is comparing, evaluating, switching to or from, or reacting to that company as an alternative or rival. A client merely naming its own EHR, a partner or an integration (for example athenahealth as the EMR a client runs on) is not competitive feedback; skip it. Web-search only the companies the feedback or claims give a real reason to look up. Claims marked INTERNAL are not for sharing outside Navina: keep them marked "(internal)".`,
+    `CLIENT FEEDBACK THAT NAMES A COMPETITOR (${mentions.length} entries${mentions.length > WEEKLY_FEEDBACK_CAP ? `, first ${WEEKLY_FEEDBACK_CAP} shown` : ""}):`,
+    feedbackText,
+    `COMPETITOR CLAIMS ADDED THIS WEEK (${claims.length}):`,
+    claimText,
+    `COMPETITOR SOURCE DOCUMENTS EDITED THIS WEEK (${documents.length}):`,
+    documentText,
+  ].join("\n\n");
+
+  const brief = await run({
+    title: `Weekly competitor brief — ${week.label}`,
+    role: "You are writing the weekly competitor brief, from what clients told us, what the hub's competitor data gained that week, and recent public news.",
+    prompt,
+    hubEntries: hubSources.length,
+    web: webList.length > 0,
+    apiKey,
+  });
+  return { brief, hubSources };
 }
