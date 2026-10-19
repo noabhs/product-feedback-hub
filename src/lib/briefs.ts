@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { generateBriefText, type WebCitationSource } from "@/lib/claude";
+import { generateBriefText, screenCompetitiveFeedback, type WebCitationSource } from "@/lib/claude";
 import { loadAccountDetails } from "@/lib/accounts-db";
 import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
@@ -373,7 +373,19 @@ export async function competitorWeeklyBrief(
     .map((i) => ({ i, named: matchers.filter((m) => m.re.test(`${i.oneLiner}\n${i.content}`)).map((m) => m.name) }))
     .filter((m) => m.named.length);
 
-  if (!mentions.length && !claims.length && !documents.length) return null;
+  // Name matches are screened before the writer sees them: most are Navina
+  // features or partners, not rivals, and a writer shown them reports them as
+  // rivals. Only the first WEEKLY_FEEDBACK_CAP are screened, as before.
+  const candidates = mentions.slice(0, WEEKLY_FEEDBACK_CAP);
+  const verdicts = await screenCompetitiveFeedback(
+    candidates.map(({ i, named }) => ({ client: i.client, oneLiner: i.oneLiner, content: i.content, named })),
+    apiKey,
+  );
+  const signals = candidates
+    .map((m, k) => ({ ...m, competitor: verdicts[k].competitor }))
+    .filter((_, k) => verdicts[k].competitive);
+
+  if (!signals.length && !claims.length && !documents.length) return null;
 
   const hubSources: WeeklyBriefSource[] = [];
   const cite = (s: Omit<WeeklyBriefSource, "n">) => {
@@ -382,20 +394,19 @@ export async function competitorWeeklyBrief(
     return n;
   };
 
-  const feedbackText = mentions.length
-    ? mentions
-        .slice(0, WEEKLY_FEEDBACK_CAP)
-        .map(({ i, named }) => {
+  const feedbackText = signals.length
+    ? signals
+        .map(({ i, competitor }) => {
           const n = cite({
             kind: "feedback",
             title: i.oneLiner,
             meta: `${i.client ?? "Unknown client"} · ${day(i.date ?? i.createdAt)}`,
             url: i.sourceUrl,
           });
-          return `[${n}] ${i.client ?? "Unknown client"} | ${day(i.date ?? i.createdAt)} | Matched: ${named.join(", ")}\n${i.oneLiner}\n${clip(i.content, 800)}`;
+          return `[${n}] ${i.client ?? "Unknown client"} | ${day(i.date ?? i.createdAt)} | About: ${competitor ?? "unclear"}\n${i.oneLiner}\n${clip(i.content, 800)}`;
         })
         .join("\n\n---\n\n")
-    : "(No client feedback logged this week names a competitor.)";
+    : "(No client feedback logged this week was competitive.)";
 
   const claimText = claims.length
     ? claims
@@ -424,7 +435,7 @@ export async function competitorWeeklyBrief(
   // every week would be slow and mostly noise.
   const active = [
     ...new Set([
-      ...mentions.flatMap((m) => m.named),
+      ...signals.flatMap((m) => (m.competitor ? [m.competitor] : m.named)),
       ...claims.map((c) => c.competitor.name),
       ...documents.map((d) => d.competitor.name),
     ]),
@@ -433,9 +444,9 @@ export async function competitorWeeklyBrief(
 
   const prompt = [
     `Write the weekly competitor brief for the week of ${week.label}.`,
-    `Suggested sections: Headline (2-3 sentences: the single most important thing), What clients said about competitors (name the client and the competitor), What changed in our competitor data, In the news (web; only ${webList.join(", ") || "competitors above"}; say when there is nothing recent), What to do about it (at most 3 bullets).`,
-    `Leave out any section the data does not support. Feedback was matched by competitor name only, so use an entry only when the client is comparing, evaluating, switching to or from, or reacting to that company as an alternative or rival. A client merely naming its own EHR, a partner or an integration (for example athenahealth as the EMR a client runs on) is not competitive feedback; skip it. Web-search only the companies the feedback or claims give a real reason to look up. Claims marked INTERNAL are not for sharing outside Navina: keep them marked "(internal)".`,
-    `CLIENT FEEDBACK THAT NAMES A COMPETITOR (${mentions.length} entries${mentions.length > WEEKLY_FEEDBACK_CAP ? `, first ${WEEKLY_FEEDBACK_CAP} shown` : ""}):`,
+    `Suggested sections: Headline (2-3 sentences: the single most important thing), Competitive signals from clients, What changed in our competitor data, In the news (web), What to do about it (at most 3 bullets).`,
+    `Leave out any section the data does not support. The feedback below has been screened to entries weighing another company against Navina; use only those. Navina's own capabilities, features and integrations are not competitors, even when they involve a company on the list: for example the PREVENT risk score, Aledade suggestions appearing in the EMR, or athenahealth as the EMR a client runs on. An entry is a competitive signal only if the client or the note compares Navina with that company, is evaluating or choosing between them, says they are switching, being pitched or lost to them, or reports what that company's product does or costs. When in doubt, leave it out, and never present a Navina feature or a partner as a rival. If nothing qualifies, omit "Competitive signals from clients" and say in the Headline that no client feedback this week was competitive. Search the web only for companies that have a qualifying signal or a new claim${webList.length ? ` (candidates: ${webList.join(", ")})` : ""}; omit "In the news" if there are none or nothing recent. Claims marked INTERNAL are not for sharing outside Navina: keep them marked "(internal)".`,
+    `CLIENT FEEDBACK WEIGHING ANOTHER COMPANY AGAINST NAVINA (${signals.length} of ${mentions.length} name matches survived screening${mentions.length > WEEKLY_FEEDBACK_CAP ? `; only the first ${WEEKLY_FEEDBACK_CAP} matches were screened` : ""}):`,
     feedbackText,
     `COMPETITOR CLAIMS ADDED THIS WEEK (${claims.length}):`,
     claimText,
