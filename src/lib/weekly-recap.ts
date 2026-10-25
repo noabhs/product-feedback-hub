@@ -122,12 +122,28 @@ export async function getWeeklyQuote(
 
   const accounts = await loadAccounts();
 
+  // Quotes already featured in other weeks. Without this the widened search
+  // finds the same best-ever quote every Sunday. This week's own earlier picks
+  // are not counted, so Regenerate can still choose again.
+  const used = new Set<string>();
+  const past = await prisma.event.findMany({
+    where: { action: ACTIONS.recapQuote, target: { not: target } },
+    select: { label: true },
+  });
+  for (const row of past) {
+    try {
+      used.add((JSON.parse(row.label ?? "") as RecapQuote).text);
+    } catch {
+      // An unreadable old row just isn't excluded.
+    }
+  }
+
   // Last week first; a quiet week may have no quotable client speech at all, so
-  // it widens to the last two months before giving up. Recent still wins — the
+  // it widens to the last two months, then six, before giving up. Recent still wins — the
   // wider pool is only reached when the narrow one yields nothing.
   const WEEK = 7 * 24 * 60 * 60 * 1000;
   let quote: RecapQuote | null = null;
-  for (const weeks of [1, 8]) {
+  for (const weeks of [1, 8, 26]) {
     const range = { gte: new Date(week.end.getTime() - weeks * WEEK), lt: week.end };
     const pool = await prisma.insight.findMany({
       // Pasted notes use curly quotes as often as straight ones.
@@ -142,6 +158,7 @@ export async function getWeeklyQuote(
       .flatMap((e) => extractQuotes(e.id, e.client, e.content))
       // Advisors are our own advisory panel, not a client.
       .filter((c) => !c.client || matchAccount(c.client, accounts) !== ADVISORS)
+      .filter((c) => !used.has(c.quote))
       .slice(0, 60);
     const { pick } = await pickClientQuote(candidates);
     if (pick) {
