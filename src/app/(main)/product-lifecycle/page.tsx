@@ -233,9 +233,7 @@ export default function ProductLifecyclePage() {
           </ul>
         </div>
         <p className="mt-3 text-[13px] text-brand-primary/65 border-l-[3px] border-[rgba(50,43,95,0.12)] pl-3 max-w-3xl leading-relaxed">
-          The Product Management Playbook places the Initiative in the Ideation space, linked to the Idea, with
-          Epics below it in the Team Backlog. The traceability chain is OKR, Idea, Initiative, Epics, Tasks, so
-          every task traces back to a company OKR.
+          The traceability chain is OKR, Idea, Initiative, Epics, Tasks, so every task traces back to a company OKR.
         </p>
 
         <SectionHead title="Naming guidelines for dev items">
