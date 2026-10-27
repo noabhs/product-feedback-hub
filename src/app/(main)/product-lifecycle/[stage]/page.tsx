@@ -162,6 +162,82 @@ function DevSections() {
   );
 }
 
+/* ---------- Release ---------- */
+
+/** Statuses as they appear on the REL board. Monitor and Support follows both rollouts. */
+const RELEASE_STEPS = [
+  { name: "Release Creation", desc: "The Release Event is opened." },
+  { name: "Release Planning", desc: "Scope, audience and date are set." },
+  { name: "Beta Rollout", desc: "Shipped to the beta group." },
+  { name: "Monitor and Support", desc: "Watch and support the beta before going wider." },
+  { name: "GA Rollout", desc: "Shipped to everyone." },
+  { name: "Monitor and Support", desc: "Watch and support after GA." },
+];
+
+const CHILD_TICKETS = [
+  {
+    type: "Rollout Phase",
+    body: "One per phase: Pre-Requisite, Beta Rollout and GA Rollout. Beta is marked Won't Do when a release skips it.",
+  },
+  {
+    type: "CS/Delivery Handover",
+    body: "The handover of the release to CS and Delivery, created in the Pre-Requisite phase.",
+  },
+  {
+    type: "Communication Release",
+    body: "The communication for the release, created in the Pre-Requisite phase.",
+  },
+];
+
+const COMING_SOON = [
+  "Release checklist",
+  "Internal and external communication",
+  "Who is told, and where",
+  "What to monitor after GA",
+];
+
+function ReleaseSections() {
+  return (
+    <>
+      <SectionHead title="Release Event statuses">
+        A Release Event moves through these statuses on the Release board. Monitor and Support comes after
+        Beta and again after GA.
+      </SectionHead>
+      <ol className="grid gap-2 md:grid-cols-3">
+        {RELEASE_STEPS.map((st, i) => (
+          <li key={i} className={`${CARD} px-4 py-3`}>
+            <p className="text-[14px] font-bold text-brand-primary">
+              <span className="text-orange-700">{i + 1}.</span> {st.name}
+            </p>
+            <p className="text-[13px] text-brand-primary/65 mt-0.5">{st.desc}</p>
+          </li>
+        ))}
+      </ol>
+
+      <SectionHead title="What sits under a Release Event">
+        Every Release Event has child tickets. These are the types you will see on the board.
+      </SectionHead>
+      <div className="grid gap-4 md:grid-cols-3">
+        {CHILD_TICKETS.map((c) => (
+          <div key={c.type} className={`${CARD} border-t-4 border-t-orange-500 p-4`}>
+            <p className="text-[16px] font-extrabold text-brand-primary">{c.type}</p>
+            <p className="text-[13px] text-brand-primary/65 mt-1 leading-relaxed">{c.body}</p>
+          </div>
+        ))}
+      </div>
+
+      <SectionHead title="Coming soon" />
+      <ul className="grid gap-2 md:grid-cols-2">
+        {COMING_SOON.map((t) => (
+          <li key={t} className={`${CARD} border-dashed px-4 py-3 text-[14px] text-brand-primary/60`}>
+            {t}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 /* ---------- Page ---------- */
 
 export default async function StagePage({ params }: { params: Params }) {
@@ -212,6 +288,7 @@ export default async function StagePage({ params }: { params: Params }) {
 
         {s.slug === "idea" && <IdeaSections />}
         {s.slug === "dev" && <DevSections />}
+        {s.slug === "release" && <ReleaseSections />}
 
         <nav className="mt-12 flex items-center justify-between gap-4 text-[14px] font-semibold">
           {prev ? (

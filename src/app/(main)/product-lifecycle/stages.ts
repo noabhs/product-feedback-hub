@@ -45,7 +45,7 @@ export const STAGES: Stage[] = [
   {
     slug: "release",
     board: "Release board",
-    type: "Rel item",
+    type: "Release Event",
     who: "What ships, to whom, and when. Owned by the PM as release owner.",
     exit: "GA rollout, then monitoring",
     fedBy:
