@@ -8,7 +8,7 @@ import { AppShell } from "@/components/AppShell";
 /**
  * Grouped, not flat. Home on its own, then everything you work in day to day —
  * the feedback and the reference material it is read against — then Analytics
- * and Feature requests, which are about the hub and the roadmap rather than
+ * and Your asks, which are about the hub and the roadmap rather than
  * client feedback. Dividers alone, no section headings: ten items don't earn
  * the extra height.
  */
@@ -26,7 +26,7 @@ const NAV_GROUPS = [
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/hub-data", label: "Hub data", icon: Database },
     { href: "/upload", label: "AI Extract", icon: Upload },
-    { href: "/feature-requests", label: "Feature requests", icon: Lightbulb },
+    { href: "/feature-requests", label: "Your asks", icon: Lightbulb },
   ],
 ];
 

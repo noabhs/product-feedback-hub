@@ -70,7 +70,7 @@ function FeatureRequests() {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Feature requests</h1>
+            <h1 className="text-[28px] font-extrabold text-brand-primary mb-1">Your asks</h1>
             <p className="text-[14px] text-brand-primary opacity-50 max-w-xl">
               Feature ideas reported from inside the org. Anyone can file one; only the reporter or the hub owner can edit or delete it.
             </p>
