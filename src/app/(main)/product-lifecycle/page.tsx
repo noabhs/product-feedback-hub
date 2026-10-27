@@ -3,6 +3,7 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 export const metadata = { title: "Product lifecycle · Navina Product Insights Hub" };
 
 const JIRA = "https://navina.atlassian.net/browse";
+const DEV_BOARD = "https://navina.atlassian.net/jira/boards?page=1&projectLocation=10022&sortKey=name&sortOrder=ASC";
 
 /** Where ideas come from. Only feature requests have a board of their own. */
 const SOURCES = [
@@ -36,7 +37,7 @@ const STAGES = [
     who: "Committed build work. Owned by the PM with the R&D lead.",
     exit: "Dev done, PM sign-off",
     note: "Fed by Ideas that passed Definition of Ready and the R&D handshake. Work is broken into Stories, Tasks, Bugs and Spikes, each under one Epic.",
-    href: `${JIRA}/NA`,
+    href: DEV_BOARD,
     cta: "Open Dev board",
     top: "border-t-brand-secondary-500",
     text: "text-brand-secondary-600",
@@ -107,7 +108,7 @@ const READY = [
 const BOARDS = [
   { name: "NIH", label: "Feature request triage", href: `${JIRA}/NIH` },
   { name: "PRODUCT", label: "Ideas (Product board)", href: `${JIRA}/PRODUCT` },
-  { name: "NA", label: "Dev board: Initiatives, Epics, Stories", href: `${JIRA}/NA` },
+  { name: "NA", label: "Dev board: Initiatives, Epics, Stories", href: DEV_BOARD },
   { name: "REL", label: "Release board", href: `${JIRA}/REL` },
 ];
 
