@@ -6,29 +6,42 @@ import { PageViewTracker } from "@/components/PageViewTracker";
 import { AppShell } from "@/components/AppShell";
 
 /**
- * Grouped, not flat. Home on its own, then everything you work in day to day —
- * the feedback and the reference material it is read against — then Analytics
- * and Your asks, which are about the hub and the roadmap rather than
- * client feedback. Dividers alone, no section headings: ten items don't earn
- * the extra height.
+ * Three named sections, not one list of thirteen links.
+ *
+ * The sections answer different questions: Insights is what the outside world
+ * is telling us, Learn is the background you need to read it, and The hub is
+ * the tool itself — how it's doing, what's in it, and what you've asked for.
+ * Headings rather than dividers now: at this length a reader needs to be told
+ * what a group is, not just that it ended.
  */
-const NAV_GROUPS = [
-  [{ href: "/home", label: "Home", icon: Home }],
-  [
-    { href: "/insights", label: "Product Feedback", icon: Search },
-    { href: "/clients", label: "Clients", icon: Building2 },
-    { href: "/competitors", label: "Competitors", icon: Swords },
-    { href: "/know-your-domain", label: "Know your domain", icon: GraduationCap },
-    { href: "/know-your-product", label: "Know your product", icon: Boxes },
-    { href: "/product-lifecycle", label: "Product lifecycle", icon: Workflow },
-    { href: "/discovery", label: "Discovery Prep", icon: BookOpen },
-  ],
-  [
-    { href: "/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/hub-data", label: "Hub data", icon: Database },
-    { href: "/upload", label: "AI Extract", icon: Upload },
-    { href: "/feature-requests", label: "Your asks", icon: Lightbulb },
-  ],
+const NAV_GROUPS: { label: string | null; items: { href: string; label: string; icon: typeof Home }[] }[] = [
+  { label: null, items: [{ href: "/home", label: "Home", icon: Home }] },
+  {
+    label: "Insights",
+    items: [
+      { href: "/insights", label: "Feedback", icon: Search },
+      { href: "/clients", label: "Clients", icon: Building2 },
+      { href: "/competitors", label: "Competitors", icon: Swords },
+    ],
+  },
+  {
+    label: "Learn",
+    items: [
+      { href: "/know-your-domain", label: "Know your domain", icon: GraduationCap },
+      { href: "/know-your-product", label: "Know your product", icon: Boxes },
+      { href: "/product-lifecycle", label: "Product lifecycle", icon: Workflow },
+      { href: "/discovery", label: "Discovery prep", icon: BookOpen },
+    ],
+  },
+  {
+    label: "The hub",
+    items: [
+      { href: "/analytics", label: "Analytics", icon: BarChart3 },
+      { href: "/hub-data", label: "Hub data", icon: Database },
+      { href: "/upload", label: "AI extract", icon: Upload },
+      { href: "/feature-requests", label: "Your asks", icon: Lightbulb },
+    ],
+  },
 ];
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
@@ -51,21 +64,24 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
         <nav className="flex-1 px-3 py-4">
           {NAV_GROUPS.map((group, i) => (
-            <div
-              key={group[0].href}
-              // Matches the rule under the logo, so the sidebar reads as one system.
-              className={`space-y-1${i > 0 ? " mt-2 pt-2 border-t border-white/10" : ""}`}
-            >
-              {group.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {label}
-                </Link>
-              ))}
+            <div key={group.label ?? group.items[0].href} className={i > 0 ? "mt-4" : ""}>
+              {group.label && (
+                <p className="px-3 mb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-white/35">
+                  {group.label}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-3 px-3 py-2 rounded-sm text-[13.5px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {label}
+                  </Link>
+                ))}
+              </div>
             </div>
           ))}
         </nav>
