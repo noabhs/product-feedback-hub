@@ -11,10 +11,12 @@ export const WHY_IT_MATTERS =
 
 export const KEY_RULE = "Write Product | Topic - what changes, so the title explains the work without opening the ticket.";
 
-export const NAMING_RULES: { rule: string; detail: string }[] = [
-  { rule: "Start every title with Product | Topic -", detail: "Write Analytics | Patient registry - Add an audit log of enrollment changes. The Product is the ticket's Product field (Analytics, Quality and so on). The Topic is the feature or area inside it. Put a space on each side of the pipe and the hyphen. Never a colon." },
-  { rule: "Name the action and the object", detail: "A bare noun like \"Internal users\" does not say what the work is." },
-  { rule: "Say what, not how", detail: "Reasoning, technology choices and detail go in the description." },
+export type Rule = { rule: string; detail: string; example?: { avoid?: string; use: string } };
+
+export const NAMING_RULES: Rule[] = [
+  { rule: "Start every title with Product | Topic -", detail: "Product is the ticket's Product field. Topic is the feature inside it. Never a colon.", example: { use: "Analytics | Patient registry - Add an audit log of enrollment changes" } },
+  { rule: "Name the action and the object", detail: "A bare noun like \"Internal users\" does not say what the work is.", example: { avoid: "Internal users", use: "Quality | User management - Admin can invite internal users" } },
+  { rule: "Say what, not how", detail: "Reasoning, technology choices and detail go in the description.", example: { avoid: "Reports API - Use REST with URL versioning", use: "Analytics | Reports API - Versioned API so data pipelines don't break" } },
   { rule: "Keep the words that change the scope", detail: "Do not cut a qualifier just to make the title shorter. \"Export reports\" and \"Export reports, including the admin UI\" describe different amounts of work, and the reader should be able to tell which one this is." },
   { rule: "Spell out jargon", detail: "Write patient-based, not PB. Terms the whole company uses stay as they are: HCC, EHR, SFTP, HIE." },
   { rule: "Leave out ticket IDs, names, dates and sprint numbers", detail: "Lists of client names go in the description too." },
@@ -35,7 +37,7 @@ export const LINKED_RULES = [
 ];
 
 /** Every rule on the page, in one numbered list: the title rules, then the rules for linked items. */
-export const ALL_RULES: { rule: string; detail: string }[] = [
+export const ALL_RULES: Rule[] = [
   ...NAMING_RULES,
   ...LINKED_RULES.map((l) => ({ rule: l.name, detail: l.body })),
 ];

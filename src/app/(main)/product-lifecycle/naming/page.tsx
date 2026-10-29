@@ -37,10 +37,18 @@ export default function TicketNamingPage() {
         <SectionHead title="The three rules that matter most" />
         <ol className="grid gap-4 md:grid-cols-3">
           {TOP_RULES.map((r, i) => (
-            <li key={r.rule} className={`${CARD} border-t-4 border-t-brand-secondary-500 p-5`}>
+            <li key={r.rule} className={`${CARD} border-t-4 border-t-brand-secondary-500 p-5 flex flex-col`}>
               <span className="text-[28px] font-extrabold text-brand-secondary-600 leading-none">{i + 1}</span>
               <p className="text-[17px] font-extrabold text-brand-primary mt-2 leading-snug">{r.rule}</p>
               <p className="text-[14px] text-brand-primary/70 mt-1.5 leading-relaxed">{r.detail}</p>
+              {r.example && (
+                <div className="mt-auto pt-4 space-y-1 text-[12.5px] font-mono">
+                  {r.example.avoid && (
+                    <p className="rounded-sm bg-rose-50 px-2 py-1.5 text-rose-800/90"><span className="font-sans font-bold mr-1.5">Avoid</span>{r.example.avoid}</p>
+                  )}
+                  <p className="rounded-sm bg-emerald-50 px-2 py-1.5 text-emerald-900"><span className="font-sans font-bold mr-1.5">Use</span>{r.example.use}</p>
+                </div>
+              )}
             </li>
           ))}
         </ol>
