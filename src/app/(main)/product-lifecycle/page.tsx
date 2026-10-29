@@ -4,10 +4,13 @@ import { STAGES, NIH_BOARD } from "./stages";
 
 export const metadata = { title: "Product lifecycle · Navina Product Insights Hub" };
 
-/** Where ideas come from. Only feature requests have a board of their own. */
+/**
+ * Where ideas come from. Only feature requests have a board of their own, and
+ * two of the four aren't in place yet — marked, rather than left to look live.
+ */
 const SOURCES = [
-  { title: "Business needs", body: "Strategy, market, GTM, leadership asks. Becomes an Idea once the PM shapes it and links it to the objective it serves." },
-  { title: "Goals and OKRs", body: "Company and group objectives. Every Idea links to a company objective (OKR)." },
+  { title: "Business needs", body: "Strategy, market, GTM, leadership asks. Becomes an Idea once the PM shapes it and links it to the objective it serves.", soon: true },
+  { title: "Goals and OKRs", body: "Company and group objectives. Every Idea links to a company objective (OKR).", soon: true },
   { title: "Product thinking", body: "Discovery, customer insights, and technical input from R&D." },
   {
     title: "Feature requests",
@@ -35,7 +38,14 @@ export default function ProductLifecyclePage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {SOURCES.map((s) => (
             <div key={s.title} className={`${CARD} border-b-4 border-b-teal-500 p-4 flex flex-col`}>
-              <p className="text-[14px] font-bold text-brand-primary">{s.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[14px] font-bold text-brand-primary">{s.title}</p>
+                {s.soon && (
+                  <span className="shrink-0 rounded-pill bg-amber-100 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-800">
+                    Coming soon
+                  </span>
+                )}
+              </div>
               <p className="text-[13px] text-brand-primary/65 mt-1 leading-relaxed">{s.body}</p>
               {s.href && (
                 <a
