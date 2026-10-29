@@ -58,4 +58,6 @@ export type IdeaRow = {
   status: string;
   team: string;
   product: string;
+  /** The "HB/ TF ?" field: a horizontal board or task force, for example "TF 1 - KP MAPMG Success". */
+  hbtf: string;
 };
