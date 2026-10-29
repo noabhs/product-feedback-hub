@@ -84,7 +84,6 @@ const HIERARCHY = [
   { level: 2, type: "Task", desc: "Internal work, no user-facing change" },
   { level: 3, type: "Sub-task", desc: "A specific step, under a Story or Task" },
   { level: 2, type: "Bug", desc: "Something is broken" },
-  { level: 2, type: "Spike", desc: "Time-boxed research" },
 ];
 
 const NAMING_RULES = [

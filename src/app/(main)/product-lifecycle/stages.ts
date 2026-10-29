@@ -36,7 +36,7 @@ export const STAGES: Stage[] = [
     who: "Committed build work. Owned by the PM with the R&D lead.",
     exit: "Dev done, PM sign-off",
     fedBy:
-      "Ideas that passed Definition of Ready and the R&D handshake. Work is broken into Stories, Tasks, Bugs and Spikes, each under one Epic.",
+      "Ideas that passed Definition of Ready and the R&D handshake. Work is broken into Stories, Tasks and Bugs, each under one Epic.",
     href: DEV_BOARD,
     cta: "Open Dev board",
     top: "border-t-brand-secondary-500",
