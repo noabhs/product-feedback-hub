@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink, Tag } from "lucide-react";
+import { KEY_RULE, WHY_IT_MATTERS } from "@/lib/naming/guidelines";
 import { STAGES, NIH_BOARD } from "./stages";
 
 export const metadata = { title: "Product lifecycle · Navina Product Insights Hub" };
@@ -101,6 +102,26 @@ export default function ProductLifecyclePage() {
           <li><b className="text-brand-primary">Many to one:</b> several sources can merge into one Idea</li>
           <li><b className="text-brand-primary">One to many:</b> one Idea can split into several Epics</li>
         </ul>
+
+
+        <Link
+          href="/product-lifecycle/naming"
+          className={`group mt-6 ${CARD} border-l-[6px] border-l-brand-secondary-500 p-5 flex flex-col gap-3 md:flex-row md:items-center hover:shadow-md hover:border-brand-secondary-500 transition`}
+        >
+          <Tag aria-hidden className="hidden md:block w-6 h-6 shrink-0 text-brand-secondary-600" />
+          <div className="flex-1">
+            <p className="text-[13px] font-semibold text-brand-secondary-600">Applies to every ticket</p>
+            <p className="text-[20px] font-extrabold text-brand-primary leading-tight">Ticket naming convention</p>
+            <p className="text-[14px] text-brand-primary/65 mt-1 leading-relaxed">{WHY_IT_MATTERS}</p>
+            <p className="text-[13px] bg-surface-app rounded-sm px-2 py-1.5 mt-2 text-brand-primary/65 w-fit">
+              <b className="text-brand-primary">Key rule:</b> {KEY_RULE}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-brand-secondary-600">
+            Read the convention and review a board
+            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </Link>
       </div>
     </div>
   );
