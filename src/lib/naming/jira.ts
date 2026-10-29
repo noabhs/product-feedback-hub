@@ -2,7 +2,7 @@ import { cleanKey } from "@/lib/claude";
 import type { IdeaRow } from "./types";
 
 export const JIRA_HOST = "navina.atlassian.net";
-const PRODUCT_FIELD = "customfield_12183";
+export const PRODUCT_FIELD = "customfield_12183";
 const TEAM_FIELD = "customfield_10001";
 
 export function jiraConfigured(): boolean {
