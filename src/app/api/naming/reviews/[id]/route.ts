@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, fail } from "../../_auth";
+import { requireUser, requireEditor, fail } from "../../_auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
 /** Clears a review from the page. The audit log keeps its record of what was changed. */
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const u = await requireUser();
+  const u = await requireEditor();
   if ("res" in u) return u.res;
   const { id } = await params;
   const review = await prisma.namingReview.findUnique({ where: { id } });

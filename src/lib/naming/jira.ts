@@ -6,7 +6,12 @@ const PRODUCT_FIELD = "customfield_12183";
 const TEAM_FIELD = "customfield_10001";
 
 export function jiraConfigured(): boolean {
-  return !!(cleanKey(process.env.JIRA_EMAIL) && cleanKey(process.env.JIRA_API_TOKEN));
+  return missingJiraVars().length === 0;
+}
+
+/** Names of the Jira settings this deployment cannot see, so the error can say which. */
+export function missingJiraVars(): string[] {
+  return (["JIRA_EMAIL", "JIRA_API_TOKEN"] as const).filter((n) => !cleanKey(process.env[n]));
 }
 
 function authHeader(): string {

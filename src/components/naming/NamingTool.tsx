@@ -43,6 +43,7 @@ export default function NamingTool() {
   const [review, setReview] = useState<Review | null>(null);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [err, setErr] = useState("");
+  const [canEdit, setCanEdit] = useState(true);
 
   const loadReviews = useCallback(async () => {
     try {
@@ -60,8 +61,8 @@ export default function NamingTool() {
 
   useEffect(() => {
     // Loading what the server holds on first view; setState happens after the fetch resolves.
-    Promise.all([api<{ reviews: Review[] }>("/api/naming/reviews"), api<{ audit: Audit[] }>("/api/naming/audit")])
-      .then(([r, a]) => { setReviews(r.reviews); setAudit(a.audit); if (r.reviews[0]) openReview(r.reviews[0].id); })
+    Promise.all([api<{ reviews: Review[]; canEdit: boolean }>("/api/naming/reviews"), api<{ audit: Audit[] }>("/api/naming/audit")])
+      .then(([r, a]) => { setReviews(r.reviews); setCanEdit(r.canEdit); setAudit(a.audit); if (r.reviews[0]) openReview(r.reviews[0].id); })
       .catch((e: Error) => setErr(e.message));
   }, [openReview]);
 
@@ -77,12 +78,12 @@ export default function NamingTool() {
       </div>
       {err && <p className="mb-4 rounded-sm bg-rose-50 px-3 py-2 text-[13px] text-rose-800">{err}</p>}
       {tab === "review" ? (
-        <ReviewTab reviews={reviews} review={review} setErr={setErr}
+        <ReviewTab canEdit={canEdit} reviews={reviews} review={review} setErr={setErr}
           onCreated={async (id) => { await loadReviews(); await openReview(id); }}
           onPick={openReview} onChanged={() => { if (review) openReview(review.id); loadAudit(); }}
           onCleared={async () => { setReview(null); const r = await loadReviews(); if (r[0]) openReview(r[0].id); loadAudit(); }} />
       ) : (
-        <AuditTab audit={audit} onReverted={() => { loadAudit(); if (review) openReview(review.id); }} setErr={setErr} />
+        <AuditTab canEdit={canEdit} audit={audit} onReverted={() => { loadAudit(); if (review) openReview(review.id); }} setErr={setErr} />
       )}
     </div>
   );
@@ -90,8 +91,8 @@ export default function NamingTool() {
 
 /* ---------- Review tab ---------- */
 
-function ReviewTab({ reviews, review, setErr, onCreated, onPick, onChanged, onCleared }: {
-  reviews: Review[]; review: Review | null; setErr: (s: string) => void;
+function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChanged, onCleared }: {
+  canEdit: boolean; reviews: Review[]; review: Review | null; setErr: (s: string) => void;
   onCreated: (id: string) => void; onPick: (id: string) => void; onChanged: () => void; onCleared: () => void;
 }) {
   const [url, setUrl] = useState("");
@@ -127,7 +128,10 @@ function ReviewTab({ reviews, review, setErr, onCreated, onPick, onChanged, onCl
 
   return (
     <div className="space-y-5">
-      <div className={`${CARD} p-5`}>
+      {!canEdit && (
+        <p className="rounded-sm bg-amber-50 px-4 py-3 text-[13.5px]">You can read reviews and the audit log. Only people on the editors list can start a review or change tickets in Jira. Ask Noa to add you.</p>
+      )}
+      {canEdit && <div className={`${CARD} p-5`}>
         <label className="block text-[13px] font-semibold text-brand-primary/70 mb-2" htmlFor="viewlink">Paste the link to a Jira view</label>
         <div className="flex gap-2 flex-col sm:flex-row">
           <input id="viewlink" className={INPUT} placeholder="https://navina.atlassian.net/jira/polaris/projects/PRODUCT/ideas/view/…"
@@ -174,10 +178,10 @@ function ReviewTab({ reviews, review, setErr, onCreated, onPick, onChanged, onCl
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {review ? (
-        <ReviewList review={review} reviews={reviews} onPick={onPick} onChanged={onChanged} onCleared={onCleared} setErr={setErr} />
+        <ReviewList canEdit={canEdit} review={review} reviews={reviews} onPick={onPick} onChanged={onChanged} onCleared={onCleared} setErr={setErr} />
       ) : (
         <p className="text-center text-[14px] text-brand-primary/50 py-10">No review yet. Paste a view link above to start.</p>
       )}
@@ -187,8 +191,8 @@ function ReviewTab({ reviews, review, setErr, onCreated, onPick, onChanged, onCl
 
 type Filter = "pending" | "needs_context" | "applied" | "rejected" | "all";
 
-function ReviewList({ review, reviews, onPick, onChanged, onCleared, setErr }: {
-  review: Review; reviews: Review[]; onPick: (id: string) => void; onChanged: () => void; onCleared: () => void; setErr: (s: string) => void;
+function ReviewList({ canEdit, review, reviews, onPick, onChanged, onCleared, setErr }: {
+  canEdit: boolean; review: Review; reviews: Review[]; onPick: (id: string) => void; onChanged: () => void; onCleared: () => void; setErr: (s: string) => void;
 }) {
   const items = review.items ?? [];
   const [filter, setFilter] = useState<Filter>("pending");
@@ -240,7 +244,7 @@ function ReviewList({ review, reviews, onPick, onChanged, onCleared, setErr }: {
               {reviews.map((r) => <option key={r.id} value={r.id}>{r.title} · {new Date(r.createdAt).toLocaleDateString()}</option>)}
             </select>
           )}
-          <button className={BTN} onClick={() => setConfirm("clear")}><Trash2 className="w-3.5 h-3.5" /> Clear view</button>
+          {canEdit && <button className={BTN} onClick={() => setConfirm("clear")}><Trash2 className="w-3.5 h-3.5" /> Clear view</button>}
         </div>
       </div>
 
@@ -260,10 +264,10 @@ function ReviewList({ review, reviews, onPick, onChanged, onCleared, setErr }: {
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
+        {canEdit && <div className="flex gap-2">
           <button className={BTN} onClick={rejectAll} disabled={!!bulk}>Reject all</button>
           <button className={BTN_PRIMARY} onClick={() => setConfirm("all")} disabled={!pending.length || !!bulk}>Accept all ({pending.length})</button>
-        </div>
+        </div>}
       </div>
 
       {confirm === "all" && (
@@ -276,18 +280,18 @@ function ReviewList({ review, reviews, onPick, onChanged, onCleared, setErr }: {
       {bulk && <p className="mt-3 text-[13px] text-brand-primary/60">Working… {bulk.done} of {bulk.total}</p>}
 
       <div className="mt-4 space-y-3">
-        {shown.map((i) => <Row key={i.id} item={i} busy={busy.has(i.id)} onAccept={() => accept(i)} onPatch={(b) => patch(i, b)} />)}
+        {shown.map((i) => <Row key={i.id} canEdit={canEdit} item={i} busy={busy.has(i.id)} onAccept={() => accept(i)} onPatch={(b) => patch(i, b)} />)}
         {!shown.length && <p className="py-10 text-center text-[14px] text-brand-primary/50">Nothing here.</p>}
       </div>
     </div>
   );
 }
 
-function Row({ item, busy, onAccept, onPatch }: { item: Item; busy: boolean; onAccept: () => void; onPatch: (b: object) => void }) {
+function Row({ canEdit, item, busy, onAccept, onPatch }: { canEdit: boolean; item: Item; busy: boolean; onAccept: () => void; onPatch: (b: object) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.proposed);
   const d = item.data;
-  const open = item.state === "pending" || item.state === "needs_context" || item.state === "failed";
+  const open = canEdit && (item.state === "pending" || item.state === "needs_context" || item.state === "failed");
   const tick = (label: string, on: boolean, op: "delivery" | "release", index: number) => (
     <label key={op + index} className="flex flex-wrap items-center gap-2 text-[13px] text-brand-primary/70 py-0.5">
       <input type="checkbox" disabled={!open || busy} checked={on} onChange={(e) => onPatch({ op, index, on: e.target.checked })} />
@@ -339,7 +343,7 @@ function Row({ item, busy, onAccept, onPatch }: { item: Item; busy: boolean; onA
             <button className={BTN} onClick={() => { setDraft(item.proposed || item.current); setEditing(true); }}><Pencil className="w-3.5 h-3.5" /> Edit</button>
             <button className={BTN} onClick={() => onPatch({ op: "reject" })}><X className="w-3.5 h-3.5" /> Reject</button>
           </>
-        ) : item.state === "rejected" ? (
+        ) : !canEdit ? null : item.state === "rejected" ? (
           <button className={BTN} onClick={() => onPatch({ op: "reopen" })}>Reopen</button>
         ) : <span className="text-[13px] font-semibold text-emerald-700">Done in Jira</span>}
       </div>
@@ -349,7 +353,7 @@ function Row({ item, busy, onAccept, onPatch }: { item: Item; busy: boolean; onA
 
 /* ---------- Audit tab ---------- */
 
-function AuditTab({ audit, onReverted, setErr }: { audit: Audit[]; onReverted: () => void; setErr: (s: string) => void }) {
+function AuditTab({ canEdit, audit, onReverted, setErr }: { canEdit: boolean; audit: Audit[]; onReverted: () => void; setErr: (s: string) => void }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState("");
   const rows = audit.filter((a) => !q || `${a.key} ${a.itemKey ?? ""} ${a.from} ${a.to} ${a.by}`.toLowerCase().includes(q.toLowerCase()));
@@ -375,7 +379,7 @@ function AuditTab({ audit, onReverted, setErr }: { audit: Audit[]; onReverted: (
                 <td className="px-3 py-2">{ACTION_LABEL[a.action] ?? a.action}{a.result !== "ok" && <span className="ml-1 text-rose-700">· failed</span>}</td>
                 <td className="px-3 py-2 font-mono text-[12px]">{a.action === "clear_view" ? "" : <a className="hover:underline" href={`${JIRA}/${a.key}`} target="_blank" rel="noopener noreferrer">{a.key}</a>}</td>
                 <td className="px-3 py-2"><span className="text-brand-primary/50 line-through">{a.from}</span>{a.from && " "}<b>{a.to}</b>{a.error && <span className="block text-rose-700">{a.error}</span>}</td>
-                <td className="px-3 py-2">{a.action.startsWith("rename_") && a.result === "ok" && !a.reverted && (
+                <td className="px-3 py-2">{canEdit && a.action.startsWith("rename_") && a.result === "ok" && !a.reverted && (
                   <button className={BTN} disabled={busy === a.id} onClick={() => revert(a.id)}>{busy === a.id ? "Reverting…" : "Revert"}</button>)}
                   {a.reverted && <span className="text-brand-primary/50">Reverted</span>}</td>
               </tr>

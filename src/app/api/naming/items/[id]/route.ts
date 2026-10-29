@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, fail } from "../../_auth";
+import { requireEditor, fail } from "../../_auth";
 import type { ItemData } from "@/lib/naming/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
  * or flipping whether a linked Epic or release item takes the new name.
  */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  const u = await requireUser();
+  const u = await requireEditor();
   if ("res" in u) return u.res;
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
