@@ -9,6 +9,7 @@ export type ProposeInput = {
   title: string;
   description: string;
   status: string;
+  product: string;
   delivery: { type: string; title: string }[];
 };
 

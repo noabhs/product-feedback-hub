@@ -1,4 +1,4 @@
-import { adfText, deliveryFromLinks, releaseKeysFromLinks, searchAll } from "./jira";
+import { PRODUCT_FIELD, adfText, deliveryFromLinks, releaseKeysFromLinks, searchAll } from "./jira";
 import { proposeNames, type Proposal } from "./propose";
 import type { DeliveryLink, ItemData, ReleaseChild, ReleaseLink } from "./types";
 
@@ -12,7 +12,7 @@ const inList = (keys: string[]) => `key in (${keys.join(",")})`;
  * Claude for a name per idea. Nothing is written to Jira here.
  */
 export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
-  const ideas = await searchAll(inList(keys), ["summary", "status", "description", "issuelinks", "issuetype"]);
+  const ideas = await searchAll(inList(keys), ["summary", "status", "description", "issuelinks", "issuetype", PRODUCT_FIELD]);
   const byKey = new Map(ideas.map((i) => [i.key, i]));
   const ordered = keys.filter((k) => byKey.has(k));
 
@@ -67,6 +67,7 @@ export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
               title: f.summary,
               description: adfText(f.description),
               status: f.status?.name ?? "",
+              product: (f[PRODUCT_FIELD] as { value?: string } | null | undefined)?.value ?? "",
               delivery: (deliveryOf.get(k) ?? []).map((d) => ({ type: d.type, title: d.title })),
             };
           }),

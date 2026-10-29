@@ -56,8 +56,7 @@ export default function TicketNamingPage() {
 
         <SectionHead title="Format by level">
           Ideas on the Product board follow the Epic format by default. Use the Initiative format for an idea that
-          spans quarters, and the Story format for a single action. The Area is the product area or feature, for
-          example File Manager, Patient cohorts, Patient registry or User management.
+          spans quarters, and the Story format for a single action. The Product is the ticket&apos;s Product field, for example Analytics or Quality. The Topic is the feature or area inside it, for example Patient registry or Task management.
         </SectionHead>
         <div className="grid gap-4 md:grid-cols-3">
           {NAMING_LEVELS.map((n) => (
