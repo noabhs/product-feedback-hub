@@ -34,7 +34,7 @@ export default function TicketNamingPage() {
           <p className="text-[15px] text-brand-primary mt-1 leading-relaxed"><b>{READER_TEST}</b></p>
         </div>
 
-        <SectionHead title="General rules" />
+        <SectionHead title="The rules" />
         <ol className="grid gap-2 md:grid-cols-2">
           {ALL_RULES.map((r, i) => (
             <li key={r.rule} className={`${CARD} px-4 py-2.5 text-[14px] leading-relaxed`}>
