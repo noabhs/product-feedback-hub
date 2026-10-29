@@ -101,7 +101,7 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
   const [url, setUrl] = useState(DEFAULT_VIEW);
   const [loading, setLoading] = useState(false);
   const [ideas, setIdeas] = useState<IdeaRow[] | null>(null);
-    const [filters, setFilters] = useState({ product: "", team: "", status: "", q: "" });
+    const [filters, setFilters] = useState({ product: "", team: "", hbtf: "", status: "", q: "" });
   const [building, setBuilding] = useState(false);
 
   async function loadIdeas() {
@@ -109,12 +109,12 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
     try {
       const r = await api<{ ideas: IdeaRow[] }>("/api/naming/ideas", { method: "POST", body: JSON.stringify({ url }) });
       setIdeas(r.ideas);
-      setFilters({ product: "", team: "", status: r.ideas.some((i) => i.status === DEFAULT_STATUS) ? DEFAULT_STATUS : "", q: "" });
+      setFilters({ product: "", team: "", hbtf: "", status: r.ideas.some((i) => i.status === DEFAULT_STATUS) ? DEFAULT_STATUS : "", q: "" });
     } catch (e) { setErr((e as Error).message); }
     setLoading(false);
   }
   const shown = useMemo(() => (ideas ?? []).filter((i) =>
-    (!filters.product || i.product === filters.product) && (!filters.team || i.team === filters.team) &&
+    (!filters.product || i.product === filters.product) && (!filters.team || i.team === filters.team) && (!filters.hbtf || i.hbtf === filters.hbtf) &&
     (!filters.status || i.status === filters.status) && (!filters.q || i.summary.toLowerCase().includes(filters.q.toLowerCase()) || i.key.toLowerCase() === filters.q.toLowerCase())), [ideas, filters]);
   const opts = (f: keyof IdeaRow) => [...new Set((ideas ?? []).map((i) => i[f]).filter(Boolean))].sort();
 
@@ -149,9 +149,10 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
 
         {ideas && (
           <div className="mt-5 border-t border-[rgba(50,43,95,0.08)] pt-4">
-            <div className="grid gap-2 sm:grid-cols-4">
+            <div className="grid gap-2 sm:grid-cols-5">
               <select className={INPUT} value={filters.product} onChange={(e) => setFilters({ ...filters, product: e.target.value })}><option value="">Any product</option>{opts("product").map((o) => <option key={o}>{o}</option>)}</select>
               <select className={INPUT} value={filters.team} onChange={(e) => setFilters({ ...filters, team: e.target.value })}><option value="">Any team</option>{opts("team").map((o) => <option key={o}>{o}</option>)}</select>
+              <select className={INPUT} value={filters.hbtf} onChange={(e) => setFilters({ ...filters, hbtf: e.target.value })}><option value="">Any HB/TF</option>{opts("hbtf").map((o) => <option key={o}>{o}</option>)}</select>
               <select className={INPUT} value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}><option value="">Any status</option>{opts("status").map((o) => <option key={o}>{o}</option>)}</select>
               <input className={INPUT} placeholder="Search title or key" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
             </div>
