@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import NamingTool from "@/components/naming/NamingTool";
 import {
-  KEY_RULE, LINKED_RULES, NAMING_EXAMPLES, NAMING_LEVELS, NAMING_RULES, READER_TEST, WHY_IT_MATTERS,
+  ALL_RULES, KEY_RULE, NAMING_EXAMPLES, NAMING_LEVELS, READER_TEST, WHY_IT_MATTERS,
 } from "@/lib/naming/guidelines";
 
 export const metadata = { title: "Ticket naming convention · Navina Product Insights Hub" };
@@ -31,12 +31,12 @@ export default function TicketNamingPage() {
 
         <div className="mt-6 rounded-lg bg-teal-50 border border-teal-200 px-5 py-4">
           <p className="text-[12px] font-semibold text-teal-700">The rule that comes first</p>
-          <p className="text-[15px] text-brand-primary mt-1 leading-relaxed"><b>The reader test:</b> {READER_TEST}</p>
+          <p className="text-[15px] text-brand-primary mt-1 leading-relaxed"><b>{READER_TEST}</b></p>
         </div>
 
         <SectionHead title="General rules" />
         <ol className="grid gap-2 md:grid-cols-2">
-          {NAMING_RULES.map((r, i) => (
+          {ALL_RULES.map((r, i) => (
             <li key={r.rule} className={`${CARD} px-4 py-2.5 text-[14px] leading-relaxed`}>
               <span className="font-bold text-brand-secondary-600">{i + 1}.</span> <b>{r.rule}.</b> <span className="text-brand-primary/70">{r.detail}</span>
             </li>
@@ -55,16 +55,6 @@ export default function TicketNamingPage() {
               <p className="text-[13px] text-brand-primary/75 mt-2 leading-relaxed">{n.format}</p>
               <p className="text-[12px] font-semibold text-brand-primary/50 mt-3">{n.length}</p>
               <p className="mt-2 rounded-sm bg-surface-app px-2 py-1.5 font-mono text-[12.5px] text-brand-primary/80">{n.example}</p>
-            </div>
-          ))}
-        </div>
-
-        <SectionHead title="Rules for linked items" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {LINKED_RULES.map((l) => (
-            <div key={l.name} className={`${CARD} border-t-4 border-t-brand-secondary-500 p-4`}>
-              <p className="text-[15px] font-extrabold text-brand-primary">{l.name}</p>
-              <p className="text-[13px] text-brand-primary/70 mt-1 leading-relaxed">{l.body}</p>
             </div>
           ))}
         </div>

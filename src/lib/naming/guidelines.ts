@@ -14,7 +14,7 @@ export const KEY_RULE = "Write Area | what changes, so the title explains the wo
 export const NAMING_RULES: { rule: string; detail: string }[] = [
   { rule: "Separate the Area from the rest with a pipe", detail: "Write File Manager | Upload several files at once, with a space on each side of the pipe. Never a colon." },
   { rule: "Name the action and the object", detail: "A bare noun like \"Internal users\" does not say what the work is." },
-  { rule: "Keep qualifiers that change the scope", detail: "\"Including admin UI\", \"roster accounts\" and \"not only by SFTP\" all change what gets built." },
+  { rule: "Keep the words that change the scope", detail: "Do not cut a qualifier just to make the title shorter. \"Export reports\" and \"Export reports, including the admin UI\" describe different amounts of work, and the reader should be able to tell which one this is." },
   { rule: "Spell out jargon", detail: "Write patient-based, not PB. Terms the whole company uses stay as they are: HCC, EHR, SFTP, HIE." },
   { rule: "Say what, not how", detail: "Reasoning, technology choices and detail go in the description." },
   { rule: "Leave out ticket IDs, names, dates and sprint numbers", detail: "Lists of client names go in the description too." },
@@ -33,6 +33,12 @@ export const LINKED_RULES = [
   { name: "Team at the end", body: "Delivery work split by team gets the team in parentheses at the end: Patient registry | Audit log (Analytics). If the team's work has no component name of its own, use <Area> | <Team> tasks." },
   { name: "Release items follow the Epic", body: "A Release Event linked to an Epic carries the Epic's name. The steps under it keep their suffix: Patient registry | Audit log (Analytics) - GA Rollout." },
   { name: "Missing context", body: "If the title can't pass the reader test and nobody knows the meaning yet, keep the current title and write NEED TO UPDATE TICKET NAME in capitals at the top of the description. Don't guess." },
+];
+
+/** Every rule on the page, in one numbered list: the title rules, then the rules for linked items. */
+export const ALL_RULES: { rule: string; detail: string }[] = [
+  ...NAMING_RULES,
+  ...LINKED_RULES.map((l) => ({ rule: l.name, detail: l.body })),
 ];
 
 /** use === null means the right title can't be written until someone supplies the context. */
