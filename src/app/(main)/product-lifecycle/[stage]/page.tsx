@@ -66,8 +66,8 @@ function IdeaSections() {
       <SectionHead title="Naming an idea">
         Ideas on the Product board follow the Epic format by default, and an idea and its linked Epic carry the
         same title.{" "}
-        <Link href="/product-lifecycle/dev#naming" className="font-semibold text-brand-secondary-600 hover:underline">
-          See the naming guidelines
+        <Link href="/product-lifecycle/naming" className="font-semibold text-brand-secondary-600 hover:underline">
+          See the ticket naming convention
         </Link>
         .
       </SectionHead>
@@ -84,71 +84,6 @@ const HIERARCHY = [
   { level: 2, type: "Task", desc: "Internal work, no user-facing change" },
   { level: 3, type: "Sub-task", desc: "A specific step, under a Story or Task" },
   { level: 2, type: "Bug", desc: "Something is broken" },
-];
-
-const NAMING_RULES = [
-  <>Use sentence case. Proper nouns and product terms keep their capitals (File Manager, Epic, HCC, SFTP).</>,
-  <>Name the action and the object. A bare noun like &quot;Internal users&quot; or &quot;Shell users&quot; fails the reader test.</>,
-  <>Keep qualifiers that change the scope, such as &quot;including admin UI&quot;, &quot;roster accounts&quot; or &quot;not only by SFTP&quot;.</>,
-  <>Spell out jargon outsiders won&apos;t know, such as PB. Keep terms the whole company uses, such as HCC, EHR, SFTP and HIE.</>,
-  <>Say what, not how. Put the detail, the reasoning and the technology choices in the description.</>,
-  <>Don&apos;t put ticket IDs, people&apos;s names, dates or sprint numbers in titles.</>,
-  <>Check the level: an outcome across quarters is an Initiative, a capability is an Epic, and a slice of work inside an Epic is a Story or Task.</>,
-];
-
-const NAMING = [
-  {
-    type: "Initiative",
-    format: "A noun phrase that names the business outcome.",
-    length: "Up to 90 characters",
-  },
-  {
-    type: "Epic, or an idea at Epic level",
-    format: "Area: what changes, in plain words. A verb is fine if it makes the title clearer.",
-    length: "Up to 90 characters",
-  },
-  {
-    type: "Story / Task",
-    format: "User-facing: [Persona] can [action]. Technical, with no persona: [Verb] [object].",
-    length: "Up to 80 characters",
-  },
-];
-
-const LINKED_RULES = [
-  {
-    name: "Same name",
-    body: "An idea and its linked dev Epic carry the same title. When one is renamed, rename the other.",
-  },
-  {
-    name: "Team suffix",
-    body: "Delivery work split by team gets the team in parentheses at the end, for example Patient registry: Audit log (Analytics). If the team's work has no component name of its own, use <Area>: <Team> tasks.",
-  },
-  {
-    name: "Missing context",
-    body: "If the title can't pass the reader test and nobody knows the meaning yet, keep the current title and write NEED TO UPDATE TICKET NAME in capitals at the top of the description. Don't guess.",
-  },
-];
-
-/** use === null means the right title can't be written until someone supplies the context. */
-const NAMING_EXAMPLES: { avoid: string; use: string | null; why: string }[] = [
-  { avoid: "User management: Internal users", use: null, why: "A bare noun that doesn't say what the work is." },
-  { avoid: "Delete users", use: "Admin can delete users", why: "It names who does what." },
-  {
-    avoid: "File Manager: Failed file visibility",
-    use: "File Manager: Show every file, including failed ones, with a status and failure reason",
-    why: "The longer title says what changes.",
-  },
-  {
-    avoid: "Analytics | Patient Registry - Service & DB",
-    use: "Patient registry: Merge patient configurations and cohorts into one service (Analytics)",
-    why: "The Area comes first and the title says what is built.",
-  },
-  { avoid: "Patients insurance logic change for PB", use: null, why: "It uses undefined jargon and doesn't say what changes." },
-  {
-    avoid: "Epic for Q1 File Manager work",
-    use: "File Manager: Upload several files at once",
-    why: "It carries a date and doesn't say what the work is.",
-  },
 ];
 
 function DevSections() {
@@ -172,79 +107,6 @@ function DevSections() {
       <p className={NOTE}>
         The traceability chain is OKR, Idea, Initiative, Epics, Tasks, so every task traces back to a company OKR.
       </p>
-
-      <div id="naming" className="scroll-mt-6" />
-      <SectionHead title="Naming guidelines for ideas and dev items">
-        Three levels: Initiative, Epic, Story/Task. Ideas on the Product board follow the Epic format by
-        default. Use the Initiative format for an idea that spans quarters, and the Story format for a single
-        action.
-      </SectionHead>
-
-      <div className="rounded-lg bg-teal-50 border border-teal-200 px-5 py-4">
-        <p className="text-[12px] font-semibold text-teal-700">The rule that comes first</p>
-        <p className="text-[15px] text-brand-primary mt-1 leading-relaxed">
-          <b>The reader test:</b> someone outside the team should understand what changes, and for whom, from
-          the title alone. If they would need to open the ticket to find out what the work is, rewrite the title.
-        </p>
-      </div>
-
-      <h3 className="text-[16px] font-extrabold text-brand-primary mt-8 mb-3">General rules</h3>
-      <ol className="grid gap-2 md:grid-cols-2">
-        {NAMING_RULES.map((r, i) => (
-          <li key={i} className={`${CARD} px-4 py-2.5 text-[14px] leading-relaxed`}>
-            <span className="font-bold text-brand-secondary-600">{i + 1}.</span> {r}
-          </li>
-        ))}
-      </ol>
-
-      <h3 className="text-[16px] font-extrabold text-brand-primary mt-8 mb-3">Format by level</h3>
-      <div className="grid gap-4 md:grid-cols-3">
-        {NAMING.map((n) => (
-          <div key={n.type} className={`${CARD} p-4`}>
-            <p className="text-[16px] font-extrabold text-brand-primary">{n.type}</p>
-            <p className="text-[13px] text-brand-primary/75 mt-2 leading-relaxed">{n.format}</p>
-            <p className="text-[12px] font-semibold text-brand-primary/50 mt-3">{n.length}</p>
-          </div>
-        ))}
-      </div>
-      <p className={NOTE}>
-        The Area is the product area or feature, for example File Manager, Patient cohorts, Patient registry or
-        User management.
-      </p>
-
-      <h3 className="text-[16px] font-extrabold text-brand-primary mt-8 mb-3">Rules for linked items</h3>
-      <div className="grid gap-4 md:grid-cols-3">
-        {LINKED_RULES.map((l) => (
-          <div key={l.name} className={`${CARD} border-t-4 border-t-brand-secondary-500 p-4`}>
-            <p className="text-[15px] font-extrabold text-brand-primary">{l.name}</p>
-            <p className="text-[13px] text-brand-primary/70 mt-1 leading-relaxed">{l.body}</p>
-          </div>
-        ))}
-      </div>
-
-      <h3 className="text-[16px] font-extrabold text-brand-primary mt-8 mb-3">Examples</h3>
-      <div className={`${CARD} overflow-x-auto`}>
-        <table className="w-full min-w-[640px] text-[14px]">
-          <thead>
-            <tr className="text-left text-[12px] text-brand-primary/55 bg-surface-app">
-              <th className="px-4 py-2.5 font-semibold">Avoid</th>
-              <th className="px-4 py-2.5 font-semibold">Use</th>
-              <th className="px-4 py-2.5 font-semibold">Why</th>
-            </tr>
-          </thead>
-          <tbody>
-            {NAMING_EXAMPLES.map((e) => (
-              <tr key={e.avoid} className="border-t border-[rgba(50,43,95,0.08)] align-top">
-                <td className="px-4 py-2.5 font-mono text-[13px] text-rose-800/80">{e.avoid}</td>
-                <td className="px-4 py-2.5 font-mono text-[13px]">
-                  {e.use ?? <em className="font-sans text-brand-primary/55">Needs context first</em>}
-                </td>
-                <td className="px-4 py-2.5 text-brand-primary/65">{e.why}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </>
   );
 }

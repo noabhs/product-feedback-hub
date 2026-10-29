@@ -445,3 +445,56 @@ model PageContent {
   updatedBy String?
   updatedAt DateTime @updatedAt
 }
+
+/// One run of the ticket naming review: a Jira view (or project) whose ideas were
+/// given proposed names, to be accepted or rejected one by one.
+model NamingReview {
+  id        String   @id @default(cuid())
+  title     String
+  viewUrl   String
+  project   String
+  createdBy String
+  createdAt DateTime @default(now())
+  items     NamingItem[]
+
+  @@index([createdAt])
+}
+
+/// One idea inside a review. `key` is the Jira key. state: pending | needs_context |
+/// rejected | applied | failed. delivery and releases hold the linked Epics, Release
+/// Events and steps with the rename choice for each; see lib/naming/types.ts.
+model NamingItem {
+  id         String       @id @default(cuid())
+  reviewId   String
+  review     NamingReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  key        String
+  order      Int
+  current    String
+  proposed   String       @default("")
+  state      String       @default("pending")
+  data       Json
+  appliedAt  DateTime?
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([reviewId, key])
+  @@index([reviewId, order])
+}
+
+/// Every change the naming tool made in Jira, with before and after, so any of
+/// them can be reverted. Never deleted when a review is cleared.
+model NamingAudit {
+  id       String   @id @default(cuid())
+  at       DateTime @default(now())
+  by       String
+  reviewId String?
+  action   String
+  key      String
+  itemKey  String?
+  from     String
+  to       String
+  result   String
+  error    String?
+  reverted Boolean  @default(false)
+
+  @@index([at])
+}
