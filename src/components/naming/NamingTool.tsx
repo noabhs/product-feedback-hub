@@ -13,6 +13,8 @@ const BTN = "inline-flex items-center justify-center gap-1.5 rounded-pill border
 const BTN_PRIMARY = "inline-flex items-center justify-center gap-1.5 rounded-pill bg-brand-primary px-4 py-1.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed";
 const INPUT = "w-full rounded-sm border border-[rgba(50,43,95,0.2)] bg-white px-3 py-2 text-[14px]";
 const JIRA = "https://navina.atlassian.net/browse";
+const DEFAULT_VIEW = "https://navina.atlassian.net/jira/polaris/projects/PRODUCT/ideas/view/b96c8dd0-d89f-4b92-80b3-f3139c83eaf0";
+const DEFAULT_STATUS = "New Idea";
 
 const STATE_LABEL: Record<string, string> = { pending: "Ready for review", needs_context: "Needs context", rejected: "Rejected", applied: "Applied", failed: "Failed" };
 const STATE_TONE: Record<string, string> = {
@@ -95,7 +97,7 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
   canEdit: boolean; reviews: Review[]; review: Review | null; setErr: (s: string) => void;
   onCreated: (id: string) => void; onPick: (id: string) => void; onChanged: () => void; onCleared: () => void;
 }) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(DEFAULT_VIEW);
   const [loading, setLoading] = useState(false);
   const [ideas, setIdeas] = useState<IdeaRow[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -106,7 +108,8 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
     setErr(""); setLoading(true); setIdeas(null);
     try {
       const r = await api<{ ideas: IdeaRow[] }>("/api/naming/ideas", { method: "POST", body: JSON.stringify({ url }) });
-      setIdeas(r.ideas); setPicked(new Set()); setFilters({ product: "", team: "", status: "", q: "" });
+      setIdeas(r.ideas); setPicked(new Set());
+      setFilters({ product: "", team: "", status: r.ideas.some((i) => i.status === DEFAULT_STATUS) ? DEFAULT_STATUS : "", q: "" });
     } catch (e) { setErr((e as Error).message); }
     setLoading(false);
   }
