@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, fail } from "../_auth";
+import { requireUser, requireEditor, canEditNaming, fail } from "../_auth";
 import { buildItems } from "@/lib/naming/build";
 import { jiraConfigured, parseViewLink } from "@/lib/naming/jira";
 
@@ -14,12 +14,12 @@ export async function GET() {
     take: 40,
     include: { _count: { select: { items: true } } },
   });
-  return NextResponse.json({ reviews });
+  return NextResponse.json({ reviews, canEdit: canEditNaming(u.email) });
 }
 
 /** Builds a review: reads the chosen ideas from Jira, proposes names, stores the result. */
 export async function POST(req: NextRequest) {
-  const u = await requireUser();
+  const u = await requireEditor();
   if ("res" in u) return u.res;
   const body = await req.json().catch(() => ({}));
   const parsed = parseViewLink(String(body.url ?? ""));

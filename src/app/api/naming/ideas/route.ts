@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, fail } from "../_auth";
+import { requireEditor, fail } from "../_auth";
 import { jiraConfigured, listIdeas, missingJiraVars, parseViewLink } from "@/lib/naming/jira";
 
 export const maxDuration = 60;
 
 /** Parses a view link and lists the project's ideas so the user can choose what to review. */
 export async function POST(req: NextRequest) {
-  const u = await requireUser();
+  const u = await requireEditor();
   if ("res" in u) return u.res;
   const { url } = await req.json().catch(() => ({}));
   const parsed = parseViewLink(String(url ?? ""));
