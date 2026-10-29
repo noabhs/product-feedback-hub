@@ -15,6 +15,7 @@ const INPUT = "w-full rounded-sm border border-[rgba(50,43,95,0.2)] bg-white px-
 const JIRA = "https://navina.atlassian.net/browse";
 const DEFAULT_VIEW = "https://navina.atlassian.net/jira/polaris/projects/PRODUCT/ideas/view/b96c8dd0-d89f-4b92-80b3-f3139c83eaf0";
 const DEFAULT_STATUS = "New Idea";
+const MAX_REVIEW = 120;
 
 const STATE_LABEL: Record<string, string> = { pending: "Ready for review", needs_context: "Needs context", rejected: "Rejected", applied: "Applied", failed: "Failed" };
 const STATE_TONE: Record<string, string> = {
@@ -100,15 +101,14 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
   const [url, setUrl] = useState(DEFAULT_VIEW);
   const [loading, setLoading] = useState(false);
   const [ideas, setIdeas] = useState<IdeaRow[] | null>(null);
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [filters, setFilters] = useState({ product: "", team: "", status: "", q: "" });
+    const [filters, setFilters] = useState({ product: "", team: "", status: "", q: "" });
   const [building, setBuilding] = useState(false);
 
   async function loadIdeas() {
     setErr(""); setLoading(true); setIdeas(null);
     try {
       const r = await api<{ ideas: IdeaRow[] }>("/api/naming/ideas", { method: "POST", body: JSON.stringify({ url }) });
-      setIdeas(r.ideas); setPicked(new Set());
+      setIdeas(r.ideas);
       setFilters({ product: "", team: "", status: r.ideas.some((i) => i.status === DEFAULT_STATUS) ? DEFAULT_STATUS : "", q: "" });
     } catch (e) { setErr((e as Error).message); }
     setLoading(false);
@@ -122,9 +122,9 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
     setErr(""); setBuilding(true);
     try {
       const { id } = await api<{ id: string }>("/api/naming/reviews", {
-        method: "POST", body: JSON.stringify({ url, keys: [...picked], title: filters.product || filters.team || "Review" }),
+        method: "POST", body: JSON.stringify({ url, keys: shown.map((i) => i.key), title: filters.product || filters.team || "Review" }),
       });
-      setIdeas(null); setPicked(new Set()); await onCreated(id);
+      setIdeas(null); await onCreated(id);
     } catch (e) { setErr((e as Error).message); }
     setBuilding(false);
   }
@@ -155,30 +155,22 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
               <select className={INPUT} value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}><option value="">Any status</option>{opts("status").map((o) => <option key={o}>{o}</option>)}</select>
               <input className={INPUT} placeholder="Search title or key" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
             </div>
-            <div className="flex flex-wrap items-center gap-3 mt-3 text-[13px]">
-              <button className={BTN} onClick={() => setPicked(new Set([...picked, ...shown.map((i) => i.key)]))}>Select the {shown.length} shown</button>
-              <button className={BTN} onClick={() => setPicked(new Set())} disabled={!picked.size}>Clear selection</button>
-              <span className="text-brand-primary/60">{picked.size} selected of {ideas.length}</span>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button className={BTN_PRIMARY} disabled={!shown.length || shown.length > MAX_REVIEW || building} onClick={build}>
+                {building && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Propose names for the {shown.length} ideas shown
+              </button>
+              {building && <span className="text-[13px] text-brand-primary/60">Reading Jira and writing names. This takes about a minute.</span>}
+              {shown.length > MAX_REVIEW && <span className="text-[13px] text-rose-700">That is more than {MAX_REVIEW}. Narrow it with the filters.</span>}
             </div>
             <ul className="mt-3 max-h-80 overflow-y-auto divide-y divide-[rgba(50,43,95,0.06)] rounded-sm border border-[rgba(50,43,95,0.08)]">
               {shown.map((i) => (
-                <li key={i.key}>
-                  <label className="flex items-start gap-3 px-3 py-2 text-[13.5px] cursor-pointer hover:bg-surface-app">
-                    <input type="checkbox" className="mt-1" checked={picked.has(i.key)}
-                      onChange={(e) => { const n = new Set(picked); if (e.target.checked) n.add(i.key); else n.delete(i.key); setPicked(n); }} />
-                    <span className="min-w-0"><span className="font-mono text-[12px] text-brand-primary/50 mr-2">{i.key}</span>{i.summary}
-                      <span className="block text-[12px] text-brand-primary/50">{[i.product, i.team, i.status].filter(Boolean).join(" · ")}</span></span>
-                  </label>
+                <li key={i.key} className="px-3 py-2 text-[13.5px]">
+                  <span className="font-mono text-[12px] text-brand-primary/50 mr-2">{i.key}</span>{i.summary}
+                  <span className="block text-[12px] text-brand-primary/50">{[i.product, i.team, i.status].filter(Boolean).join(" · ")}</span>
                 </li>
               ))}
               {!shown.length && <li className="px-3 py-6 text-center text-[13px] text-brand-primary/50">No ideas match.</li>}
             </ul>
-            <div className="mt-3 flex items-center gap-3">
-              <button className={BTN_PRIMARY} disabled={!picked.size || building} onClick={build}>
-                {building && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Propose names for {picked.size || "…"} ideas
-              </button>
-              {building && <span className="text-[13px] text-brand-primary/60">Reading Jira and writing names. This takes about a minute.</span>}
-            </div>
           </div>
         )}
       </div>}
