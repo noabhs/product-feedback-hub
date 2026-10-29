@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import NamingTool from "@/components/naming/NamingTool";
 import {
-  ALL_RULES, KEY_RULE, NAMING_EXAMPLES, NAMING_LEVELS, READER_TEST, WHY_IT_MATTERS,
+  KEY_RULE, NAMING_EXAMPLES, OTHER_RULES, TOP_RULES, NAMING_LEVELS, READER_TEST, WHY_IT_MATTERS,
 } from "@/lib/naming/guidelines";
 
 export const metadata = { title: "Ticket naming convention · Navina Product Insights Hub" };
@@ -34,11 +34,22 @@ export default function TicketNamingPage() {
           <p className="text-[15px] text-brand-primary mt-1 leading-relaxed"><b>{READER_TEST}</b></p>
         </div>
 
-        <SectionHead title="The rules" />
-        <ol className="grid gap-2 md:grid-cols-2">
-          {ALL_RULES.map((r, i) => (
-            <li key={r.rule} className={`${CARD} px-4 py-2.5 text-[14px] leading-relaxed`}>
-              <span className="font-bold text-brand-secondary-600">{i + 1}.</span> <b>{r.rule}.</b> <span className="text-brand-primary/70">{r.detail}</span>
+        <SectionHead title="The three rules that matter most" />
+        <ol className="grid gap-4 md:grid-cols-3">
+          {TOP_RULES.map((r, i) => (
+            <li key={r.rule} className={`${CARD} border-t-4 border-t-brand-secondary-500 p-5`}>
+              <span className="text-[28px] font-extrabold text-brand-secondary-600 leading-none">{i + 1}</span>
+              <p className="text-[17px] font-extrabold text-brand-primary mt-2 leading-snug">{r.rule}</p>
+              <p className="text-[14px] text-brand-primary/70 mt-1.5 leading-relaxed">{r.detail}</p>
+            </li>
+          ))}
+        </ol>
+
+        <SectionHead title="Also" />
+        <ol start={4} className="list-decimal pl-6 space-y-2.5 text-[14.5px] leading-relaxed marker:font-bold marker:text-brand-secondary-600 max-w-3xl">
+          {OTHER_RULES.map((r) => (
+            <li key={r.rule} className="pl-1">
+              <b className="text-brand-primary">{r.rule}.</b> <span className="text-brand-primary/70">{r.detail}</span>
             </li>
           ))}
         </ol>

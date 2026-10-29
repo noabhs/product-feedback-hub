@@ -40,13 +40,19 @@ export async function proposeNames(batch: ProposeInput[]): Promise<Map<string, P
   const client = new Anthropic({ apiKey: cleanKey(process.env.ANTHROPIC_API_KEY) });
   const res = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 4096,
-    output_config: { format: jsonFormat(SCHEMA) },
+    // Adaptive thinking is on by default and is billed against max_tokens. A small
+    // budget lets the reasoning use it all and return no text block at all, so give
+    // headroom and ask for low effort: naming ten ideas does not need deep reasoning.
+    max_tokens: 12000,
+    output_config: { format: jsonFormat(SCHEMA), effort: "low" },
     system:
       conventionPrompt() +
       '\n\nReturn {"items": [...]} with one entry per idea, using the idea\'s key. Set inferred to true when the name comes from a linked ticket or a partial description.',
     messages: [{ role: "user", content: JSON.stringify(batch.map((b) => ({ ...b, description: b.description.slice(0, 1200) }))) }],
   });
+  if (!res.content.some((b) => b.type === "text")) {
+    throw new Error(`Claude returned no names (stop_reason: ${res.stop_reason}). Try again with fewer ideas.`);
+  }
   const parsed = JSON.parse(extractText(res.content).trim()) as { items: (Proposal & { key: string })[] };
   return new Map(parsed.items.map((p) => [p.key, p]));
 }
