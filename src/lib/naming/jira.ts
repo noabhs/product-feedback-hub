@@ -3,6 +3,7 @@ import type { IdeaRow } from "./types";
 
 export const JIRA_HOST = "navina.atlassian.net";
 export const PRODUCT_FIELD = "customfield_12183";
+const HBTF_FIELD = "customfield_15565";
 const TEAM_FIELD = "customfield_10001";
 
 export function jiraConfigured(): boolean {
@@ -78,11 +79,12 @@ export async function renameIssue(key: string, name: string): Promise<{ verified
 
 /** The ideas of a project, for choosing which to review. */
 export async function listIdeas(project: string): Promise<IdeaRow[]> {
-  const issues = await searchAll(`project = "${project}" ORDER BY created ASC`, ["summary", "status", PRODUCT_FIELD, TEAM_FIELD]);
+  const issues = await searchAll(`project = "${project}" ORDER BY created ASC`, ["summary", "status", PRODUCT_FIELD, TEAM_FIELD, HBTF_FIELD]);
   return issues.map((i) => {
     const product = i.fields[PRODUCT_FIELD] as { value?: string } | null | undefined;
     const team = i.fields[TEAM_FIELD] as { name?: string } | null | undefined;
-    return { key: i.key, summary: i.fields.summary, status: i.fields.status?.name ?? "", team: team?.name ?? "", product: product?.value ?? "" };
+    const hbtf = i.fields[HBTF_FIELD] as { value?: string } | null | undefined;
+    return { key: i.key, summary: i.fields.summary, status: i.fields.status?.name ?? "", team: team?.name ?? "", product: product?.value ?? "", hbtf: hbtf?.value ?? "" };
   });
 }
 
