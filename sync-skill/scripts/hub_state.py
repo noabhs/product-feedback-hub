@@ -24,13 +24,14 @@ EMPTY = {"slack": {"version": 1, "channels": {}}, "jira": {"version": 1, "cursor
 
 
 def call(method, source, body=None):
+    # In a cloud run the environment's network proxy adds the Authorization header, so
+    # the secret is not in the environment there; locally it comes from FEEDBACK_IMPORT_SECRET.
     secret = os.environ.get("FEEDBACK_IMPORT_SECRET", "").strip()
-    if not secret:
-        sys.exit("FEEDBACK_IMPORT_SECRET is not set")
+    headers = {"Content-Type": "application/json"}
+    if secret:
+        headers["Authorization"] = f"Bearer {secret}"
     req = urllib.request.Request(
-        f"{BASE}/api/cron/feedback-state/{source}",
-        data=body, method=method,
-        headers={"Authorization": f"Bearer {secret}", "Content-Type": "application/json"},
+        f"{BASE}/api/cron/feedback-state/{source}", data=body, method=method, headers=headers,
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as r:

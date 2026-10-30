@@ -32,14 +32,10 @@ def main():
     ap.add_argument("--timeout", type=float, default=45.0)
     args = ap.parse_args()
 
+    # In a cloud run the environment's network proxy adds the Authorization header, so
+    # the secret is deliberately not in the environment there. With no secret set we
+    # send no header; a 401 below means neither this machine nor a proxy supplied one.
     secret = os.environ.get("FEEDBACK_IMPORT_SECRET", "").strip()
-    if not secret:
-        print(json.dumps({
-            "pushed": False,
-            "reason": "FEEDBACK_IMPORT_SECRET is not set in the environment -- "
-                      "skipping the direct push. Rows are still on disk for a manual import.",
-        }))
-        return 1
 
     with open(args.claims_json) as f:
         payload = json.load(f)
@@ -47,7 +43,7 @@ def main():
     req = urllib.request.Request(
         args.url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {secret}"},
+        headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {secret}"} if secret else {})},
         method="POST",
     )
     try:
