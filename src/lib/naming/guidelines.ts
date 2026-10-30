@@ -14,7 +14,7 @@ export const KEY_RULE = "Write Product | Topic - what changes, so the title expl
 export type Rule = { rule: string; detail: string; example?: { avoid?: string; use: string } };
 
 export const NAMING_RULES: Rule[] = [
-  { rule: "Start every title with Product | Topic -", detail: "Product is the ticket's Product field. Topic is the feature inside it. Never a colon.", example: { avoid: "Differentiated suspecting levels for suggestions", use: "Dx insights | Suggestion confidence - introduce suspecting levels for suggestions" } },
+  { rule: "Start every title with Product | Topic -", detail: "Product is the ticket's Product field, or its Team if that is empty. Topic is the feature inside it. Never a colon.", example: { avoid: "Differentiated suspecting levels for suggestions", use: "Dx insights | Suggestion confidence - introduce suspecting levels for suggestions" } },
   { rule: "Name the action and the object", detail: "A bare noun like \"Internal users\" does not say what the work is.", example: { avoid: "Internal users", use: "User management | Admin can invite internal users" } },
   { rule: "Say what, not how", detail: "Reasoning, technology choices and detail go in the description.", example: { avoid: "Reports API - Use REST with URL versioning", use: "Analytics | Reports API - Versioned API so data pipelines don't break" } },
   { rule: "Keep the words that change the scope", detail: "Do not cut a qualifier just to make the title shorter. \"Export reports\" and \"Export reports, including the admin UI\" describe different amounts of work, and the reader should be able to tell which one this is." },
@@ -64,7 +64,7 @@ export function conventionPrompt(): string {
     "RULES:",
     ...NAMING_RULES.map((r) => `- ${r.rule}. ${r.detail}`),
     "FORMAT: " + NAMING_LEVELS.map((l) => `${l.type}: ${l.format} (${l.length})`).join(" | "),
-    "Ideas default to the Epic format. Every title starts with `Product | Topic - `, where Product is the idea's Product field (given below as product) and Topic is the feature or area inside it. If product is empty, infer it from the title and say so with inferred: true.",
+    "Ideas default to the Epic format. Every title starts with `Product | Topic - `, where Product is the idea's Product field and Topic is the feature or area inside it. The `product` you are given is already the Product field, or the Team name when the Product field is empty, so use it as the first part as it is. Only if it is empty too, infer it from the title and set inferred: true.",
     "NEVER GUESS: if the title, description and linked tickets do not say what the work is, return proposed as an empty string and put the one question that would unblock it in `question`.",
     "Keep names within 90 characters (80 for a Story). If an idea is already compliant, return its current title unchanged.",
   ].join("\n");

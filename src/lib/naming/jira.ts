@@ -4,7 +4,7 @@ import type { IdeaRow } from "./types";
 export const JIRA_HOST = "navina.atlassian.net";
 export const PRODUCT_FIELD = "customfield_12183";
 const HBTF_FIELD = "customfield_15565";
-const TEAM_FIELD = "customfield_10001";
+export const TEAM_FIELD = "customfield_10001";
 
 export function jiraConfigured(): boolean {
   return missingJiraVars().length === 0;
