@@ -18,10 +18,10 @@ Never `navina.slack.com`; see `references/taxonomy.md`.
 
 | `SKILL.md` says | In this run |
 |---|---|
-| `~/.claude/skills/slack-feedback-to-hub-csv` | `/tmp/sync/sync-skill` (call it `$SKILL`) |
+| `~/.claude/skills/slack-feedback-to-hub-csv` | `sync-skill/` in this repository checkout (call its absolute path `$SKILL`; the repo root is `git rev-parse --show-toplevel`). The routine runs from the connected repo, so these scripts are the repo's own code. |
 | `~/Documents/navina-insights-hub/.feedback-state/slack.json` | `/tmp/feedback-state/slack.json` |
 | `…/jira.json` | `/tmp/feedback-state/jira.json` |
-| `~/Documents/navina-insights-hub/src/lib/accounts.ts` | `/tmp/sync/src/lib/accounts.ts` |
+| `~/Documents/navina-insights-hub/src/lib/accounts.ts` | `src/lib/accounts.ts` in the repo checkout |
 | `~/Downloads/feedback-….csv`, `all-items.csv`, `--append-to` | Not used. Write the CSV and rows under `/tmp`; leave `--append-to` off. |
 | `FEEDBACK_IMPORT_SECRET` from `~/.zshrc` | Not in this environment at all: the environment's network proxy adds the `Authorization: Bearer` header to requests to the hub, so Claude never holds the secret. Run the scripts directly (they send no header themselves); do not use `zsh -ic`, and do not look for or ask for the secret. |
 
