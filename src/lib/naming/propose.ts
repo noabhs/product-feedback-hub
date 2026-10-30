@@ -22,12 +22,14 @@ const SCHEMA = {
         type: "object",
         properties: {
           key: { type: "string" },
-          proposed: { type: "string" },
+          product: { type: "string" },
+          topic: { type: "string" },
+          change: { type: "string" },
           level: { type: "string", enum: ["Initiative", "Epic", "Story"] },
           inferred: { type: "boolean" },
           question: { anyOf: [{ type: "string" }, { type: "null" }] },
         },
-        required: ["key", "proposed", "level", "inferred", "question"],
+        required: ["key", "product", "topic", "change", "level", "inferred", "question"],
         additionalProperties: false,
       },
     },
@@ -35,6 +37,26 @@ const SCHEMA = {
   required: ["items"],
   additionalProperties: false,
 };
+
+type Raw = { key: string; product: string; topic: string; change: string; level: string; inferred: boolean; question: string | null };
+
+// A stray pipe inside a part would read as a second separator, so it becomes a slash.
+const clean = (v: string) => v.replace(/^[\s|\-–—]+|[\s|\-–—]+$/g, "").replace(/\s*\|\s*/g, " / ").replace(/\s+/g, " ");
+
+/**
+ * The title is joined here, not written by the model, so every proposal has the
+ * shape Product | Topic - what changes. The Product given by the hub always wins.
+ */
+export function composeTitle(given: string, r: Raw): { proposed: string; inferred: boolean; question: string | null } {
+  const product = clean(given) || clean(r.product);
+  const topic = clean(r.topic);
+  const change = clean(r.change);
+  const inferred = r.inferred || !clean(given);
+  if (!change) return { proposed: "", inferred, question: r.question || "What is this work, and who is it for?" };
+  if (!product) return { proposed: "", inferred, question: "Which product does this belong to?" };
+  if (!topic) return { proposed: "", inferred, question: r.question || "Which feature or area is this in?" };
+  return { proposed: `${product} | ${topic} - ${change}`, inferred, question: null };
+}
 
 /** Proposes a name for each idea. Ten or so at a time keeps one answer short enough to be reliable. */
 export async function proposeNames(batch: ProposeInput[]): Promise<Map<string, Proposal>> {
@@ -48,12 +70,13 @@ export async function proposeNames(batch: ProposeInput[]): Promise<Map<string, P
     output_config: { format: jsonFormat(SCHEMA), effort: "low" },
     system:
       conventionPrompt() +
-      '\n\nReturn {"items": [...]} with one entry per idea, using the idea\'s key. Set inferred to true when the name comes from a linked ticket or a partial description.',
+      '\n\nReturn {"items": [...]} with one entry per idea, using the idea\'s key. Do not write the whole title. Give three parts and the system joins them as "product | topic - change":\n- product: copy the given `product` exactly. Only if it is empty, give your best guess.\n- topic: the feature or area inside the product, short, in sentence case (for example Patient registry, File manager).\n- change: what changes, in plain words. No product, no topic, no leading hyphen.\nIf you cannot tell what the work is, leave change empty and put the one question in `question`. Set inferred to true when the name comes from a linked ticket or a partial description.',
     messages: [{ role: "user", content: JSON.stringify(batch.map((b) => ({ ...b, description: b.description.slice(0, 1200) }))) }],
   });
   if (!res.content.some((b) => b.type === "text")) {
     throw new Error(`Claude returned no names (stop_reason: ${res.stop_reason}). Try again with fewer ideas.`);
   }
-  const parsed = JSON.parse(extractText(res.content).trim()) as { items: (Proposal & { key: string })[] };
-  return new Map(parsed.items.map((p) => [p.key, p]));
+  const parsed = JSON.parse(extractText(res.content).trim()) as { items: Raw[] };
+  const given = new Map(batch.map((b) => [b.key, b.product]));
+  return new Map(parsed.items.map((r) => [r.key, { ...composeTitle(given.get(r.key) ?? "", r), level: r.level }]));
 }
