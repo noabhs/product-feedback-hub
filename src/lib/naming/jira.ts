@@ -56,7 +56,7 @@ export type IssueLink = {
 type LinkedIssue = { key: string; fields: { summary: string; status?: { name: string }; issuetype?: { name: string } } };
 
 /** All issues matching a JQL query, following the token pagination. */
-export async function searchAll(jql: string, fields: string[], cap = 600): Promise<JiraIssue[]> {
+export async function searchAll(jql: string, fields: string[], cap = 5000): Promise<JiraIssue[]> {
   const out: JiraIssue[] = [];
   let token: string | undefined;
   do {
@@ -67,6 +67,9 @@ export async function searchAll(jql: string, fields: string[], cap = 600): Promi
     out.push(...(data.issues as JiraIssue[]));
     token = data.nextPageToken;
   } while (token && out.length < cap);
+  // Never return a partial list as if it were the whole one: a silent cut-off here once
+  // hid the newest ideas of a view.
+  if (token) throw new Error(`More than ${cap} issues match. Narrow the search.`);
   return out;
 }
 
