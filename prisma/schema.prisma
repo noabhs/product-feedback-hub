@@ -498,3 +498,13 @@ model NamingAudit {
 
   @@index([at])
 }
+
+/// What the feedback sync has already processed, so a run only reads what is new.
+/// One row per source: "slack" and "jira" hold the cursor files the sync used to
+/// keep on Noa's Mac (as JSON text), and "run" holds the state of the last
+/// "Sync now" click. Moving them here is what lets the sync run in the cloud.
+model FeedbackSyncState {
+  source    String   @id
+  data      String
+  updatedAt DateTime @updatedAt
+}

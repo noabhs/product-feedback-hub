@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Home, Search, BookOpen, Upload, BarChart3, Building2, Database, LogOut, Lightbulb, Swords, GraduationCap, Boxes, Workflow } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
+import { SyncNowControl } from "@/components/ui/SyncNowControl";
+import { isOwner } from "@/lib/people";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { AppShell } from "@/components/AppShell";
 
@@ -89,6 +91,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         {session?.user?.email === "noa.bhs@navina.ai" && (
           <div className="px-3 pb-2">
             <ApiKeyControl />
+          </div>
+        )}
+
+        {isOwner(session?.user?.email) && (
+          <div className="px-3 pb-2">
+            <SyncNowControl />
           </div>
         )}
 
