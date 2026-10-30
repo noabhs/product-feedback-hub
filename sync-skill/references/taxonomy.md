@@ -28,7 +28,11 @@ productArea, theme, persona, oneLiner, content, date, wtp, source, client, sourc
 - `wtp` — willingness-to-pay; almost always empty
 - `source` — e.g. `Slack #ambient-product-insights`
 - `client` — account name; blank for internal or cross-client items
-- `sourceUrl` — Slack permalink to the exact message
+- `sourceUrl` — Slack permalink to the exact message, on **`https://navina-workspace.slack.com`**
+  (`/archives/<channel id>/p<ts without the dot>`). Never `navina.slack.com`: that is not
+  this workspace's domain, and the importer won't overwrite a row once it exists, so a wrong
+  link can only be fixed in the database. Take the domain from a real permalink if in doubt
+  (`slack_send_message` returns one).
 - `reporter` — the Navina person who posted it
 
 ## Product areas
