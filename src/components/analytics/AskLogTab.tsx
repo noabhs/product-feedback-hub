@@ -10,12 +10,16 @@ const LIMIT = 300;
 
 async function loadAsks(showAskers: boolean) {
   const [rows, total] = await Promise.all([
+    // First questions only. Follow-ups belong to a private chat (visible to its
+    // asker and the hub owner, in the chat itself) and must never surface on
+    // this shared page; a chat deleted later leaves its first turn here.
     prisma.askLog.findMany({
+      where: { turnIndex: 0 },
       orderBy: { createdAt: "desc" },
       take: LIMIT,
       include: { _count: { select: { comments: true } } },
     }),
-    prisma.askLog.count(),
+    prisma.askLog.count({ where: { turnIndex: 0 } }),
   ]);
 
   // Every cited id in one query. The IN list is bounded by the size of the
