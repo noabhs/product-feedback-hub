@@ -32,7 +32,7 @@ export const NAMING_LEVELS = [
 
 export const LINKED_RULES = [
   { name: "An idea and its Epic share one title", body: "The idea on the Product board and the Epic on the Dev board that delivers it carry exactly the same title. If you rename one, rename the other." },
-  { name: "Release items follow the Epic", body: "A Release Event linked to an Epic carries the Epic's name. The steps under it keep their suffix: Analytics | Patient registry - Add an audit log - GA Rollout." },
+  { name: "Release events follow the Epic", body: "A Release Event linked to an Epic carries the Epic's name. Its rollout phases and other steps keep their own names and are not changed." },
   { name: "Missing context", body: "If the title can't pass the reader test and nobody knows the meaning yet, keep the current title and write NEED TO UPDATE TICKET NAME in capitals at the top of the description. Don't guess." },
 ];
 

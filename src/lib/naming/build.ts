@@ -1,6 +1,6 @@
 import { PRODUCT_FIELD, TEAM_FIELD, adfText, deliveryFromLinks, releaseKeysFromLinks, searchAll } from "./jira";
 import { proposeNames, type Proposal } from "./propose";
-import type { DeliveryLink, ItemData, ReleaseChild, ReleaseLink } from "./types";
+import type { DeliveryLink, ItemData, ReleaseLink } from "./types";
 
 export type BuiltItem = { key: string; order: number; current: string; proposed: string; state: "pending" | "needs_context"; data: ItemData };
 
@@ -8,7 +8,7 @@ const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length
 const inList = (keys: string[]) => `key in (${keys.join(",")})`;
 
 /**
- * Reads the chosen ideas with their linked Epics, Release Events and steps, then asks
+ * Reads the chosen ideas with their linked Epics and Release Events, then asks
  * Claude for a name per idea. Nothing is written to Jira here.
  */
 export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
@@ -31,25 +31,11 @@ export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
   for (const evs of eventsOfEpic.values()) for (const k of evs) eventUse.set(k, (eventUse.get(k) ?? 0) + 1);
 
   const events = new Map<string, { key: string; type: string; status: string; title: string }>();
-  const kids = new Map<string, ReleaseChild[]>();
   if (eventKeys.length) {
-    const fields = ["summary", "status", "issuetype", "parent"];
-    for (const e of await searchAll(inList(eventKeys), fields)) {
-      events.set(e.key, { key: e.key, type: e.fields.issuetype?.name ?? "Release Event", status: e.fields.status?.name ?? "", title: e.fields.summary });
-    }
-    const phases = await searchAll(`parent in (${eventKeys.join(",")})`, fields);
-    const phaseKeys = phases.map((p) => p.key);
-    const below = phaseKeys.length ? await searchAll(`parent in (${phaseKeys.join(",")})`, fields) : [];
-    const parentOf = new Map<string, string>();
-    for (const p of phases) parentOf.set(p.key, p.fields.parent!.key);
-    for (const c of below) parentOf.set(c.key, parentOf.get(c.fields.parent!.key)!);
-    for (const c of [...phases, ...below]) {
-      const ev = events.get(parentOf.get(c.key)!);
-      if (!ev) continue;
-      const suffix = c.fields.summary.startsWith(ev.title) ? c.fields.summary.slice(ev.title.length) : null;
-      const list = kids.get(ev.key) ?? [];
-      list.push({ key: c.key, type: c.fields.issuetype?.name ?? "", status: c.fields.status?.name ?? "", title: c.fields.summary, suffix });
-      kids.set(ev.key, list);
+    for (const e of await searchAll(inList(eventKeys), ["summary", "status", "issuetype"])) {
+      // Only Release Events are renamed. Rollout Phases and the items below them are left alone.
+      if (e.fields.issuetype?.name !== "Release Event") continue;
+      events.set(e.key, { key: e.key, type: "Release Event", status: e.fields.status?.name ?? "", title: e.fields.summary });
     }
   }
 
@@ -99,7 +85,7 @@ export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
         if (!ev) continue;
         const shared = (eventUse.get(ek) ?? 0) > 1;
         const leave = d.action !== "rename" || shared;
-        releases.push({ ...ev, epic: d.key, action: leave ? "leave" : "rename", reason: shared ? "Shared by several Epics" : d.action !== "rename" ? "Its Epic is left as is" : "", children: kids.get(ek) ?? [] });
+        releases.push({ ...ev, epic: d.key, action: leave ? "leave" : "rename", reason: shared ? "Shared by several Epics" : d.action !== "rename" ? "Its Epic is left as is" : "", children: [] });
       }
     }
     return {

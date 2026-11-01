@@ -198,7 +198,7 @@ function ReviewList({ canEdit, review, reviews, onPick, onChanged, onCleared, se
   const count = (s: string) => items.filter((i) => i.state === s).length;
   const pending = items.filter((i) => i.state === "pending" && i.proposed);
   const shown = items.filter((i) => filter === "all" || i.state === filter);
-  const touched = (i: Item) => 1 + i.data.delivery.filter((d) => d.action === "rename").length + i.data.releases.filter((r) => r.action === "rename").reduce((n, r) => n + 1 + r.children.filter((c) => c.suffix != null).length, 0);
+  const touched = (i: Item) => 1 + i.data.delivery.filter((d) => d.action === "rename").length + i.data.releases.filter((r) => r.action === "rename" && r.type === "Release Event").length;
 
   async function run(id: string, fn: () => Promise<unknown>) {
     setBusy((b) => new Set(b).add(id));
@@ -295,7 +295,7 @@ function Row({ canEdit, item, busy, onAccept, onPatch }: { canEdit: boolean; ite
     </label>
   );
   const dRow = (x: DeliveryLink, idx: number) => tick(`Also rename ${x.key} (${x.type}, ${x.status})${x.reason ? ` · ${x.reason}` : ""}${x.done ? ` · ${x.done}` : ""}`, x.action === "rename", "delivery", idx);
-  const rRow = (x: ReleaseLink, idx: number) => tick(`Also rename release item ${x.key} · ${x.children.filter((c) => c.suffix != null).length} steps keep their suffix${x.reason ? ` · ${x.reason}` : ""}${x.done ? ` · ${x.done}` : ""}`, x.action === "rename", "release", idx);
+  const rRow = (x: ReleaseLink, idx: number) => tick(`Also rename release event ${x.key} (${x.status})${x.reason ? ` · ${x.reason}` : ""}${x.done ? ` · ${x.done}` : ""}`, x.action === "rename", "release", idx);
 
   return (
     <div className={`${CARD} p-4 grid gap-3 md:grid-cols-[1fr_auto] ${item.state === "rejected" ? "opacity-60" : ""}`}>

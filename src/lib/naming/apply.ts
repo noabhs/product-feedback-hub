@@ -19,9 +19,9 @@ async function rename(log: Log, action: string, key: string, from: string, to: s
 }
 
 /**
- * Renames an accepted idea, then its delivery tickets, then their Release Events and
- * steps. A step is only renamed after its event, an event only after its Epic, and
- * nothing below the idea is touched if the idea itself failed.
+ * Renames an accepted idea, then its delivery tickets, then their Release Events. An
+ * event is only renamed after its Epic, and nothing below the idea is touched if the
+ * idea itself failed. Rollout Phases and other steps under an event are not renamed.
  */
 export async function applyItem(itemId: string, by: string) {
   const item = await prisma.namingItem.findUniqueOrThrow({ where: { id: itemId } });
@@ -42,16 +42,12 @@ export async function applyItem(itemId: string, by: string) {
   }
   for (const rel of data.releases) {
     const epic = data.delivery.find((d) => d.key === rel.epic);
-    if (rel.action !== "rename" || epic?.done !== "renamed") { rel.done = "left"; continue; }
+    // Only a Release Event is renamed. Its rollout phases and other steps are never touched,
+    // including in reviews stored earlier that still list them.
+    if (rel.type !== "Release Event" || rel.action !== "rename" || epic?.done !== "renamed") { rel.done = "left"; continue; }
     const r = await rename(log, "rename_release", rel.key, rel.title, name);
     if (!r.ok) { rel.done = "failed"; rel.error = r.error; failed.push(rel.key); continue; }
     rel.title = name; rel.done = "renamed";
-    for (const c of rel.children) {
-      if (c.suffix == null) { c.done = "left"; continue; }
-      const next = name + c.suffix;
-      const cr = await rename(log, "rename_release_step", c.key, c.title, next);
-      if (cr.ok) { c.title = next; c.done = "renamed"; } else { c.done = "failed"; c.error = cr.error; failed.push(c.key); }
-    }
   }
   data.error = failed.length ? `Not renamed: ${failed.join(", ")}` : null;
   return prisma.namingItem.update({ where: { id: itemId }, data: { state: "applied", appliedAt: new Date(), data: { ...data } } });
