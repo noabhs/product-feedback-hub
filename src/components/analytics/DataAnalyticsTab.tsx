@@ -7,6 +7,10 @@ import { shortName } from "@/lib/people";
 import { ADVISORS, HEALTH_ORDER, latestReportDate, matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
 import { fmtDay } from "@/lib/format";
+import { AddedOverTimeChart } from "@/components/analytics/AddedOverTimeChart";
+import {
+  ADDED_WINDOW_DAYS, addToDays, claimSourceCategory, emptyDays, feedbackSource,
+} from "@/lib/added-over-time";
 
 /** Health is a traffic light, so it gets traffic-light colours rather than brand ones. */
 const HEALTH_COLORS: Record<string, string> = {
@@ -25,7 +29,8 @@ function fmtDate(d: Date) {
  * telling us" and the other answers "who is using the hub."
  */
 export async function DataAnalyticsTab() {
-  const [byAreaRaw, byThemeRaw, feedbackByClient, recentRaw, accounts, matchable] = await Promise.all([
+  const since = new Date(Date.now() - ADDED_WINDOW_DAYS * 86_400_000);
+  const [byAreaRaw, byThemeRaw, feedbackByClient, recentRaw, accounts, matchable, newFeedback, newClaims] = await Promise.all([
     // groupBy can't group by the elements of an array column, so the areas are
     // counted in memory below. 127 rows makes that a non-question.
     prisma.insight.findMany({ select: { productAreas: true } }),
@@ -47,7 +52,25 @@ export async function DataAnalyticsTab() {
     }),
     prisma.account.findMany({ select: { name: true, health: true, arr: true, reportAsOf: true } }),
     loadAccounts(),
+    prisma.insight.findMany({
+      where: { createdAt: { gte: since } },
+      select: { createdAt: true, sourceName: true, sourceType: true },
+    }),
+    prisma.competitorInsight.findMany({
+      where: { createdAt: { gte: since } },
+      select: {
+        createdAt: true,
+        sourceUrl: true,
+        sourceLabel: true,
+        document: { select: { origin: true } },
+      },
+    }),
   ]);
+
+  const feedbackDays = emptyDays(ADDED_WINDOW_DAYS);
+  for (const r of newFeedback) addToDays(feedbackDays, r.createdAt, feedbackSource(r));
+  const claimDays = emptyDays(ADDED_WINDOW_DAYS);
+  for (const r of newClaims) addToDays(claimDays, r.createdAt, claimSourceCategory(r));
 
   // The newest report in the data rather than a constant, so this follows an
   // upload from the clients page.
@@ -102,6 +125,27 @@ export async function DataAnalyticsTab() {
 
   return (
     <div>
+      {/* ── New items over time ────────────────────────────────────────── */}
+      <SectionHeading title="New items over time" note={`past ${ADDED_WINDOW_DAYS} days, by day added to the hub (UTC)`} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <ChartCard
+          title="Client feedback"
+          note={`${newFeedback.length} added, by source`}
+          href="/insights"
+          linkLabel="Feedback"
+        >
+          <AddedOverTimeChart days={feedbackDays} />
+        </ChartCard>
+        <ChartCard
+          title="Competitor claims"
+          note={`${newClaims.length} added, by source`}
+          href="/competitors"
+          linkLabel="Competitors"
+        >
+          <AddedOverTimeChart days={claimDays} />
+        </ChartCard>
+      </div>
+
       {/* ── Client coverage ────────────────────────────────────────────── */}
       <SectionHeading title="Client coverage" note={`account data as of ${fmtDay(asOf) ?? asOf}`} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
