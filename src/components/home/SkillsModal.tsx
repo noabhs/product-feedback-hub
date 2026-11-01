@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { X, ExternalLink, AlertCircle } from "lucide-react";
-import { PM_SKILLS } from "@/lib/pm-skills";
+import { PM_SKILLS, SKILL_CATEGORIES } from "@/lib/pm-skills";
 
 export function SkillsModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
@@ -26,35 +26,50 @@ export function SkillsModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <ul className="px-6 py-4 overflow-y-auto divide-y divide-[rgba(50,43,95,0.08)]">
-          {PM_SKILLS.map(({ name, description, url, extra, note, Icon }) => (
-            <li key={name} className="flex items-start gap-3 py-3.5">
-              <span className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg bg-violet-100 text-violet-700">
-                <Icon className="w-5 h-5" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-bold text-brand-primary">{name}</div>
-                <p className="text-[12.5px] text-brand-primary opacity-65 mt-0.5">{description}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
-                  <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand-secondary-600 hover:underline">
-                    Open skill <ExternalLink className="w-3 h-3" />
-                  </a>
-                  {extra && (
-                    <a href={extra.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12.5px] text-brand-secondary-600 hover:underline">
-                      {extra.label} <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </div>
-                {note && (
-                  <p className="flex items-start gap-1.5 text-[11.5px] text-amber-700 mt-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
-                    {note}
-                  </p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="px-6 py-4 overflow-y-auto space-y-5">
+          {SKILL_CATEGORIES.map((category) => {
+            const skills = PM_SKILLS.filter((k) => k.category === category);
+            if (!skills.length) return null;
+            return (
+              <section key={category}>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-brand-primary opacity-50">{category}</h3>
+                <ul className="divide-y divide-[rgba(50,43,95,0.08)]">
+                  {skills.map(({ name, description, url, extra, note, Icon }) => (
+                    <li key={name} className="flex items-start gap-3 py-3.5">
+                      <span className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg bg-violet-100 text-violet-700">
+                        <Icon className="w-5 h-5" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[14px] font-bold text-brand-primary">{name}</div>
+                        <p className="text-[12.5px] text-brand-primary opacity-65 mt-0.5">{description}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
+                          {url ? (
+                            <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand-secondary-600 hover:underline">
+                              Open skill <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-[12.5px] text-brand-primary opacity-40">Link coming soon</span>
+                          )}
+                          {extra && (
+                            <a href={extra.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12.5px] text-brand-secondary-600 hover:underline">
+                              {extra.label} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                        {note && (
+                          <p className="flex items-start gap-1.5 text-[11.5px] text-amber-700 mt-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                            {note}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
