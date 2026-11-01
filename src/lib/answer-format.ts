@@ -96,6 +96,6 @@ export function plainAnswer(answer: string): string {
  */
 export function citedSourceNumbers(answer: string): Set<number> {
   const numbers = new Set<number>();
-  for (const match of answer.matchAll(/\[(\d{1,2})\]/g)) numbers.add(Number(match[1]));
+  for (const match of answer.matchAll(/\[(\d{1,3})\]/g)) numbers.add(Number(match[1]));
   return numbers;
 }
