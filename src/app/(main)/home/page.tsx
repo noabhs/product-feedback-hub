@@ -10,6 +10,8 @@ import { getWeeklyQuote } from "@/lib/weekly-recap";
 import { prisma } from "@/lib/prisma";
 import { ADVISORS, matchAccount } from "@/lib/accounts";
 import { loadAccounts } from "@/lib/accounts-db";
+import { auth } from "@/auth";
+import { listConversations } from "@/lib/ask-conversation";
 
 /** The week the two "this week" figures count back over. */
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -19,12 +21,13 @@ export default async function HomePage() {
   const weekAgo = new Date(now.getTime() - WEEK_MS);
   const [
     totalFeedback, totalCompetitors, totalAsks, feedbackByClient, accounts, matchable,
-    feedbackThisWeek, asksThisWeek, latest, quote,
+    feedbackThisWeek, asksThisWeek, latest, quote, recentChats,
   ] =
     await Promise.all([
       prisma.insight.count(),
       prisma.competitor.count(),
-      prisma.askLog.count(),
+      // Questions, not turns: a follow-up is the same question being worked on.
+      prisma.askLog.count({ where: { turnIndex: 0 } }),
       prisma.insight.groupBy({
         by: ["client"],
         where: { client: { not: null } },
@@ -34,7 +37,7 @@ export default async function HomePage() {
       prisma.account.findMany({ select: { name: true, health: true, arr: true } }),
       loadAccounts(),
       prisma.insight.count({ where: { createdAt: { gte: weekAgo } } }),
-      prisma.askLog.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.askLog.count({ where: { turnIndex: 0, createdAt: { gte: weekAgo } } }),
       // Five rows, titles only — enough to show the hub is alive without
       // turning the home page into a second feedback table.
       prisma.insight.findMany({
@@ -45,6 +48,11 @@ export default async function HomePage() {
       // Read from the cache the weekly brief fills — a page load never calls the
       // model — and a failure here must not take the home page down with it.
       getWeeklyQuote(now, "cached").catch(() => null),
+      // Their own last three chats; the launcher is useful without them, so a
+      // failure here must not take the home page down either.
+      auth()
+        .then((s) => (s?.user?.email ? listConversations(s.user.email, 3) : []))
+        .catch(() => []),
     ]);
 
   // Keyed by the account each stored value resolves to, not by the raw string:
@@ -87,7 +95,7 @@ export default async function HomePage() {
 
         {/* ── Ask ─────────────────────────────────────────────────────────── */}
         <div className="mb-8">
-          <QAsk canSendToSlack />
+          <QAsk recent={recentChats} />
         </div>
 
         {/* ── Quick actions ──────────────────────────────────────────────── */}
