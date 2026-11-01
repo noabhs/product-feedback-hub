@@ -73,10 +73,10 @@ export function SidebarNav() {
                 type="button"
                 onClick={() => setOpen((o) => ({ ...o, [group.label!]: !o[group.label!] }))}
                 aria-expanded={isOpen}
-                className="w-full flex items-center justify-between px-3 mb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-white/35 hover:text-white/60 transition-colors"
+                className="w-full flex items-center justify-between px-3 py-1.5 mb-1 rounded-sm text-[11.5px] font-bold uppercase tracking-[0.08em] text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               >
                 {group.label}
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isOpen ? "" : "-rotate-90"}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-150 ${isOpen ? "" : "-rotate-90"}`} />
               </button>
             )}
             {isOpen && (
