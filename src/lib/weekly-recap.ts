@@ -215,7 +215,7 @@ export async function buildWeeklyRecap(
     }),
     prisma.insight.count({ where: feedbackIn({ gte: prev.start, lt: prev.end }) }),
     prisma.discoveryQuestion.count({ where: { createdAt: inWeek } }),
-    prisma.askLog.count({ where: { createdAt: inWeek } }),
+    prisma.askLog.count({ where: { turnIndex: 0, createdAt: inWeek } }),
     loadAccounts(),
     // One query for "which clients did we already know about", instead of a
     // count per client — that was 55 round trips on the current data.
