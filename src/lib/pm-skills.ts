@@ -26,6 +26,7 @@ export const PM_SKILLS: PmSkill[] = [
     name: "Client session recap",
     category: "Discovery",
     description: "Share a transcript or notes from a client session and get an internal Slack recap for the team.",
+    url: "https://claude.ai/customize/skills/id/plugin_01GbM4dQnhpFNVXW2RyhamvG",
     Icon: MessagesSquare,
   },
   {
@@ -58,6 +59,7 @@ export const PM_SKILLS: PmSkill[] = [
     name: "Feature handover deck",
     category: "Releases",
     description: "Get a CS and Support feature handover deck in the Navina template.",
+    url: "https://claude.ai/customize/skills/id/plugin_013eo2EgTVGqgcbMgBRKQV39",
     Icon: PackageOpen,
   },
   {
