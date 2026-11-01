@@ -5,22 +5,26 @@ import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, C
 import { BriefModal, type BriefKind } from "@/components/home/BriefModal";
 import { SkillsModal } from "@/components/home/SkillsModal";
 
-const BOX = "block w-full text-left bg-white rounded-lg border border-brand-secondary-500/25 shadow-sm p-5 h-full group hover:border-brand-secondary-500 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer";
+const BOX = "block w-full text-left bg-white rounded-lg border border-brand-secondary-500/25 shadow-sm p-4 h-full group hover:border-brand-secondary-500 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer";
 
+/** Icon and title on one line, description under them — a row shorter than
+ *  stacking the icon above the title, which is what made these cards tall. */
 function Box({ title, sub, Icon, tint }: { title: string; sub: string; Icon: React.FC<{ className?: string }>; tint: string }) {
   return (
-    <>
-      <div className="flex items-start justify-between mb-3">
-        {/* A colour per action rather than six lavender squares: the row then
-            reads at a glance as six different things, which is what it is. */}
-        <span className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${tint}`}>
-          <Icon className="w-5 h-5" />
-        </span>
-        <ArrowRight className="w-4 h-4 text-brand-secondary-500 opacity-40 group-hover:opacity-100 transition-opacity" />
+    <div className="flex items-start gap-3">
+      {/* A colour per action rather than eight lavender squares: the grid then
+          reads at a glance as eight different things, which is what it is. */}
+      <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors ${tint}`}>
+        <Icon className="w-[18px] h-[18px]" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-[14.5px] font-bold text-brand-primary leading-snug">{title}</span>
+          <ArrowRight className="w-4 h-4 mt-0.5 shrink-0 text-brand-secondary-500 opacity-40 group-hover:opacity-100 transition-opacity" />
+        </div>
+        <div className="text-[12px] text-brand-primary opacity-60 mt-1 leading-snug">{sub}</div>
       </div>
-      <div className="text-[15px] font-bold text-brand-primary">{title}</div>
-      <div className="text-[12px] text-brand-primary opacity-60 mt-1">{sub}</div>
-    </>
+    </div>
   );
 }
 
