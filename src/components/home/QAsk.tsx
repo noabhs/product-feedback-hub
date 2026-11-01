@@ -19,7 +19,7 @@ export function QAsk({ recent = [] }: { recent?: ConversationListItem[] }) {
         <h2 className="text-[14px] font-semibold leading-tight text-brand-primary">Ask Q</h2>
       </div>
 
-      <StartChatBox />
+      <StartChatBox examples={false} />
 
       {recent.length > 0 && (
         <div className="mt-4 border-t border-[rgba(50,43,95,0.08)] pt-3">

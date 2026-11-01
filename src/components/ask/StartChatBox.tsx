@@ -14,10 +14,14 @@ import { EXAMPLES } from "@/components/ask/source-ui";
 export function StartChatBox({
   autoFocus = false,
   stagger = false,
+  examples = true,
 }: {
   /** Deals the example chips in one after another. Only the /ask empty state
    *  asks for this — on the home page the box is one card among many. */
   stagger?: boolean;
+  /** The "Try …" chips. Off on the home page, which has its own quick actions
+   *  below the box and doesn't need a second row of suggestions. */
+  examples?: boolean;
   autoFocus?: boolean;
 }) {
   const router = useRouter();
@@ -69,23 +73,25 @@ export function StartChatBox({
       </p>
       {error && <p className="mt-2 text-[12px] text-red-700">{error}</p>}
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] text-brand-primary/40">Try</span>
-        {EXAMPLES.map((q, i) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => start(q)}
-            disabled={starting}
-            style={stagger ? { animationDelay: `${260 + i * 80}ms` } : undefined}
-            className={`cursor-pointer rounded-pill border border-[rgba(50,43,95,0.12)] px-2.5 py-1 text-[12px] text-brand-primary/70 transition-all hover:-translate-y-0.5 hover:border-brand-secondary-500 hover:text-brand-secondary-600 disabled:opacity-50${
-              stagger ? " animate-rise" : ""
-            }`}
-          >
-            {q}
-          </button>
-        ))}
-      </div>
+      {examples && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-brand-primary/40">Try</span>
+          {EXAMPLES.map((q, i) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => start(q)}
+              disabled={starting}
+              style={stagger ? { animationDelay: `${260 + i * 80}ms` } : undefined}
+              className={`cursor-pointer rounded-pill border border-[rgba(50,43,95,0.12)] px-2.5 py-1 text-[12px] text-brand-primary/70 transition-all hover:-translate-y-0.5 hover:border-brand-secondary-500 hover:text-brand-secondary-600 disabled:opacity-50${
+                stagger ? " animate-rise" : ""
+              }`}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
