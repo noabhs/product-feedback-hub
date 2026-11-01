@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, CalendarClock } from "lucide-react";
+import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, CalendarClock, Wrench } from "lucide-react";
 import { BriefModal, type BriefKind } from "@/components/home/BriefModal";
+import { SkillsModal } from "@/components/home/SkillsModal";
 
 const BOX = "block w-full text-left bg-white rounded-lg border border-brand-secondary-500/25 shadow-sm p-5 h-full group hover:border-brand-secondary-500 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer";
 
@@ -32,6 +33,7 @@ const BRIEFS: { kind: BriefKind; title: string; sub: string; Icon: React.FC<{ cl
 
 export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: boolean }) {
   const [open, setOpen] = useState<BriefKind | null>(null);
+  const [skillsOpen, setSkillsOpen] = useState(false);
   const [client, competitor, area, domain] = BRIEFS;
 
   return (
@@ -50,7 +52,11 @@ export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: bool
         <Link href="/daily-briefs" className={BOX}>
           <Box title="Daily client briefs in Slack" sub="Get a brief before each external meeting. Set up in 5 minutes" Icon={CalendarClock} tint="bg-teal-100 text-teal-700" />
         </Link>
+        <button type="button" className={BOX} onClick={() => setSkillsOpen(true)}>
+          <Box title="Useful skills for PMs" sub="Claude skills for specs, handoffs, ideas and announcements" Icon={Wrench} tint="bg-orange-100 text-orange-700" />
+        </button>
       </div>
+      {skillsOpen && <SkillsModal onClose={() => setSkillsOpen(false)} />}
       {open && <BriefModal key={open} kind={open} canSendToSlack={canSendToSlack} onClose={() => setOpen(null)} />}
     </>
   );
