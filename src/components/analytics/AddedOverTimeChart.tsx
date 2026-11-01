@@ -16,7 +16,15 @@ function niceCeiling(max: number): number {
  */
 export function AddedOverTimeChart({ days }: { days: AddedDay[] }) {
   const max = Math.max(...days.map((d) => d.total), 0);
-  const ceiling = niceCeiling(max);
+  // A bulk import (the first Slack scrape put ~1,000 items on one day) would set
+  // the axis and flatten every other day. So the axis follows the typical busy
+  // day (80th percentile of non-empty days), and anything taller is clipped and
+  // labelled with its real count.
+  const busy = days.map((d) => d.total).filter((n) => n > 0).sort((a, b) => a - b);
+  const typical = busy.length ? busy[Math.min(busy.length - 1, Math.floor(busy.length * 0.8))] : 0;
+  const capped = niceCeiling(typical * 1.5);
+  const ceiling = max > capped * 1.5 ? capped : niceCeiling(max);
+  const clipped = (n: number) => n > ceiling;
 
   const totals = new Map<SourceCategory, number>();
   for (const d of days) {
@@ -39,12 +47,17 @@ export function AddedOverTimeChart({ days }: { days: AddedDay[] }) {
             <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-[rgba(50,43,95,0.06)]" />
             <div className="relative h-full flex items-stretch gap-[3px]">
               {days.map((d) => (
-                <div key={d.key} className="flex-1 h-full flex flex-col justify-end items-center group">
+                <div key={d.key} className="relative flex-1 h-full flex flex-col justify-end items-center group">
+                  {clipped(d.total) && (
+                    <span className="absolute -top-4 text-[10px] font-semibold text-brand-primary tabular-nums whitespace-nowrap">
+                      {d.total.toLocaleString("en-US")}
+                    </span>
+                  )}
                   {d.total > 0 ? (
                     <div
-                      className={`w-full ${BAR_MAX} flex flex-col-reverse rounded-t-[3px] overflow-hidden`}
-                      style={{ height: `${Math.max((d.total / ceiling) * 100, 3)}%` }}
-                      title={`${d.label}: ${d.total} new${
+                      className={`relative w-full ${BAR_MAX} flex flex-col-reverse rounded-t-[3px] overflow-hidden`}
+                      style={{ height: `${Math.min(Math.max((d.total / ceiling) * 100, 3), 100)}%` }}
+                      title={`${d.label}: ${d.total.toLocaleString("en-US")} new${
                         legend
                           .filter((s) => d.bySource[s])
                           .map((s) => `\n${s}: ${d.bySource[s]}`)
@@ -54,6 +67,10 @@ export function AddedOverTimeChart({ days }: { days: AddedDay[] }) {
                       {SOURCE_CATEGORIES.filter((s) => d.bySource[s]).map((s) => (
                         <div key={s} style={{ flex: d.bySource[s], background: SOURCE_COLORS[s], minHeight: 2 }} />
                       ))}
+                      {clipped(d.total) && (
+                        // A white slash across the top marks the bar as cut off.
+                        <div className="absolute top-[14%] inset-x-0 h-[3px] bg-white -rotate-12" />
+                      )}
                     </div>
                   ) : (
                     <div
@@ -91,6 +108,11 @@ export function AddedOverTimeChart({ days }: { days: AddedDay[] }) {
         </div>
       ) : (
         <p className="text-[11px] text-brand-primary opacity-40 mt-4">Nothing added in this window.</p>
+      )}
+      {days.some((d) => clipped(d.total)) && (
+        <p className="text-[11px] text-brand-primary opacity-40 mt-2">
+          Axis capped at {ceiling} so ordinary days stay readable. Bars cut off by a slash are bulk imports, labelled with their full count.
+        </p>
       )}
     </div>
   );
