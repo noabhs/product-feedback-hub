@@ -1,55 +1,55 @@
 import { prisma } from "@/lib/prisma";
-import { answerGlobalQuestion, QA_MODEL, Q_PROMPT_VERSION, type QCompetitor } from "@/lib/claude";
+import {
+  answerGlobalQuestion,
+  standaloneQuestion,
+  QA_MODEL,
+  Q_PROMPT_VERSION,
+  Q_FOLLOWUP_PROMPT_VERSION,
+  type QCompetitor,
+} from "@/lib/claude";
 import { loadAccountDetails, loadAccounts } from "@/lib/accounts-db";
 import { searchInsights } from "@/lib/insight-search";
 import { expandQuestion, readAsNote, rewriteQuestion } from "@/lib/synonyms";
 import { recordAskLog } from "@/lib/ask-log";
+import { recordConversationTurn } from "@/lib/ask-conversation";
+import {
+  hasWebSearchTrigger,
+  historyForModel,
+  mergeIntoPool,
+  stripWebSearchTrigger,
+  type QSource,
+} from "@/lib/ask-history";
 import { searchDomain, resolveDomainSource } from "@/lib/domain/search";
 import { logEvent, ACTIONS } from "@/lib/events";
 import type { FeatureRequestItem } from "@/lib/types";
 
 const iso = (d: Date | null) => d?.toISOString() ?? null;
 
-export type QSource =
-  | { id: string; kind: "insight"; label: string; client: string | null }
-  | { id: string; kind: "competitor"; label: string; client: null }
-  | { id: string; kind: "feature-request"; label: string; client: null }
-  /** A glossary term or topic section from Know your domain; `href` is its path in the hub. */
-  | { id: string; kind: "domain"; label: string; client: null; href: string }
-  | { id: string; kind: "web"; label: string; client: null; url: string };
+export type { QSource };
 
 export interface QResult {
   answer: string;
+  /** Position is the citation number: [n] is sources[n - 1]. In a conversation
+   *  this is the whole shared pool, so it only ever grows. */
   sources: QSource[];
   askId: string | null;
   usedWebSearch: boolean;
+  /** Only on a conversation's follow-up: what retrieval actually ran on. */
+  standaloneQuestion?: string | null;
 }
 
-/**
- * How an asker opts a question into web search — "search web" or "searchweb"
- * anywhere in the text, either side of it, case-insensitive. A phrase rather
- * than a UI-only toggle so the same convention works from Slack, which has no
- * checkbox to offer. The word boundaries keep it from firing inside "research
- * web" or similar.
- */
-const WEB_SEARCH_TRIGGER = /\bsearch\s?web\b/i;
-
-/** Whether a question (as typed, or as logged in AskLog) carries the trigger —
- *  shared with the Slack "Share to channel" replay, which has no fresh
- *  answerGlobalQuestion result to read usedWebSearch off of. */
-export function hasWebSearchTrigger(question: string): boolean {
-  return WEB_SEARCH_TRIGGER.test(question);
+/** What a turn of a conversation needs to know about the turns before it. */
+export interface QConversation {
+  id: string;
+  /** This turn's slot — 0 for the first question. */
+  turnIndex: number;
+  history: { question: string; answer: string }[];
+  pool: QSource[];
 }
 
-/** Strips the trigger phrase back out before the question is used for
- *  retrieval or sent to the model — it's a control signal, not content. The
- *  raw question (trigger included) is what gets logged, so a replayed answer
- *  can still tell whether web search ran. */
-function stripWebSearchTrigger(question: string): { question: string; wantsWebSearch: boolean } {
-  const wantsWebSearch = hasWebSearchTrigger(question);
-  if (!wantsWebSearch) return { question, wantsWebSearch };
-  return { question: question.replace(WEB_SEARCH_TRIGGER, " ").replace(/\s{2,}/g, " ").trim(), wantsWebSearch };
-}
+// Moved to ask-history.ts so it can be tested without a database; re-exported
+// because the Slack interactions route imports it from here.
+export { hasWebSearchTrigger };
 
 /**
  * "Q" over the whole hub — feedback, competitors, feature requests, the client
@@ -58,8 +58,23 @@ function stripWebSearchTrigger(question: string): { question: string; wantsWebSe
  * both call this and log to the same AskLog, so a rating means the same thing
  * regardless of where the question came from.
  */
-export async function runQ(rawQuestion: string, actor: string, apiKey?: string): Promise<QResult> {
-  const { question, wantsWebSearch } = stripWebSearchTrigger(rawQuestion);
+export async function runQ(
+  rawQuestion: string,
+  actor: string,
+  apiKey?: string,
+  conversation?: QConversation,
+): Promise<QResult> {
+  const { question: typed, wantsWebSearch } = stripWebSearchTrigger(rawQuestion);
+  const history = conversation ? historyForModel(conversation.history) : [];
+  const isFollowUp = history.length > 0;
+
+  // Retrieval only sees question text, so a follow-up like "and for Epic?" has
+  // to be turned into a question that stands alone before anything searches on
+  // it. If the rewrite fails, the previous question plus this one is a blunter
+  // way to carry the subject forward.
+  const standalone = isFollowUp ? await standaloneQuestion(history, typed, apiKey) : null;
+  const question = isFollowUp ? (standalone ?? `${history[history.length - 1].question} ${typed}`) : typed;
+
   const accountsLike = await loadAccounts();
   // Static content in code, so no query: matched against the question as asked.
   const domain = searchDomain(question);
@@ -116,6 +131,11 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     ...domain.map((d) => ({ id: d.id, kind: "domain" as const, label: d.label, client: null, href: d.href })),
   ];
 
+  // The pool is what makes a citation mean the same thing from turn to turn: a
+  // source keeps the number it first got, new ones are appended. A one-shot ask
+  // starts from an empty pool, which numbers hubSources 1..n exactly as before.
+  const { pool: hubPool, numbers } = mergeIntoPool(conversation?.pool ?? [], hubSources);
+
   const startedAt = Date.now();
   const { text: modelAnswer, usedWebSearch, webSources } = await answerGlobalQuestion(
     asModelSeesIt,
@@ -127,7 +147,8 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     apiKey,
     readAs,
     wantsWebSearch,
-    hubSources.length,
+    hubPool.length,
+    isFollowUp ? { history, numbers } : conversation ? { history: [], numbers } : undefined,
   );
   const latencyMs = Date.now() - startedAt;
 
@@ -139,7 +160,7 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
   // didn't run, which would just be confusing.
   const answer = usedWebSearch
     ? `🌐 **This answer includes a live web search.**\n\n${modelAnswer}`
-    : wantsWebSearch
+    : wantsWebSearch || isFollowUp
       ? modelAnswer
       : `${modelAnswer}\n\n💡 **Tip:** add "search web" anywhere in your question to also pull in live web results.`;
 
@@ -147,11 +168,28 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
   // for an id — resolveQSources just won't find it on a later replay (see
   // its comment), which only matters for Slack's "Share to channel" copy.
   const sources: QSource[] = [
-    ...hubSources,
+    ...hubPool,
     ...webSources.map((w) => ({ id: w.url, kind: "web" as const, label: w.title ?? w.url, client: null, url: w.url })),
   ];
 
   void logEvent(ACTIONS.aiAsk, { label: rawQuestion, actor });
+  const promptVersion = isFollowUp ? Q_FOLLOWUP_PROMPT_VERSION : Q_PROMPT_VERSION;
+  if (conversation) {
+    const askId = await recordConversationTurn({
+      actor,
+      conversationId: conversation.id,
+      turnIndex: conversation.turnIndex,
+      question: rawQuestion,
+      standaloneQuestion: standalone,
+      answer,
+      pool: sources,
+      matchedCount: hubSources.length,
+      model: QA_MODEL,
+      promptVersion,
+      latencyMs,
+    });
+    return { answer, sources, askId, usedWebSearch, standaloneQuestion: standalone };
+  }
   const askId = await recordAskLog({
     actor,
     question: rawQuestion,
@@ -162,7 +200,7 @@ export async function runQ(rawQuestion: string, actor: string, apiKey?: string):
     // different question and would muddy that reading.
     matchedCount: hubSources.length,
     model: QA_MODEL,
-    promptVersion: Q_PROMPT_VERSION,
+    promptVersion,
     latencyMs,
   });
 

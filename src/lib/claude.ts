@@ -5,6 +5,7 @@ import { ACCOUNT_TABLE_COLUMNS, accountTableRow } from "@/lib/account-table";
 import { toCsv } from "@/lib/csv";
 import type { AccountDetail, CompetitorItem, FeatureRequestItem } from "@/lib/types";
 import type { DomainHit } from "@/lib/domain/search";
+import type { HistoryTurn } from "@/lib/ask-history";
 
 /**
  * Trimmed and unquoted before it reaches the SDK.
@@ -255,6 +256,9 @@ export type QCompetitor = Pick<
  * answer records what produced it — same convention as QA_PROMPT_VERSION.
  */
 export const Q_PROMPT_VERSION = "q-6";
+/** Follow-up turns in a conversation run the same prompt plus FOLLOW_UP_ADDENDUM,
+ *  so their ratings are kept apart from first answers. */
+export const Q_FOLLOWUP_PROMPT_VERSION = "q-7";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
@@ -274,7 +278,20 @@ const WEB_SEARCH_ADDENDUM = `6. THE WEB — the asker added "search web" to this
 
 `;
 
-function qSystemPrompt(useWebSearch: boolean): string {
+/**
+ * Only added from the second turn of a conversation. The base prompt is written
+ * for a one-shot answer in a narrow box; a follow-up is a reply to something the
+ * asker just read, and answering it with a fresh three-to-six-bullet briefing
+ * (and another "What's next") reads as ignoring what they said.
+ */
+const FOLLOW_UP_ADDENDUM = `
+
+This is a conversation: the earlier questions and your earlier answers come before the latest message. Answer the latest question only.
+- The CITED SOURCES in the latest message are the only numbered sources. Earlier answers are shown without their [n] markers, so never reuse a number from memory — cite only numbers that appear in the latest CITED SOURCES list.
+- Don't repeat what you already said. "Why?", "which of those…", "and for Epic?" get a direct answer — a sentence or two, or a short list when the answer is a list — not a fresh briefing. The three-to-six-bullet shape and "What's next" apply only when the follow-up is itself a decision or prioritization question.
+- If the sources don't cover the follow-up but your earlier answer already does, answer from it and say so ("From the earlier answer —"). Write "Not found in available sources." only when neither the sources nor the earlier answers hold it.`;
+
+function qSystemPrompt(useWebSearch: boolean, followUp = false): string {
   return `You are Q — the Navina Product Hub's answer engine. Like the character, you are the quiet, exact toolmaker: you hand back the one right answer, not a briefing on how you found it.
 
 You answer any product question a PM would ask, by reading everything the hub holds:
@@ -312,7 +329,7 @@ Output shape — this is read in a narrow box, so it has to be scannable at a gl
 When it's relevant — the question is a decision, a prioritization call, or an open strategic question, not just a lookup — close with one line reading exactly "**What's next:**", then one to three short bullets:
 - Every bullet has to follow from the sources cited above. Say what it rests on: which clients, which competitor fact, which feature request's status.
 - Never invent scope, effort, timelines, or a roadmap commitment Q doesn't have evidence for.
-- Skip "What's next" entirely rather than padding it with a generic "keep monitoring" — a lookup question gets no such section at all.`;
+- Skip "What's next" entirely rather than padding it with a generic "keep monitoring" — a lookup question gets no such section at all.${followUp ? FOLLOW_UP_ADDENDUM : ""}`;
 }
 
 /**
@@ -338,19 +355,27 @@ export function buildQPrompt(
    * which name it read.
    */
   readAs?: string | null,
+  /**
+   * Citation number for each source, in the order insights, competitors,
+   * feature requests, domain. A conversation passes the numbers its shared
+   * pool assigned (so [7] always means the same row, and the list here may
+   * skip numbers); a one-shot ask leaves it out and gets 1..n.
+   */
+  numbers?: number[],
 ): string {
   const cited: string[] = [];
+  const next = () => numbers?.[cited.length] ?? cited.length + 1;
 
   for (const i of insights) {
     cited.push(
-      `[${cited.length + 1}] FEEDBACK — Client: ${i.client ?? "Unknown"} | Areas: ${i.productAreas.join(", ") || "none"}\n${i.oneLiner}\n${i.content}`,
+      `[${next()}] FEEDBACK — Client: ${i.client ?? "Unknown"} | Areas: ${i.productAreas.join(", ") || "none"}\n${i.oneLiner}\n${i.content}`,
     );
   }
   for (const c of competitors) {
     const where = [c.category, c.subgroup].filter(Boolean).join(" › ");
     cited.push(
       [
-        `[${cited.length + 1}] COMPETITOR — ${c.name}${where ? ` (${where})` : ""}`,
+        `[${next()}] COMPETITOR — ${c.name}${where ? ` (${where})` : ""}`,
         c.positioning ? `Positioning: ${c.positioning}` : null,
         c.overview ? `Overview: ${c.overview}` : null,
         c.keyFacts ? `Key facts: ${c.keyFacts}` : null,
@@ -363,12 +388,12 @@ export function buildQPrompt(
   }
   for (const f of featureRequests) {
     cited.push(
-      `[${cited.length + 1}] FEATURE REQUEST — "${f.title}" (status: ${f.status}, filed by ${f.reporter}, updated ${f.updatedAt.slice(0, 10)})\nPain to solve: ${f.painToSolve}\n${f.description}`,
+      `[${next()}] FEATURE REQUEST — "${f.title}" (status: ${f.status}, filed by ${f.reporter}, updated ${f.updatedAt.slice(0, 10)})\nPain to solve: ${f.painToSolve}\n${f.description}`,
     );
   }
 
   for (const d of domain) {
-    cited.push(`[${cited.length + 1}] DOMAIN KNOWLEDGE — ${d.label}\n${d.text}`);
+    cited.push(`[${next()}] DOMAIN KNOWLEDGE — ${d.label}\n${d.text}`);
   }
 
   const table = toCsv([...ACCOUNT_TABLE_COLUMNS], accounts.map(accountTableRow));
@@ -409,14 +434,35 @@ export async function answerGlobalQuestion(
   /** How many [n] numbers the hub sources already used, so web citations
    *  continue the same sequence instead of restarting at [1]. */
   citationOffset = 0,
+  /** Set from a conversation's second turn on. */
+  conversation?: { history: HistoryTurn[]; numbers: number[] },
 ): Promise<GlobalAnswer> {
+  const history = conversation?.history ?? [];
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
     max_tokens: 4096,
     thinking: { type: "adaptive" },
-    system: qSystemPrompt(useWebSearch),
+    system: qSystemPrompt(useWebSearch, history.length > 0),
     messages: [
-      { role: "user", content: buildQPrompt(question, insights, accounts, competitors, featureRequests, domain, readAs) },
+      // Earlier turns as plain Q&A — not their source dumps, which would
+      // multiply the prompt by the turn count. Retrieval re-runs per turn.
+      ...history.flatMap((t) => [
+        { role: "user" as const, content: t.question },
+        { role: "assistant" as const, content: t.answer },
+      ]),
+      {
+        role: "user",
+        content: buildQPrompt(
+          question,
+          insights,
+          accounts,
+          competitors,
+          featureRequests,
+          domain,
+          readAs,
+          conversation?.numbers,
+        ),
+      },
     ],
     /**
      * Forced, not left to the model's judgment: a first pass that only
@@ -433,6 +479,44 @@ export async function answerGlobalQuestion(
   const message = await stream.finalMessage();
   const { text, webSources } = extractTextWithWebCitations(message.content, citationOffset);
   return { text, usedWebSearch: usedWebSearch(message.content), webSources };
+}
+
+const REWRITE_MODEL = "claude-haiku-4-5-20251001";
+
+/**
+ * A follow-up rewritten so it makes sense alone — "and for Epic clients?"
+ * becomes "Which Red accounts renew this quarter, among Epic clients?" —
+ * because retrieval runs on the question text only and would otherwise find
+ * nothing for it. Returns null when the rewrite fails or comes back unusable,
+ * and the caller falls back to the raw follow-up: a worse search beats a
+ * failed turn.
+ */
+export async function standaloneQuestion(
+  history: HistoryTurn[],
+  followUp: string,
+  apiKey?: string,
+): Promise<string | null> {
+  if (!history.length) return null;
+  // Answers are long and the rewrite only needs their subject, so each is cut
+  // short; the last few turns are enough to resolve "those" and "that one".
+  const transcript = history
+    .slice(-3)
+    .map((t) => `Q: ${t.question}\nA: ${t.answer.length > 700 ? `${t.answer.slice(0, 700)}…` : t.answer}`)
+    .join("\n\n");
+  try {
+    const message = await getClient(apiKey).messages.create({
+      model: REWRITE_MODEL,
+      max_tokens: 300,
+      system:
+        "You rewrite a follow-up question so it can be understood with no conversation before it. Resolve pronouns and references (\"those\", \"that one\", \"and for Epic?\") using the conversation, keep every client name, product, competitor, time frame and filter that still applies, and keep the asker's intent and wording where it is already clear. If the question already stands alone, return it unchanged. Output only the rewritten question — no quotes, no explanation, never an answer.",
+      messages: [{ role: "user", content: `Conversation so far:\n\n${transcript}\n\nFollow-up: ${followUp}` }],
+    });
+    const text = extractText(message.content).trim().replace(/^["']|["']$/g, "").trim();
+    return text && text.length <= 600 ? text : null;
+  } catch (e) {
+    console.error("[ask] standaloneQuestion failed:", (e as Error).message);
+    return null;
+  }
 }
 
 const INSIGHTS_SCHEMA = {

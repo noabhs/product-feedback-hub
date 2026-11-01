@@ -391,10 +391,50 @@ model AskLog {
   ratedAt       DateTime?
   createdAt     DateTime  @default(now())
 
-  comments AskLogComment[]
+  /// The chat this answer belongs to, if it was asked in one. Null for a
+  /// single-shot ask (Slack /ask, rows from before conversations existed) and
+  /// for a first turn whose conversation was deleted — the Asks log keeps that
+  /// first question on purpose, and the follow-ups are deleted with the chat.
+  conversationId     String?
+  /// 0 for the first question. Unique per conversation (below), so two tabs
+  /// answering at once can't both claim the same slot.
+  turnIndex          Int     @default(0)
+  /// A follow-up rewritten into a question that stands alone, which is what
+  /// retrieval actually ran on. Null on a first turn. Kept so "the search
+  /// missed" can be told apart from "the rewrite lost the point".
+  standaloneQuestion String?
 
+  conversation AskConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  comments     AskLogComment[]
+
+  @@unique([conversationId, turnIndex])
   @@index([createdAt])
   @@index([rating])
+}
+
+/// One chat with Q. Each answered turn is an AskLog row (so rating, comments and
+/// prompt-version tracing work per answer); this row holds what is shared across
+/// the turns. Private to its asker — the hub owner may also read it, nobody else
+/// (enforced in lib/ask-conversation.ts, not in the UI).
+model AskConversation {
+  id              String   @id @default(cuid())
+  /// Email of whoever started it. Conversations are only ever listed by this.
+  actor           String
+  title           String
+  /// First question of a conversation that was created from the home box but not
+  /// answered yet. The chat page sends it on load and the first answered turn
+  /// clears it, so a refresh mid-answer resumes instead of losing the question.
+  pendingQuestion String?
+  /// JSON array of QSource: every source any turn has cited, append-only. A
+  /// citation [n] means pool[n - 1] for the whole conversation, so numbers never
+  /// shift between turns.
+  sourcePool      String   @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  turns AskLog[]
+
+  @@index([actor, updatedAt])
 }
 
 /// A teammate's comment on a logged question and answer — follow-ups, "this one

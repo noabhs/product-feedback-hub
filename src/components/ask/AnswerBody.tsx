@@ -15,7 +15,7 @@ interface AnswerBodyProps {
   tone?: "dark" | "light";
 }
 
-const INLINE = /\*\*(.+?)\*\*|\[(\d{1,2})\]/g;
+const INLINE = /\*\*(.+?)\*\*|\[(\d{1,3})\]/g;
 
 /**
  * Bold spans and [n] citations inside one block of text. The citations are the
