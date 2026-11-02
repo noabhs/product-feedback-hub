@@ -1,6 +1,6 @@
 "use client";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { X, Copy, Check, Send, Globe, AlertCircle, FileText } from "lucide-react";
+import { X, ArrowLeft, Copy, Check, Send, Globe, AlertCircle, FileText } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
@@ -97,6 +97,7 @@ export function BriefModal({
   canSendToSlack = false,
   subject,
   subjectLabel,
+  onBack,
   onClose,
 }: {
   kind: BriefKind;
@@ -109,6 +110,8 @@ export function BriefModal({
   subject?: string;
   /** What to call the subject on screen, when the value isn't the name. */
   subjectLabel?: string;
+  /** Back to the "which brief?" step it was opened from. */
+  onBack?: () => void;
   onClose: () => void;
 }) {
   const copy = COPY[kind];
@@ -266,7 +269,14 @@ export function BriefModal({
     >
       <div role="dialog" aria-modal="true" aria-label={copy.title} className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[88vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(50,43,95,0.08)]">
-          <h2 className="text-[17px] font-extrabold text-brand-primary">{copy.title}</h2>
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <button onClick={onBack} disabled={busy} aria-label="Back" className="text-brand-primary opacity-40 hover:opacity-80 disabled:opacity-20 cursor-pointer">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <h2 className="text-[17px] font-extrabold text-brand-primary">{copy.title}</h2>
+          </div>
           <button onClick={onClose} aria-label="Close" className="text-brand-primary opacity-40 hover:opacity-80 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
