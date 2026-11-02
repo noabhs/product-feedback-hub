@@ -145,6 +145,10 @@ export interface QaInsight {
   client?: string | null;
   productAreas: string[];
   id: string;
+  /** When the feedback was given, else when it was imported. Optional because
+   *  the older "Ask the feedback" path doesn't print it. */
+  date?: Date | null;
+  createdAt?: Date;
 }
 
 export const QA_SYSTEM_PROMPT = `You are an expert product researcher for Navina, an AI-powered clinical intelligence platform.
@@ -332,6 +336,12 @@ When it's relevant — the question is a decision, a prioritization call, or an 
 - Skip "What's next" entirely rather than padding it with a generic "keep monitoring" — a lookup question gets no such section at all.${followUp ? FOLLOW_UP_ADDENDUM : ""}`;
 }
 
+/** " | Date: 2026-03-14" for a feedback row, empty when it has none. */
+function feedbackDate(i: QaInsight): string {
+  const d = i.date ?? i.createdAt;
+  return d ? ` | Date: ${d.toISOString().slice(0, 10)}` : "";
+}
+
 /**
  * Everything sent to the model for one question on Q — the numbered, citable
  * sources first (feedback, competitors, feature requests, in that order, one
@@ -368,7 +378,7 @@ export function buildQPrompt(
 
   for (const i of insights) {
     cited.push(
-      `[${next()}] FEEDBACK — Client: ${i.client ?? "Unknown"} | Areas: ${i.productAreas.join(", ") || "none"}\n${i.oneLiner}\n${i.content}`,
+      `[${next()}] FEEDBACK — Client: ${i.client ?? "Unknown"} | Areas: ${i.productAreas.join(", ") || "none"}${feedbackDate(i)}\n${i.oneLiner}\n${i.content}`,
     );
   }
   for (const c of competitors) {

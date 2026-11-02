@@ -13,6 +13,9 @@ const STOPWORDS = new Set([
   "got", "make", "makes", "made", "give", "gives", "take", "takes", "want", "wants", "tell",
   "says", "see", "look", "using", "use", "used", "providing", "provide", "provides",
   "ensure", "endure", "powerful", "winning", "good", "best", "better", "great",
+  // Recency words describe the ask, not the subject; they are handled as ordering
+  // in insight-search.ts, and as search terms they only match stray prose.
+  "latest", "recent", "recently", "lately", "newest",
 ]);
 
 /**
@@ -35,4 +38,19 @@ export function tokenize(question: string): string[] {
         .filter((w) => w.length >= 3 && !STOPWORDS.has(w)),
     ),
   ];
+}
+
+/**
+ * Adjacent word pairs of the question ("pop health", "risk adjustment"). A row
+ * containing the pair says far more than one that has each word somewhere —
+ * "health" alone is in a third of the client names.
+ */
+export function phrasesOf(question: string): string[] {
+  const kept = new Set(tokenize(question));
+  const words = question.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter(Boolean);
+  const pairs: string[] = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    if (kept.has(words[i]) && kept.has(words[i + 1])) pairs.push(`${words[i]} ${words[i + 1]}`);
+  }
+  return pairs;
 }
