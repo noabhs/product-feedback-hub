@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, CalendarClock, Wrench } from "lucide-react";
+import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, CalendarClock, Wrench, Network } from "lucide-react";
 import { BriefModal, type BriefKind } from "@/components/home/BriefModal";
 import { SkillsModal } from "@/components/home/SkillsModal";
 
@@ -35,6 +35,9 @@ const BRIEFS: { kind: BriefKind; title: string; sub: string; Icon: React.FC<{ cl
   { kind: "domain", title: "Know your domain brief", sub: "A plain-language brief on the topics you pick", Icon: GraduationCap, tint: "bg-indigo-100 text-indigo-700" },
 ];
 
+/** The R&D map is a published Claude artifact, kept up to date from the Product & R&D Map sheet. */
+const RND_MAP_URL = "https://claude.ai/artifact/2Q3AhdGpmqQSBrXSDJRtyS?sk=WJzqHnk9S5sGB5heJ9jK1w";
+
 export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: boolean }) {
   const [open, setOpen] = useState<BriefKind | null>(null);
   const [skillsOpen, setSkillsOpen] = useState(false);
@@ -59,6 +62,9 @@ export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: bool
         <button type="button" className={BOX} onClick={() => setSkillsOpen(true)}>
           <Box title="Useful skills for PMs" sub="Claude skills for specs, handoffs, ideas and announcements" Icon={Wrench} tint="bg-orange-100 text-orange-700" />
         </button>
+        <a href={RND_MAP_URL} target="_blank" rel="noreferrer" className={BOX}>
+          <Box title="Product R&D working map" sub="Teams, squads and who owns what. Opens in Claude" Icon={Network} tint="bg-lime-100 text-lime-700" />
+        </a>
       </div>
       {skillsOpen && <SkillsModal onClose={() => setSkillsOpen(false)} />}
       {open && <BriefModal key={open} kind={open} canSendToSlack={canSendToSlack} onClose={() => setOpen(null)} />}
