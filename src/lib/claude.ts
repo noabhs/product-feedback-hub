@@ -372,6 +372,9 @@ export function buildQPrompt(
    * skip numbers); a one-shot ask leaves it out and gets 1..n.
    */
   numbers?: number[],
+  /** How much of the competitor and feature-request sets were sent, so "none
+   *  shown" is never mistaken for "none exist". */
+  scope?: QScope,
 ): string {
   const cited: string[] = [];
   const next = () => numbers?.[cited.length] ?? cited.length + 1;
@@ -413,6 +416,7 @@ export function buildQPrompt(
       ? `CITED SOURCES (${cited.length}; cite every claim drawn from these with its [number]):`
       : "CITED SOURCES: none matched this question.",
     cited.join("\n\n---\n\n"),
+    scopeNote(scope),
     `THE CLIENT TABLE (${accounts.length} accounts, Salesforce snapshot ${latestReportDate(accounts)}, uncited):`,
     table,
     readAs
@@ -421,6 +425,23 @@ export function buildQPrompt(
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+export interface QScope {
+  competitors: { shown: number; total: number; all: boolean };
+  requests: { shown: number; total: number; all: boolean };
+}
+
+/** One line telling the model what was filtered out, or null when nothing was. */
+function scopeNote(scope?: QScope): string | null {
+  if (!scope) return null;
+  const parts: string[] = [];
+  if (!scope.competitors.all)
+    parts.push(`competitor research — ${scope.competitors.shown} of ${scope.competitors.total} matched this question`);
+  if (!scope.requests.all)
+    parts.push(`feature requests — ${scope.requests.shown} of ${scope.requests.total} matched this question`);
+  if (!parts.length) return null;
+  return `SCOPE: only matching rows are shown above: ${parts.join("; ")}. Others exist but did not match, so say "none matched" rather than "none exist".`;
 }
 
 export interface GlobalAnswer {
@@ -446,6 +467,7 @@ export async function answerGlobalQuestion(
   citationOffset = 0,
   /** Set from a conversation's second turn on. */
   conversation?: { history: HistoryTurn[]; numbers: number[] },
+  scope?: QScope,
 ): Promise<GlobalAnswer> {
   const history = conversation?.history ?? [];
   const stream = getClient(apiKey).messages.stream({
@@ -471,6 +493,7 @@ export async function answerGlobalQuestion(
           domain,
           readAs,
           conversation?.numbers,
+          scope,
         ),
       },
     ],

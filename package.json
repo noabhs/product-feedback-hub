@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
-    "test:ask": "tsx --test src/lib/ask-history.test.ts",
+    "test:ask": "tsx --test src/lib/ask-history.test.ts src/lib/ask-select.test.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

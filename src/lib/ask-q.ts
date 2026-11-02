@@ -20,6 +20,7 @@ import {
   type QSource,
 } from "@/lib/ask-history";
 import { searchDomain, resolveDomainSource } from "@/lib/domain/search";
+import { selectCompetitors, selectFeatureRequests } from "@/lib/ask-select";
 import { logEvent, ACTIONS } from "@/lib/events";
 import type { FeatureRequestItem } from "@/lib/types";
 
@@ -88,7 +89,7 @@ export async function runQ(
     prisma.featureRequest.findMany({ orderBy: { updatedAt: "desc" } }),
   ]);
 
-  const competitors: QCompetitor[] = competitorRows.map((c) => ({
+  const allCompetitors: QCompetitor[] = competitorRows.map((c) => ({
     id: c.id,
     name: c.name,
     category: c.category,
@@ -101,7 +102,7 @@ export async function runQ(
     lastUpdated: iso(c.lastUpdated),
   }));
 
-  const requests: FeatureRequestItem[] = featureRequests.map((f) => ({
+  const allRequests: FeatureRequestItem[] = featureRequests.map((f) => ({
     id: f.id,
     title: f.title,
     description: f.description,
@@ -111,6 +112,17 @@ export async function runQ(
     createdAt: f.createdAt.toISOString(),
     updatedAt: f.updatedAt.toISOString(),
   }));
+
+  // Only the competitors and ideas this question is about, not the whole set —
+  // everything sent is a numbered, citable source, so the rest was just noise.
+  const pickedCompetitors = selectCompetitors(question, allCompetitors);
+  const pickedRequests = selectFeatureRequests(question, allRequests);
+  const competitors = pickedCompetitors.items;
+  const requests = pickedRequests.items;
+  const scope = {
+    competitors: { shown: competitors.length, total: pickedCompetitors.total, all: pickedCompetitors.all },
+    requests: { shown: requests.length, total: pickedRequests.total, all: pickedRequests.all },
+  };
 
   // Recomputed rather than returned from searchInsights, which is shared with
   // /api/ai/qa and whose return shape both surfaces depend on. expandQuestion
@@ -149,6 +161,7 @@ export async function runQ(
     wantsWebSearch,
     hubPool.length,
     isFollowUp ? { history, numbers } : conversation ? { history: [], numbers } : undefined,
+    scope,
   );
   const latencyMs = Date.now() - startedAt;
 
