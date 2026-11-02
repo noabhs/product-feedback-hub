@@ -1,6 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { matchAccount, type AccountLike } from "@/lib/accounts";
 import { expandQuestion } from "@/lib/synonyms";
+import { phrasesOf } from "@/lib/tokenize";
+
+/** "latest on X", "what's new with Y" — the asker wants the newest rows, not
+ *  just the best-matching ones. */
+const RECENCY = /\b(latest|recent|recently|lately|newest|what'?s new|this (week|month|quarter)|last (week|month|quarter))\b/i;
+
+/** When a row happened: the feedback's own date, else when it was imported. */
+const effectiveTime = (i: { date: Date | null; createdAt: Date }) => (i.date ?? i.createdAt).getTime();
+
 
 /**
  * The feedback retrieval behind every "ask" feature — which insights are
@@ -22,6 +31,8 @@ export async function searchInsights(question: string, accounts: AccountLike[]) 
   const namedClient = matchAccount(question, accounts);
 
   const LIMIT = 15;
+  const phrases = phrasesOf(question);
+  const wantsRecent = RECENCY.test(question);
   const [byClient, wordMatches] = await Promise.all([
     namedClient
       ? prisma.insight.findMany({ where: { client: namedClient }, take: LIMIT, orderBy: { createdAt: "desc" } })
@@ -65,15 +76,20 @@ export async function searchInsights(question: string, accounts: AccountLike[]) 
     const head = i.oneLiner.toLowerCase();
     const body = i.content.toLowerCase();
     const areaHit = areas.length && i.productAreas.some((a) => areas.includes(a)) ? 2 : 0;
+    // A phrase hit outweighs its words (which also score on their own), so a row
+    // that names "pop health" beats one that merely mentions "health" twice.
+    const phraseScore = phrases.reduce((score, p) => score + (head.includes(p) ? 6 : 0) + (body.includes(p) ? 3 : 0), 0);
     return (
       areaHit +
+      phraseScore +
       words.reduce((score, w) => score + (head.includes(w) ? 3 : 0) + (body.includes(w) ? 1 : 0), 0)
     );
   };
 
-  // Relevance first, recency only to break ties.
+  // Relevance first, recency only to break ties — by when it happened, not when
+  // it was imported, which for a bulk import is one instant for hundreds of rows.
   const ranked = [...wordMatches].sort(
-    (a, b) => relevance(b) - relevance(a) || b.createdAt.getTime() - a.createdAt.getTime(),
+    (a, b) => relevance(b) - relevance(a) || effectiveTime(b) - effectiveTime(a),
   );
 
   // No single client may fill the window. Whichever client happens to have been
@@ -99,5 +115,18 @@ export async function searchInsights(question: string, accounts: AccountLike[]) 
   // The named client's own feedback goes first, so asking about one account can't
   // have its answer crowded out by keyword hits from everywhere else.
   const seen = new Set<string>();
-  return [...byClient, ...byWords].filter((i) => !seen.has(i.id) && seen.add(i.id)).slice(0, LIMIT);
+  const merged = [...byClient, ...byWords].filter((i) => !seen.has(i.id) && seen.add(i.id));
+  if (!wantsRecent) return merged.slice(0, LIMIT);
+
+  // "Latest": keep the best-matching rows, then put the newest of those first.
+  // Relevance still decides what is eligible, so recency can't pull in noise.
+  // "Best-matching" means at least half the top score, so a row that shares one
+  // stray word can't ride in on being new. A named client's rows always stay.
+  const floor = ranked.length ? Math.ceil(relevance(ranked[0]) / 2) : 0;
+  const named = new Set(byClient.map((i) => i.id));
+  return merged
+    .filter((i) => named.has(i.id) || relevance(i) >= floor)
+    .slice(0, LIMIT * 2)
+    .sort((a, b) => effectiveTime(b) - effectiveTime(a))
+    .slice(0, LIMIT);
 }
