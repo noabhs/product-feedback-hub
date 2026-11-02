@@ -15,6 +15,7 @@ export function StartChatBox({
   autoFocus = false,
   stagger = false,
   examples = true,
+  compact = false,
 }: {
   /** Deals the example chips in one after another. Only the /ask empty state
    *  asks for this — on the home page the box is one card among many. */
@@ -23,11 +24,15 @@ export function StartChatBox({
    *  below the box and doesn't need a second row of suggestions. */
   examples?: boolean;
   autoFocus?: boolean;
+  /** One roomy input with the button inside it, and the "search web" tip only
+   *  while it has focus. For the home page, where less around the box is better. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [question, setQuestion] = useState("");
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
+  const [focused, setFocused] = useState(false);
 
   async function start(preset?: string) {
     const asking = (preset ?? question).trim();
@@ -50,6 +55,37 @@ export function StartChatBox({
       setError((e as Error).message);
       setStarting(false);
     }
+  }
+
+  if (compact) {
+    return (
+      <div>
+        <NoKeyBanner />
+        <div className="relative">
+          <input
+            value={question}
+            autoFocus={autoFocus}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && start()}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Ask Q anything about feedback, competitors or the roadmap…"
+            className="h-14 w-full rounded-pill border border-[rgba(50,43,95,0.12)] bg-white pl-6 pr-28 text-[15px] text-brand-primary shadow-sm transition-all placeholder:text-brand-primary/40 focus:border-brand-secondary-500 focus:shadow-[0_0_0_4px_rgba(93,7,226,0.08)] focus:outline-none"
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <Button size="sm" onClick={() => start()} loading={starting}>
+              Ask
+            </Button>
+          </div>
+        </div>
+        {(focused || question) && (
+          <p className="mt-2 px-6 text-[11.5px] text-brand-primary/45">
+            Add <span className="font-medium">&quot;search web&quot;</span> to also search the web.
+          </p>
+        )}
+        {error && <p className="mt-2 px-6 text-[12px] text-red-700">{error}</p>}
+      </div>
+    );
   }
 
   return (
