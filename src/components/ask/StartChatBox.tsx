@@ -91,41 +91,52 @@ export function StartChatBox({
   return (
     <div>
       <NoKeyBanner />
-      <div className="mt-3 flex gap-2">
+      {/* The button sits inside the field rather than beside it, so the pair
+          reads as one control — and the hint and the chips below can all start
+          from the same left edge. */}
+      <div className="relative mt-3">
         <input
           value={question}
           autoFocus={autoFocus}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && start()}
           placeholder="Ask anything about client feedback, competitors, or the roadmap…"
-          className="h-10 flex-1 rounded-md border border-[rgba(50,43,95,0.12)] bg-[rgba(50,43,95,0.02)] px-4 text-[13px] text-brand-primary transition-all placeholder:text-brand-primary/40 focus:border-brand-secondary-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(93,7,226,0.08)] focus:outline-none"
+          className="h-12 w-full rounded-pill border border-[rgba(50,43,95,0.12)] bg-white pl-5 pr-24 text-[14px] text-brand-primary transition-all placeholder:text-brand-primary/40 focus:border-brand-secondary-500 focus:shadow-[0_0_0_3px_rgba(93,7,226,0.07)] focus:outline-none"
         />
-        <Button size="sm" onClick={() => start()} loading={starting}>
-          Ask
-        </Button>
+        <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+          <Button size="sm" onClick={() => start()} loading={starting}>
+            Ask
+          </Button>
+        </div>
       </div>
-      <p className="mt-1.5 text-[11px] text-brand-primary/40">
+      <p className="mt-2 pl-5 text-[11.5px] text-brand-primary/40">
         Add <span className="font-medium">&quot;search web&quot;</span> anywhere in your question to also search the web, not just the hub.
       </p>
-      {error && <p className="mt-2 text-[12px] text-red-700">{error}</p>}
+      {error && <p className="mt-2 pl-5 text-[12px] text-red-700">{error}</p>}
 
       {examples && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-brand-primary/40">Try</span>
-          {EXAMPLES.map((q, i) => (
-            <button
-              key={q}
-              type="button"
-              onClick={() => start(q)}
-              disabled={starting}
-              style={stagger ? { animationDelay: `${260 + i * 80}ms` } : undefined}
-              className={`cursor-pointer rounded-pill border border-[rgba(50,43,95,0.12)] px-2.5 py-1 text-[12px] text-brand-primary/70 transition-all hover:-translate-y-0.5 hover:border-brand-secondary-500 hover:text-brand-secondary-600 disabled:opacity-50${
-                stagger ? " animate-rise" : ""
-              }`}
-            >
-              {q}
-            </button>
-          ))}
+        <div className="mt-5 border-t border-[rgba(50,43,95,0.07)] pt-4">
+          {/* A label above the chips, not inline with the first one: inline, it
+              indented row one and left the stack looking ragged. */}
+          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-brand-primary/35">
+            Try one of these
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLES.map((q, i) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => start(q)}
+                disabled={starting}
+                style={stagger ? { animationDelay: `${260 + i * 80}ms` } : undefined}
+                className={`max-w-full cursor-pointer rounded-pill border border-[rgba(50,43,95,0.12)] px-3 py-1.5 text-left text-[12.5px] text-brand-primary/70 transition-all hover:-translate-y-0.5 hover:border-brand-secondary-500 hover:text-brand-secondary-600 disabled:opacity-50${
+                  stagger ? " animate-rise" : ""
+                }`}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
