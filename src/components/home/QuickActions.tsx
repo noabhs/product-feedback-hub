@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, CalendarClock, Wrench, Network } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Building2, Swords, BookOpen, Layers, Plug, ArrowRight, GraduationCap, CalendarClock, Wrench, Network, FileText } from "lucide-react";
 import { BriefModal, type BriefKind } from "@/components/home/BriefModal";
+import { BriefTypeModal, type BriefType } from "@/components/home/BriefTypeModal";
 import { SkillsModal } from "@/components/home/SkillsModal";
 
 const BOX = "block w-full text-left bg-white rounded-lg border border-brand-secondary-500/25 shadow-sm p-4 h-full group hover:border-brand-secondary-500 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer";
@@ -28,31 +30,35 @@ function Box({ title, sub, Icon, tint }: { title: string; sub: string; Icon: Rea
   );
 }
 
-const BRIEFS: { kind: BriefKind; title: string; sub: string; Icon: React.FC<{ className?: string }>; tint: string }[] = [
-  { kind: "client", title: "Generate client brief", sub: "Everything we know about one account", Icon: Building2, tint: "bg-sky-100 text-sky-700" },
-  { kind: "competitor", title: "Generate competitor brief", sub: "Positioning and claims, plus the latest from the web", Icon: Swords, tint: "bg-rose-100 text-rose-700" },
-  { kind: "area", title: "Generate product area brief", sub: "Feedback and market view for one or more areas", Icon: Layers, tint: "bg-violet-100 text-violet-700" },
-  { kind: "domain", title: "Know your domain brief", sub: "A plain-language brief on the topics you pick", Icon: GraduationCap, tint: "bg-indigo-100 text-indigo-700" },
+const BRIEF_TYPES: BriefType[] = [
+  { id: "client", title: "Client brief", sub: "Everything we know about one account", Icon: Building2, tint: "bg-sky-100 text-sky-700" },
+  { id: "competitor", title: "Competitor brief", sub: "Positioning and claims, plus the latest from the web", Icon: Swords, tint: "bg-rose-100 text-rose-700" },
+  { id: "area", title: "Product area brief", sub: "Feedback and market view for one or more areas", Icon: Layers, tint: "bg-violet-100 text-violet-700" },
+  { id: "domain", title: "Know your domain brief", sub: "A plain-language brief on the topics you pick", Icon: GraduationCap, tint: "bg-indigo-100 text-indigo-700" },
+  { id: "discovery", title: "Discovery doc", sub: "Questions and context for a discovery call", Icon: BookOpen, tint: "bg-emerald-100 text-emerald-700" },
 ];
 
 /** The R&D map is a published Claude artifact, kept up to date from the Product & R&D Map sheet. */
 const RND_MAP_URL = "https://claude.ai/artifact/2Q3AhdGpmqQSBrXSDJRtyS?sk=WJzqHnk9S5sGB5heJ9jK1w";
 
 export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: boolean }) {
+  const router = useRouter();
+  const [choosing, setChoosing] = useState(false);
   const [open, setOpen] = useState<BriefKind | null>(null);
   const [skillsOpen, setSkillsOpen] = useState(false);
-  const [client, competitor, area, domain] = BRIEFS;
+
+  function pick(t: BriefType) {
+    setChoosing(false);
+    if (t.id === "discovery") router.push("/discovery/generate");
+    else setOpen(t.id);
+  }
 
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <button type="button" className={BOX} onClick={() => setOpen(client.kind)}><Box {...client} /></button>
-        <button type="button" className={BOX} onClick={() => setOpen(competitor.kind)}><Box {...competitor} /></button>
-        <Link href="/discovery/generate" className={BOX}>
-          <Box title="Generate discovery doc" sub="Questions and context for a discovery call" Icon={BookOpen} tint="bg-emerald-100 text-emerald-700" />
-        </Link>
-        <button type="button" className={BOX} onClick={() => setOpen(area.kind)}><Box {...area} /></button>
-        <button type="button" className={BOX} onClick={() => setOpen(domain.kind)}><Box {...domain} /></button>
+        <button type="button" className={BOX} onClick={() => setChoosing(true)}>
+          <Box title="Generate brief" sub="Client, competitor, product area, domain or discovery doc" Icon={FileText} tint="bg-violet-100 text-violet-700" />
+        </button>
         <Link href="/connect-claude" className={BOX}>
           <Box title="Use hub data in my Claude" sub="Connect your personal Claude to the raw data" Icon={Plug} tint="bg-amber-100 text-amber-700" />
         </Link>
@@ -66,8 +72,15 @@ export function QuickActions({ canSendToSlack = false }: { canSendToSlack?: bool
           <Box title="Product R&D working map" sub="Teams, squads and who owns what. Opens in Claude" Icon={Network} tint="bg-lime-100 text-lime-700" />
         </a>
       </div>
+      {choosing && <BriefTypeModal types={BRIEF_TYPES} onPick={pick} onClose={() => setChoosing(false)} />}
       {skillsOpen && <SkillsModal onClose={() => setSkillsOpen(false)} />}
-      {open && <BriefModal key={open} kind={open} canSendToSlack={canSendToSlack} onClose={() => setOpen(null)} />}
+      {open && <BriefModal
+          key={open}
+          kind={open}
+          canSendToSlack={canSendToSlack}
+          onBack={() => { setOpen(null); setChoosing(true); }}
+          onClose={() => setOpen(null)}
+        />}
     </>
   );
 }
