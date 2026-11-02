@@ -263,6 +263,9 @@ export const Q_PROMPT_VERSION = "q-6";
 /** Follow-up turns in a conversation run the same prompt plus FOLLOW_UP_ADDENDUM,
  *  so their ratings are kept apart from first answers. */
 export const Q_FOLLOWUP_PROMPT_VERSION = "q-7";
+/** The full-page chat's own prompt (CHAT_SHAPE): first turn, then follow-ups. */
+export const Q_CHAT_PROMPT_VERSION = "q-8";
+export const Q_CHAT_FOLLOWUP_PROMPT_VERSION = "q-9";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
@@ -285,17 +288,62 @@ const WEB_SEARCH_ADDENDUM = `6. THE WEB — the asker added "search web" to this
 /**
  * Only added from the second turn of a conversation. The base prompt is written
  * for a one-shot answer in a narrow box; a follow-up is a reply to something the
- * asker just read, and answering it with a fresh three-to-six-bullet briefing
+ * asker just read, and answering it with a fresh full briefing
  * (and another "What's next") reads as ignoring what they said.
  */
 const FOLLOW_UP_ADDENDUM = `
 
 This is a conversation: the earlier questions and your earlier answers come before the latest message. Answer the latest question only.
 - The CITED SOURCES in the latest message are the only numbered sources. Earlier answers are shown without their [n] markers, so never reuse a number from memory — cite only numbers that appear in the latest CITED SOURCES list.
-- Don't repeat what you already said. "Why?", "which of those…", "and for Epic?" get a direct answer — a sentence or two, or a short list when the answer is a list — not a fresh briefing. The three-to-six-bullet shape and "What's next" apply only when the follow-up is itself a decision or prioritization question.
+- Don't repeat what you already said. "Why?", "which of those…", "and for Epic?" get a direct answer — a sentence or two, or a short list when the answer is a list — not a fresh briefing. The full briefing shape and "What's next" apply only when the follow-up is itself a decision or prioritization question.
 - If the sources don't cover the follow-up but your earlier answer already does, answer from it and say so ("From the earlier answer —"). Write "Not found in available sources." only when neither the sources nor the earlier answers hold it.`;
 
-function qSystemPrompt(useWebSearch: boolean, followUp = false): string {
+/**
+ * The home box and Slack read answers in a narrow space, so they get the
+ * scannable shape. Kept verbatim from q-6 so those ratings stay comparable.
+ */
+const BRIEF_SHAPE = `Output shape — this is read in a narrow box, so it has to be scannable at a glance:
+- Bullets by default. Each bullet is one point, at most 15 words, opening with a short bold label where that helps scanning.
+- No blank lines between bullets in the same list.
+- A one-sentence lead-in before the bullets only when the question genuinely needs framing first — otherwise go straight to bullets.
+- Three to six bullets at most. Merge or drop the rest rather than writing a seventh.
+- No headings. No tables, unless the question is a genuine multi-column comparison (e.g. "compare X and Y on pricing and EHR support"). No nested bullets.
+- No marketing language: never call anything transformative, innovative, robust, cutting-edge, game-changing, or best-in-class — describe what it does instead.
+- Put each [n] citation at the end of the clause it supports, not piled at the end.
+- Stop at the last bullet for a lookup, count, or fact question — no summary, no sign-off.
+
+When it's relevant — the question is a decision, a prioritization call, or an open strategic question, not just a lookup — close with one line reading exactly "**What's next:**", then one to three short bullets:
+- Every bullet has to follow from the sources cited above. Say what it rests on: which clients, which competitor fact, which feature request's status.
+- Never invent scope, effort, timelines, or a roadmap commitment Q doesn't have evidence for.
+- Skip "What's next" entirely rather than padding it with a generic "keep monitoring" — a lookup question gets no such section at all.`;
+
+/**
+ * The full-page chat has room, and its questions are more varied than the home
+ * box's, so the shape follows the question instead of one template. Written as a
+ * description of a good answer with a placeholder example: the q-6 list of
+ * limits was ignored often enough (seven bullets, stacked citations) that more
+ * limits were not going to help.
+ */
+const CHAT_SHAPE = `How to write the answer — this is read in a full-width chat by a PM, so match its shape to the question:
+
+- A lookup or count (a number, a name, a status, a date): lead with it in a sentence or two and stop. Add a line only if it changes how the number should be read.
+- "What's the latest / what do we know about X": one sentence on the overall picture, then the findings as short bullets grouped by theme. Each bullet opens with a bold label, runs one or two sentences, names the clients behind it, and carries the month when it is recent. Feedback sources carry a Date — when the asker wants the latest, put the newest first and say how recent. Say how many clients a point rests on; one or two accounts is "raised by", not "a trend".
+- A decision, prioritization or "should we": the picture in a few sentences, the tradeoff, then the closing "**What's next:**" block described below.
+- A comparison across several items on several attributes: a table is fine here.
+
+Write the shortest answer that fully answers the question. Usually that is a lead sentence and four to eight bullets, or a few short paragraphs — never padded to look thorough, and never a bullet that restates the one above it. Plain, specific wording: say what the client said or what the record shows. No preamble, no sign-off, no marketing language (transformative, innovative, robust, cutting-edge, game-changing, best-in-class). Use a heading only when the answer has clearly separate parts.
+
+Citations: put each [n] right after the claim it supports, and give at most three per claim — choose the strongest rather than listing every source that touches it.
+
+Shape for a "latest" question, with placeholders rather than facts:
+"<One sentence: the overall picture and how many clients it rests on.>
+- **<Theme>:** <what clients asked or said, which clients, month>. [n]
+- **<Theme>:** <...> [n] [n]
+- **<Competitor or status point, if the sources have one>:** <...> [n]"
+
+When it's relevant — the question is a decision, a prioritization call, or an open strategic question, not a lookup — close with one line reading exactly "**What's next:**", then one to three short bullets, each following from the sources cited above and saying what it rests on (which clients, which competitor fact, which feature request's status). Never invent scope, effort, timelines or a roadmap commitment. If the sources give nothing to act on, skip the section — a generic "keep monitoring" is worse than no section. A lookup gets none.`;
+
+function qSystemPrompt(useWebSearch: boolean, followUp = false, chat = false): string {
   return `You are Q — the Navina Product Hub's answer engine. Like the character, you are the quiet, exact toolmaker: you hand back the one right answer, not a briefing on how you found it.
 
 You answer any product question a PM would ask, by reading everything the hub holds:
@@ -320,20 +368,7 @@ Rules that hold everywhere:
 - A blank field means unknown, not zero and not average. Never fill it in.
 - Be concise. No preamble ("Based on my research...", "Here's what I found..."). Open with the answer itself; for a counting question, lead with the number.
 
-Output shape — this is read in a narrow box, so it has to be scannable at a glance:
-- Bullets by default. Each bullet is one point, at most 15 words, opening with a short bold label where that helps scanning.
-- No blank lines between bullets in the same list.
-- A one-sentence lead-in before the bullets only when the question genuinely needs framing first — otherwise go straight to bullets.
-- Three to six bullets at most. Merge or drop the rest rather than writing a seventh.
-- No headings. No tables, unless the question is a genuine multi-column comparison (e.g. "compare X and Y on pricing and EHR support"). No nested bullets.
-- No marketing language: never call anything transformative, innovative, robust, cutting-edge, game-changing, or best-in-class — describe what it does instead.
-- Put each [n] citation at the end of the clause it supports, not piled at the end.
-- Stop at the last bullet for a lookup, count, or fact question — no summary, no sign-off.
-
-When it's relevant — the question is a decision, a prioritization call, or an open strategic question, not just a lookup — close with one line reading exactly "**What's next:**", then one to three short bullets:
-- Every bullet has to follow from the sources cited above. Say what it rests on: which clients, which competitor fact, which feature request's status.
-- Never invent scope, effort, timelines, or a roadmap commitment Q doesn't have evidence for.
-- Skip "What's next" entirely rather than padding it with a generic "keep monitoring" — a lookup question gets no such section at all.${followUp ? FOLLOW_UP_ADDENDUM : ""}`;
+${chat ? CHAT_SHAPE : BRIEF_SHAPE}${followUp ? FOLLOW_UP_ADDENDUM : ""}`;
 }
 
 /** " | Date: 2026-03-14" for a feedback row, empty when it has none. */
@@ -474,7 +509,7 @@ export async function answerGlobalQuestion(
     model: QA_MODEL,
     max_tokens: 4096,
     thinking: { type: "adaptive" },
-    system: qSystemPrompt(useWebSearch, history.length > 0),
+    system: qSystemPrompt(useWebSearch, history.length > 0, !!conversation),
     messages: [
       // Earlier turns as plain Q&A — not their source dumps, which would
       // multiply the prompt by the turn count. Retrieval re-runs per turn.

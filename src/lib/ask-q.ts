@@ -4,7 +4,8 @@ import {
   standaloneQuestion,
   QA_MODEL,
   Q_PROMPT_VERSION,
-  Q_FOLLOWUP_PROMPT_VERSION,
+  Q_CHAT_PROMPT_VERSION,
+  Q_CHAT_FOLLOWUP_PROMPT_VERSION,
   type QCompetitor,
 } from "@/lib/claude";
 import { loadAccountDetails, loadAccounts } from "@/lib/accounts-db";
@@ -186,7 +187,12 @@ export async function runQ(
   ];
 
   void logEvent(ACTIONS.aiAsk, { label: rawQuestion, actor });
-  const promptVersion = isFollowUp ? Q_FOLLOWUP_PROMPT_VERSION : Q_PROMPT_VERSION;
+  // Chat turns run the chat prompt; the home box and Slack keep the brief one.
+  const promptVersion = conversation
+    ? isFollowUp
+      ? Q_CHAT_FOLLOWUP_PROMPT_VERSION
+      : Q_CHAT_PROMPT_VERSION
+    : Q_PROMPT_VERSION;
   if (conversation) {
     const askId = await recordConversationTurn({
       actor,
