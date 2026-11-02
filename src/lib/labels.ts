@@ -22,6 +22,7 @@ export const AREA_LABELS: Record<string, string> = {
   CODERS: "Coders",
   GENERAL: "General",
   COMPETITIVE: "Competitive",
+  ENTERPRISE_PACKAGE: "Enterprise package",
 };
 
 /**
@@ -130,6 +131,7 @@ export const AREA_COLORS: Record<string, string> = {
   CODERS: "#7c2d12",
   GENERAL: "#78716c",
   COMPETITIVE: "#d97706",
+  ENTERPRISE_PACKAGE: "#0e7490",
 };
 
 /** "BILLING_PAYMENTS" -> "Billing payments" */
