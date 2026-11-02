@@ -120,7 +120,12 @@ export async function searchInsights(question: string, accounts: AccountLike[]) 
 
   // "Latest": keep the best-matching rows, then put the newest of those first.
   // Relevance still decides what is eligible, so recency can't pull in noise.
+  // "Best-matching" means at least half the top score, so a row that shares one
+  // stray word can't ride in on being new. A named client's rows always stay.
+  const floor = ranked.length ? Math.ceil(relevance(ranked[0]) / 2) : 0;
+  const named = new Set(byClient.map((i) => i.id));
   return merged
+    .filter((i) => named.has(i.id) || relevance(i) >= floor)
     .slice(0, LIMIT * 2)
     .sort((a, b) => effectiveTime(b) - effectiveTime(a))
     .slice(0, LIMIT);
