@@ -514,11 +514,13 @@ export async function answerGlobalQuestion(
   const history = conversation?.history ?? [];
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
-    // Thinking draws from this same budget. Reasoning over an attached document
-    // can use all of 4096 before a word of the answer is written, which came
-    // back as a response with no text block at all.
-    max_tokens: documents.length ? 12000 : 4096,
-    thinking: { type: "adaptive" },
+    // Reasoning over an attached document plus the whole hub ran past the
+    // route's time limit (a 504) and, before that, spent the entire token
+    // budget thinking and returned no text. The answer is a synthesis of text
+    // already in the prompt, so with a document attached it skips thinking:
+    // faster, cheaper, and it always gets to the answer.
+    max_tokens: documents.length ? 6000 : 4096,
+    thinking: documents.length ? { type: "disabled" as const } : { type: "adaptive" as const },
     system: qSystemPrompt(useWebSearch, history.length > 0, !!conversation, documents.length > 0),
     messages: [
       // Earlier turns as plain Q&A — not their source dumps, which would

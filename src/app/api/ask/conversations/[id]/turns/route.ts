@@ -5,7 +5,7 @@ import { runQ } from "@/lib/ask-q";
 
 // A follow-up is a rewrite call, retrieval, then an answer that may think and
 // search the web — the Slack command gets the same headroom for the same call.
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const runtime = "nodejs";
 
 /**
