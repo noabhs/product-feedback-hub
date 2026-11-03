@@ -37,3 +37,23 @@ test("phrasesOf pairs adjacent kept words only", () => {
   assert.deepEqual(phrasesOf("what's the latest on pop health?"), ["pop health"]);
   assert.deepEqual(phrasesOf("risk adjustment gaps"), ["risk adjustment", "adjustment gaps"]);
 });
+
+import { tokenize, hasTerm } from "./tokenize";
+import { expandQuestion } from "./synonyms";
+
+test("plurals search as singular too; generic verbs are not searched", () => {
+  assert.deepEqual(tokenize("do you know what LOBs are? where do we get them from?"), ["lobs", "lob"]);
+});
+test("short terms match whole words only", () => {
+  assert.equal(hasTerm("budget targets", "get"), false);
+  assert.equal(hasTerm("split by lob", "lob"), true);
+  assert.equal(hasTerm("each lobs total", "lob"), true);
+  assert.equal(hasTerm("global rollout", "lob"), false);
+  assert.equal(hasTerm("risk adjustment", "diagnos"), false);
+  assert.equal(hasTerm("diagnosis gaps", "diagnos"), true);
+});
+test("LOB resolves to line of business", () => {
+  const e = expandQuestion("what are LOBs?");
+  assert.equal(e.matched[0]?.label, "Line of business");
+  assert.ok(e.terms.includes("line of business"));
+});
