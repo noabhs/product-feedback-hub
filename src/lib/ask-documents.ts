@@ -1,3 +1,4 @@
+import { extractText, getDocumentProxy } from "unpdf";
 import { prisma } from "@/lib/prisma";
 import { ConversationError } from "@/lib/ask-conversation";
 
@@ -44,13 +45,25 @@ export async function addDocument(actor: string, conversationId: string, file: F
   let data: string;
   if (kind === "pdf") {
     if (buf.subarray(0, 5).toString("latin1") !== "%PDF-") throw new ConversationError(400, `${file.name} isn't a valid PDF.`);
-    data = buf.toString("base64");
+    // Read once here and stored as text. Sending the PDF itself would make
+    // Claude re-read it, page images included, on every question of the chat —
+    // several times the tokens for the same words.
+    try {
+      const pdf = await getDocumentProxy(new Uint8Array(buf));
+      data = (await extractText(pdf, { mergePages: true })).text.slice(0, MAX_TEXT_CHARS);
+    } catch {
+      throw new ConversationError(400, `Couldn't read ${file.name}. Is it password-protected?`);
+    }
+    if (data.trim().length < 20) {
+      throw new ConversationError(400, `${file.name} has no readable text — it looks like a scan.`);
+    }
   } else {
     data = buf.toString("utf8").slice(0, MAX_TEXT_CHARS);
     if (!data.trim()) throw new ConversationError(400, `${file.name} is empty.`);
   }
   const row = await prisma.askDocument.create({
-    data: { conversationId, name: file.name.slice(0, 200), kind, size: file.size, data },
+    // Always stored as text now; "pdf" rows from before this are still sent as PDFs.
+    data: { conversationId, name: file.name.slice(0, 200), kind: "text", size: file.size, data },
     select: { id: true, name: true, kind: true, size: true },
   });
   return row;
