@@ -514,7 +514,10 @@ export async function answerGlobalQuestion(
   const history = conversation?.history ?? [];
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
-    max_tokens: 4096,
+    // Thinking draws from this same budget. Reasoning over an attached document
+    // can use all of 4096 before a word of the answer is written, which came
+    // back as a response with no text block at all.
+    max_tokens: documents.length ? 12000 : 4096,
     thinking: { type: "adaptive" },
     system: qSystemPrompt(useWebSearch, history.length > 0, !!conversation, documents.length > 0),
     messages: [
@@ -558,6 +561,13 @@ export async function answerGlobalQuestion(
   });
 
   const message = await stream.finalMessage();
+  if (!message.content.some((b) => b.type === "text")) {
+    throw new Error(
+      message.stop_reason === "max_tokens"
+        ? "the answer ran out of room while thinking — try a narrower question"
+        : `Claude returned no text (stop reason: ${message.stop_reason})`,
+    );
+  }
   const { text, webSources } = extractTextWithWebCitations(message.content, citationOffset);
   return { text, usedWebSearch: usedWebSearch(message.content), webSources };
 }
