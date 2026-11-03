@@ -23,7 +23,7 @@ const STATE_TONE: Record<string, string> = {
   applied: "bg-emerald-50 text-emerald-800", failed: "bg-rose-50 text-rose-800",
 };
 const ACTION_LABEL: Record<string, string> = {
-  rename_idea: "Idea renamed", rename_delivery: "Epic renamed", rename_release: "Release Event renamed", rename_release_step: "Release step renamed",
+  rename_idea: "Idea renamed", rename_item: "Ticket renamed", rename_linked_idea: "Linked idea renamed", rename_delivery: "Epic renamed", rename_release: "Release Event renamed", rename_release_step: "Release step renamed",
   revert: "Reverted", clear_view: "View cleared",
 };
 
@@ -135,16 +135,17 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
         <p className="rounded-sm bg-amber-50 px-4 py-3 text-[13.5px]">You can read reviews and the audit log. Only people on the editors list can start a review or change tickets in Jira. Ask Noa to add you.</p>
       )}
       {canEdit && <div className={`${CARD} p-5`}>
-        <label className="block text-[13px] font-semibold text-brand-primary/70 mb-2" htmlFor="viewlink">Paste the link to a Jira view</label>
+        <label className="block text-[13px] font-semibold text-brand-primary/70 mb-2" htmlFor="viewlink">Paste a link to a Jira view or an issue search</label>
         <div className="flex gap-2 flex-col sm:flex-row">
-          <input id="viewlink" className={INPUT} placeholder="https://navina.atlassian.net/jira/polaris/projects/PRODUCT/ideas/view/…"
+          <input id="viewlink" className={INPUT} placeholder="A Product Discovery view, or the link of a Jira issue search"
             value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && url && loadIdeas()} />
           <button className={BTN_PRIMARY} disabled={!url.trim() || loading} onClick={loadIdeas}>
-            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Load ideas
+            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Load tickets
           </button>
         </div>
         <p className="mt-2 text-[12.5px] text-brand-primary/55">
-          Jira does not let the hub read a view&apos;s own filter, so the hub loads the view&apos;s project and you choose which ideas to review.
+          A Product Discovery view: Jira does not let the hub read its own filter, so the hub loads the view&apos;s project and you choose which ideas to review.
+          An issue search, for example the Epics of one squad: the hub reads the search itself, so you get exactly the tickets it finds.
         </p>
 
         {ideas && (
@@ -158,7 +159,7 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button className={BTN_PRIMARY} disabled={!shown.length || shown.length > MAX_REVIEW || building} onClick={build}>
-                {building && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Propose names for the {shown.length} ideas shown
+                {building && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Propose names for the {shown.length} tickets shown
               </button>
               {building && <span className="text-[13px] text-brand-primary/60">Reading Jira and writing names. This takes about a minute.</span>}
               {shown.length > MAX_REVIEW && <span className="text-[13px] text-rose-700">That is more than {MAX_REVIEW}. Narrow it with the filters.</span>}
@@ -167,10 +168,10 @@ function ReviewTab({ canEdit, reviews, review, setErr, onCreated, onPick, onChan
               {shown.map((i) => (
                 <li key={i.key} className="px-3 py-2 text-[13.5px]">
                   <span className="font-mono text-[12px] text-brand-primary/50 mr-2">{i.key}</span>{i.summary}
-                  <span className="block text-[12px] text-brand-primary/50">{[i.product, i.team, i.status].filter(Boolean).join(" · ")}</span>
+                  <span className="block text-[12px] text-brand-primary/50">{[i.type !== "Idea" && i.type, i.product, i.team, i.status].filter(Boolean).join(" · ")}</span>
                 </li>
               ))}
-              {!shown.length && <li className="px-3 py-6 text-center text-[13px] text-brand-primary/50">No ideas match.</li>}
+              {!shown.length && <li className="px-3 py-6 text-center text-[13px] text-brand-primary/50">No tickets match.</li>}
             </ul>
           </div>
         )}
@@ -232,7 +233,7 @@ function ReviewList({ canEdit, review, reviews, onPick, onChanged, onCleared, se
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-[24px] font-extrabold text-brand-primary leading-tight">{review.title}</h2>
-          <p className="text-[13px] text-brand-primary/60 mt-1">{items.length} ideas · {count("applied")} applied · {count("pending")} waiting · started by {review.createdBy.split("@")[0]}</p>
+          <p className="text-[13px] text-brand-primary/60 mt-1">{items.length} tickets · {count("applied")} applied · {count("pending")} waiting · started by {review.createdBy.split("@")[0]}</p>
         </div>
         <div className="flex items-center gap-2">
           {reviews.length > 1 && (
@@ -268,7 +269,7 @@ function ReviewList({ canEdit, review, reviews, onPick, onChanged, onCleared, se
 
       {confirm === "all" && (
         <div className="mt-3 rounded-sm bg-amber-50 px-4 py-3 text-[13.5px] flex flex-wrap items-center gap-3">
-          <p className="flex-1">This renames {pending.length} ideas and their linked items in Jira, about {total} tickets in all. Each change is saved in the audit log and can be reverted.</p>
+          <p className="flex-1">This renames {pending.length} tickets and their linked items in Jira, about {total} tickets in all. Each change is saved in the audit log and can be reverted.</p>
           <button className={BTN} onClick={() => setConfirm(null)}>Cancel</button>
           <button className={BTN_PRIMARY} onClick={acceptAll}>Rename in Jira</button>
         </div>

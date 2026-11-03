@@ -1,4 +1,4 @@
-import { PRODUCT_FIELD, TEAM_FIELD, adfText, deliveryFromLinks, releaseKeysFromLinks, searchAll } from "./jira";
+import { PRODUCT_FIELD, SQUAD_FIELD, TEAM_FIELD, adfText, deliveryFromLinks, ideasFromLinks, pickName, releaseKeysFromLinks, searchAll } from "./jira";
 import { proposeNames, type Proposal } from "./propose";
 import type { DeliveryLink, ItemData, ReleaseChild, ReleaseLink } from "./types";
 
@@ -8,21 +8,35 @@ const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length
 const inList = (keys: string[]) => `key in (${keys.join(",")})`;
 
 /**
- * Reads the chosen ideas with their linked Epics, Release Events and steps, then asks
- * Claude for a name per idea. Nothing is written to Jira here.
+ * Reads the chosen tickets with what hangs off them, then asks Claude for a name per
+ * ticket. Nothing is written to Jira here.
+ *
+ * An idea carries its delivery Epics, and their Release Events and steps. Any other ticket
+ * (an Epic from a dev board, say) is renamed itself, and carries the idea it implements
+ * and its own Release Events, so the idea and the Epic keep one title.
  */
 export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
-  const ideas = await searchAll(inList(keys), ["summary", "status", "description", "issuelinks", "issuetype", PRODUCT_FIELD, TEAM_FIELD]);
+  const ideas = await searchAll(inList(keys), ["summary", "status", "description", "issuelinks", "issuetype", PRODUCT_FIELD, TEAM_FIELD, SQUAD_FIELD]);
   const byKey = new Map(ideas.map((i) => [i.key, i]));
   const ordered = keys.filter((k) => byKey.has(k));
+  const isIdea = (k: string) => byKey.get(k)!.fields.issuetype?.name === "Idea";
 
-  const deliveryOf = new Map(ordered.map((k) => [k, deliveryFromLinks(byKey.get(k)!.fields.issuelinks)]));
+  const deliveryOf = new Map(ordered.map((k) => [k, isIdea(k) ? deliveryFromLinks(byKey.get(k)!.fields.issuelinks) : []]));
+
+  // For a ticket that is not an idea: the idea it implements, and how many Epics that idea has.
+  const ideasOf = new Map(ordered.filter((k) => !isIdea(k)).map((k) => [k, ideasFromLinks(byKey.get(k)!.fields.issuelinks)]));
+  const ideaEpics = new Map<string, number>();
+  const linkedIdeaKeys = [...new Set([...ideasOf.values()].flat().map((i) => i.key))];
+  for (const part of chunk(linkedIdeaKeys, 50)) {
+    for (const i of await searchAll(inList(part), ["issuelinks"])) ideaEpics.set(i.key, deliveryFromLinks(i.fields.issuelinks).length);
+  }
   const epicUse = new Map<string, number>();
   for (const list of deliveryOf.values()) for (const d of list) epicUse.set(d.key, (epicUse.get(d.key) ?? 0) + 1);
   const epicKeys = [...epicUse.keys()];
 
   // Release Events hang off the Epic by an "Is child task of" link.
   const eventsOfEpic = new Map<string, string[]>();
+  for (const k of ideasOf.keys()) eventsOfEpic.set(k, releaseKeysFromLinks(byKey.get(k)!.fields.issuelinks));
   for (const part of chunk(epicKeys, 50)) {
     for (const e of await searchAll(inList(part), ["issuelinks"])) eventsOfEpic.set(e.key, releaseKeysFromLinks(e.fields.issuelinks));
   }
@@ -67,12 +81,10 @@ export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
               title: f.summary,
               description: adfText(f.description),
               status: f.status?.name ?? "",
-              // The Product field, or the Team when the Product is empty.
-              product:
-                (f[PRODUCT_FIELD] as { value?: string } | null | undefined)?.value ||
-                (f[TEAM_FIELD] as { name?: string } | null | undefined)?.name ||
-                "",
-              delivery: (deliveryOf.get(k) ?? []).map((d) => ({ type: d.type, title: d.title })),
+              // The Product field, or the Team when the Product is empty, or a dev ticket's Squad / Team.
+              product: pickName(f[PRODUCT_FIELD]) || pickName(f[TEAM_FIELD]) || pickName(f[SQUAD_FIELD]),
+              // The linked tickets, which help to tell what the work is.
+              delivery: [...(deliveryOf.get(k) ?? []), ...(ideasOf.get(k) ?? [])].map((d) => ({ type: d.type, title: d.title })),
             };
           }),
         );
@@ -86,6 +98,11 @@ export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
     const p = proposals.get(key);
     const proposed = (p?.proposed ?? "").trim();
     const hasName = proposed.length > 0 && proposed !== f.summary;
+    const selfIdeas: DeliveryLink[] = (ideasOf.get(key) ?? []).map((d) => {
+      const n = ideaEpics.get(d.key) ?? 1;
+      const shared = n > 1;
+      return { ...d, action: !hasName || shared ? "leave" : "rename", reason: shared ? `Shared by ${n} Epics` : "" };
+    });
     const delivery: DeliveryLink[] = (deliveryOf.get(key) ?? []).map((d) => {
       const shared = (epicUse.get(d.key) ?? 0) > 1;
       const isEpic = d.type === "Epic" || d.type === "Initiative";
@@ -93,6 +110,13 @@ export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
       return { ...d, action: leave ? "leave" : "rename", reason: shared ? `Shared by ${epicUse.get(d.key)} ideas` : !isEpic ? `It is a ${d.type}` : "" };
     });
     const releases: ReleaseLink[] = [];
+    // A ticket that is not an idea has its Release Events directly, and nothing above to wait for.
+    for (const ek of ideasOf.has(key) ? eventsOfEpic.get(key) ?? [] : []) {
+      const ev = events.get(ek);
+      if (!ev) continue;
+      const shared = (eventUse.get(ek) ?? 0) > 1;
+      releases.push({ ...ev, epic: key, action: !hasName || shared ? "leave" : "rename", reason: shared ? "Shared by several tickets" : "", children: kids.get(ek) ?? [] });
+    }
     for (const d of delivery) {
       for (const ek of eventsOfEpic.get(d.key) ?? []) {
         const ev = events.get(ek);
@@ -114,9 +138,10 @@ export async function buildItems(keys: string[]): Promise<BuiltItem[]> {
         question: hasName ? null : p?.question ?? null,
         jstatus: f.status?.name ?? "",
         desc: adfText(f.description).slice(0, 1200),
-        delivery,
+        delivery: [...selfIdeas, ...delivery],
         releases,
         error: null,
+        sourceType: f.issuetype?.name ?? "Idea",
       },
     };
   });
