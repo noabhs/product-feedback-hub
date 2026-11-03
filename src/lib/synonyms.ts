@@ -92,6 +92,14 @@ export const CONCEPTS: Concept[] = [
     areas: ["CODERS"],
   },
   {
+    label: "Line of business",
+    // Feedback spells it out; "LOB" is how the team says it. Whole-word matching
+    // is why both the singular and plural are listed.
+    aliases: ["lob", "lobs", "line of business", "lines of business"],
+    terms: ["line of business", "lines of business"],
+    areas: [],
+  },
+  {
     label: "Data exchange",
     // Maps to no single product area — HIE and ADT cut across several — so this
     // one earns its place on term expansion alone.

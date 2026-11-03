@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { matchAccount, type AccountLike } from "@/lib/accounts";
 import { expandQuestion } from "@/lib/synonyms";
-import { phrasesOf } from "@/lib/tokenize";
+import { hasTerm, phrasesOf } from "@/lib/tokenize";
 
 /** "latest on X", "what's new with Y" — the asker wants the newest rows, not
  *  just the best-matching ones. */
@@ -82,13 +82,15 @@ export async function searchInsights(question: string, accounts: AccountLike[]) 
     return (
       areaHit +
       phraseScore +
-      words.reduce((score, w) => score + (head.includes(w) ? 3 : 0) + (body.includes(w) ? 1 : 0), 0)
+      words.reduce((score, w) => score + (hasTerm(head, w) ? 3 : 0) + (hasTerm(body, w) ? 1 : 0), 0)
     );
   };
 
   // Relevance first, recency only to break ties — by when it happened, not when
   // it was imported, which for a bulk import is one instant for hundreds of rows.
-  const ranked = [...wordMatches].sort(
+  // The database matched on substrings; a row whose only hits were letters
+  // inside other words ("get" in "target") scores 0 here and is dropped.
+  const ranked = wordMatches.filter((i) => relevance(i) > 0).sort(
     (a, b) => relevance(b) - relevance(a) || effectiveTime(b) - effectiveTime(a),
   );
 

@@ -16,6 +16,9 @@ const STOPWORDS = new Set([
   // Recency words describe the ask, not the subject; they are handled as ordering
   // in insight-search.ts, and as search terms they only match stray prose.
   "latest", "recent", "recently", "lately", "newest",
+  // As a bare substring "get" is inside "target" and "budget", so a question
+  // containing it retrieved on every row that mentioned either.
+  "get", "gets", "getting", "come", "comes", "came",
 ]);
 
 /**
@@ -29,15 +32,27 @@ const STOPWORDS = new Set([
  * "about" and "providing".
  */
 export function tokenize(question: string): string[] {
-  return [
-    ...new Set(
-      question
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, " ")
-        .split(/\s+/)
-        .filter((w) => w.length >= 3 && !STOPWORDS.has(w)),
-    ),
-  ];
+  const words = question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+  // Alongside each plural, its singular: "LOBs" has to find "LOB", and "problems"
+  // "problem". The original stays, so nothing that matched before stops matching.
+  const withSingulars = words.flatMap((w) => (w.length >= 4 && w.endsWith("s") && !w.endsWith("ss") ? [w, w.slice(0, -1)] : [w]));
+  return [...new Set(withSingulars)];
+}
+
+/**
+ * Whether `text` (already lowercased) contains `term`. Short terms must match as
+ * a whole word, optionally plural: "get", "lob", "hcc" and "ehr" are letters
+ * inside "target", "global", "which" and "adherence". Longer terms are specific
+ * enough that a substring is what the asker means ("diagnos" for "diagnosis").
+ */
+export function hasTerm(text: string, term: string): boolean {
+  if (term.length > 4) return text.includes(term);
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![a-z0-9])${escaped}s?(?![a-z0-9])`).test(text);
 }
 
 /**
