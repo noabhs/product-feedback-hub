@@ -121,9 +121,9 @@ export default function TicketNamingPage() {
           </Collapsible>
         </div>
 
-        <SectionHead id="review-tool" title="Review a Jira view">
-          Paste a link to a Jira view, choose the ideas, and get a proposed name for each. Accept, edit or reject
-          each one. Accepting renames the idea in Jira together with its linked Epic and release items. {KEY_RULE}
+        <SectionHead id="review-tool" title="Review a Jira view or search">
+          Paste a link to a Jira view or an issue search, choose the tickets, and get a proposed name for each. Accept,
+          edit or reject each one. Accepting renames the ticket in Jira together with its linked idea, Epic and release items. {KEY_RULE}
         </SectionHead>
         <NamingTool />
       </div>

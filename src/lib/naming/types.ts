@@ -47,6 +47,8 @@ export type ItemData = {
   releases: ReleaseLink[];
   error: string | null;
   edited?: boolean;
+  /** The Jira type of the reviewed ticket itself: Idea, Epic, Story... Missing on older reviews, which are all ideas. */
+  sourceType?: string;
 };
 
 export type ItemState = "pending" | "needs_context" | "rejected" | "applied" | "failed";
@@ -60,4 +62,6 @@ export type IdeaRow = {
   product: string;
   /** The "HB/ TF ?" field: a horizontal board or task force, for example "TF 1 - KP MAPMG Success". */
   hbtf: string;
+  /** The Jira issue type, so a search that mixes types shows which is which. */
+  type?: string;
 };

@@ -30,19 +30,22 @@ export async function applyItem(itemId: string, by: string) {
   const data = structuredClone(item.data as unknown as ItemData);
   const log: Log = { by, reviewId: item.reviewId, itemKey: item.key };
 
-  const idea = await rename(log, "rename_idea", item.key, item.current, name);
+  // An idea keeps its own action name; any other ticket (an Epic, say) is a plain item.
+  const own = !data.sourceType || data.sourceType === "Idea" ? "rename_idea" : "rename_item";
+  const idea = await rename(log, own, item.key, item.current, name);
   if (!idea.ok) {
     return prisma.namingItem.update({ where: { id: itemId }, data: { state: "failed", data: { ...data, error: idea.error ?? "Jira refused the change" } } });
   }
   const failed: string[] = [];
   for (const d of data.delivery) {
     if (d.action !== "rename") { d.done = "left"; continue; }
-    const r = await rename(log, "rename_delivery", d.key, d.title, name);
+    const r = await rename(log, d.type === "Idea" ? "rename_linked_idea" : "rename_delivery", d.key, d.title, name);
     if (r.ok) { d.title = name; d.done = "renamed"; } else { d.done = "failed"; d.error = r.error; failed.push(d.key); }
   }
   for (const rel of data.releases) {
-    const epic = data.delivery.find((d) => d.key === rel.epic);
-    if (rel.action !== "rename" || epic?.done !== "renamed") { rel.done = "left"; continue; }
+    // The item's own Release Events hang off the item, which is already renamed by now.
+    const parentRenamed = rel.epic === item.key || data.delivery.find((d) => d.key === rel.epic)?.done === "renamed";
+    if (rel.action !== "rename" || !parentRenamed) { rel.done = "left"; continue; }
     const r = await rename(log, "rename_release", rel.key, rel.title, name);
     if (!r.ok) { rel.done = "failed"; rel.error = r.error; failed.push(rel.key); continue; }
     rel.title = name; rel.done = "renamed";
@@ -64,7 +67,7 @@ export async function revertAudit(id: string, by: string) {
   const r = await rename({ by, reviewId: row.reviewId, itemKey: row.itemKey ?? row.key }, "revert", row.key, row.to, row.from);
   if (!r.ok) throw new Error(r.error ?? "Jira refused the change");
   await prisma.namingAudit.update({ where: { id }, data: { reverted: true } });
-  if (row.action === "rename_idea" && row.reviewId && row.itemKey) {
+  if ((row.action === "rename_idea" || row.action === "rename_item") && row.reviewId && row.itemKey) {
     await prisma.namingItem.updateMany({ where: { reviewId: row.reviewId, key: row.itemKey, state: "applied" }, data: { state: "pending" } });
   }
 }
