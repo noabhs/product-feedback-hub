@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadForTurn } from "@/lib/ask-conversation";
+import { ConversationError, loadForTurn } from "@/lib/ask-conversation";
 import { conversationErrorResponse, requireEmail } from "@/lib/ask-route";
 import { runQ } from "@/lib/ask-q";
 
@@ -34,6 +34,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     return NextResponse.json(result);
   } catch (e) {
-    return conversationErrorResponse(e);
+    if (e instanceof ConversationError) return conversationErrorResponse(e);
+    // Anything else would otherwise be a bare 500 with nothing to go on — the
+    // chat showed "Request failed (500)" and the cause only existed in a log.
+    console.error("ask turn failed", e);
+    const detail = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: `Q couldn't answer: ${detail.slice(0, 300)}` }, { status: 500 });
   }
 }
