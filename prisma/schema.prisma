@@ -433,8 +433,28 @@ model AskConversation {
   updatedAt       DateTime @updatedAt
 
   turns AskLog[]
+  documents AskDocument[]
 
   @@index([actor, updatedAt])
+}
+
+/// A file a person attached to a chat as context — a PDF or a plain-text file.
+/// Kept for the life of the chat (deleted with it), because a follow-up has to
+/// see the document too and the browser doesn't resend it. `data` is base64 for
+/// a PDF, which Claude reads natively, and the text itself otherwise.
+model AskDocument {
+  id             String   @id @default(cuid())
+  conversationId String
+  name           String
+  /// "pdf" | "text".
+  kind           String
+  size           Int
+  data           String
+  createdAt      DateTime @default(now())
+
+  conversation AskConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
 }
 
 /// A teammate's comment on a logged question and answer — follow-ups, "this one

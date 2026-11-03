@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, RotateCcw, SendHorizontal } from "lucide-react";
 import { ChatMessage } from "@/components/ask/ChatMessage";
 import type { Rating } from "@/components/ask/RateAnswer";
+import { AttachButton, FileChips, MAX_FILES, fileProblem } from "@/components/ask/AttachedFiles";
 import { NoKeyBanner } from "@/components/ui/NoKeyBanner";
 import { QAvatar } from "@/components/home/QAvatar";
 import { useApiKey } from "@/hooks/useApiKey";
@@ -53,6 +54,10 @@ export function ChatThread({
   const [turns, setTurns] = useState<LocalTurn[]>(() => conversation.turns.map(fromServer));
   const [pool, setPool] = useState<QSource[]>(conversation.pool);
   const [draft, setDraft] = useState("");
+  const [docs, setDocs] = useState<{ key: string; name: string; busy?: boolean }[]>(() =>
+    conversation.documents.map((d) => ({ key: d.id, name: d.name })),
+  );
+  const [docError, setDocError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const startedPending = useRef(false);
@@ -61,6 +66,36 @@ export function ChatThread({
   const answered = turns.filter((t) => t.status === "done").length;
   const full = answered >= MAX_TURNS;
   const canWrite = conversation.canWrite;
+
+  async function attach(files: File[]) {
+    setDocError("");
+    for (const file of files) {
+      if (docs.length >= MAX_FILES) return setDocError(`A chat can hold ${MAX_FILES} documents — remove one first.`);
+      const problem = fileProblem(file);
+      if (problem) return setDocError(problem);
+      const tmp = `up-${Date.now()}-${file.name}`;
+      setDocs((d) => [...d, { key: tmp, name: file.name, busy: true }]);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch(`/api/ask/conversations/${conversation.id}/documents`, { method: "POST", body: form });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
+        setDocs((d) => d.map((x) => (x.key === tmp ? { key: data.document.id, name: data.document.name } : x)));
+      } catch (e) {
+        setDocs((d) => d.filter((x) => x.key !== tmp));
+        setDocError((e as Error).message);
+        return;
+      }
+    }
+  }
+
+  async function detach(key: string) {
+    setDocError("");
+    const res = await fetch(`/api/ask/conversations/${conversation.id}/documents/${key}`, { method: "DELETE" });
+    if (res.ok) setDocs((d) => d.filter((x) => x.key !== key));
+    else setDocError("Couldn't remove that document.");
+  }
 
   const send = useCallback(
     async (question: string, retryKey?: string) => {
@@ -210,7 +245,14 @@ export function ChatThread({
               </p>
             ) : (
               <>
+                {docs.length > 0 && (
+                  <div className="mb-2">
+                    <FileChips files={docs} onRemove={detach} />
+                  </div>
+                )}
+                {docError && <p className="mb-2 text-[12px] text-red-700">{docError}</p>}
                 <div className="flex items-end gap-2">
+                  <AttachButton onPick={attach} disabled={busy || docs.length >= MAX_FILES} className="h-10 w-10" />
                   <textarea
                     ref={inputRef}
                     value={draft}
@@ -241,6 +283,7 @@ export function ChatThread({
                 </div>
                 <p className="mt-1.5 text-[11px] text-brand-primary/40">
                   Add <span className="font-medium">&quot;search web&quot;</span> to a question to also search the web.
+                  Attached documents are read with every question in this chat.
                   Chats are private to you and the hub owner; the first question of each is kept on the{" "}
                   <Link href="/analytics?tab=asks" className="underline underline-offset-2 hover:text-brand-secondary-600">
                     Asks log

@@ -324,6 +324,11 @@ When it's relevant — the question is a decision, a prioritization call, or an 
  * limits was ignored often enough (seven bullets, stacked citations) that more
  * limits were not going to help.
  */
+/** Only added when the chat has attachments, so a normal question's prompt is unchanged. */
+const DOCUMENT_ADDENDUM = `ATTACHED DOCUMENTS — the person attached one or more files to this chat; they come before the question. They are their own material, not hub data and not something a client said. Use them alongside the hub sources when the question is about them or can be informed by them, name the file when you rely on it ("in <file name>, …") instead of using a [number], and keep what the file says apart from what the hub holds. If a file contradicts the hub, say so. If it doesn't cover the question, say that rather than reading something into it.
+
+`;
+
 const CHAT_SHAPE = `How to write the answer — this is read in a full-width chat by a PM, so match its shape to the question:
 
 - A lookup or count (a number, a name, a status, a date): lead with it in a sentence or two and stop. Add a line only if it changes how the number should be read.
@@ -343,7 +348,7 @@ Shape for a "latest" question, with placeholders rather than facts:
 
 When it's relevant — the question is a decision, a prioritization call, or an open strategic question, not a lookup — close with one line reading exactly "**What's next:**", then one to three short bullets, each following from the sources cited above and saying what it rests on (which clients, which competitor fact, which feature request's status). Never invent scope, effort, timelines or a roadmap commitment. If the sources give nothing to act on, skip the section — a generic "keep monitoring" is worse than no section. A lookup gets none.`;
 
-function qSystemPrompt(useWebSearch: boolean, followUp = false, chat = false): string {
+function qSystemPrompt(useWebSearch: boolean, followUp = false, chat = false, hasDocuments = false): string {
   return `You are Q — the Navina Product Hub's answer engine. Like the character, you are the quiet, exact toolmaker: you hand back the one right answer, not a briefing on how you found it.
 
 You answer any product question a PM would ask, by reading everything the hub holds:
@@ -368,7 +373,7 @@ Rules that hold everywhere:
 - A blank field means unknown, not zero and not average. Never fill it in.
 - Be concise. No preamble ("Based on my research...", "Here's what I found..."). Open with the answer itself; for a counting question, lead with the number.
 
-${chat ? CHAT_SHAPE : BRIEF_SHAPE}${followUp ? FOLLOW_UP_ADDENDUM : ""}`;
+${hasDocuments ? DOCUMENT_ADDENDUM : ""}${chat ? CHAT_SHAPE : BRIEF_SHAPE}${followUp ? FOLLOW_UP_ADDENDUM : ""}`;
 }
 
 /** " | Date: 2026-03-14" for a feedback row, empty when it has none. */
@@ -503,13 +508,15 @@ export async function answerGlobalQuestion(
   /** Set from a conversation's second turn on. */
   conversation?: { history: HistoryTurn[]; numbers: number[] },
   scope?: QScope,
+  /** Files attached to the chat, as content blocks (see lib/ask-documents.ts). */
+  documents: Anthropic.Messages.DocumentBlockParam[] = [],
 ): Promise<GlobalAnswer> {
   const history = conversation?.history ?? [];
   const stream = getClient(apiKey).messages.stream({
     model: QA_MODEL,
     max_tokens: 4096,
     thinking: { type: "adaptive" },
-    system: qSystemPrompt(useWebSearch, history.length > 0, !!conversation),
+    system: qSystemPrompt(useWebSearch, history.length > 0, !!conversation, documents.length > 0),
     messages: [
       // Earlier turns as plain Q&A — not their source dumps, which would
       // multiply the prompt by the turn count. Retrieval re-runs per turn.
@@ -519,17 +526,23 @@ export async function answerGlobalQuestion(
       ]),
       {
         role: "user",
-        content: buildQPrompt(
-          question,
-          insights,
-          accounts,
-          competitors,
-          featureRequests,
-          domain,
-          readAs,
-          conversation?.numbers,
-          scope,
-        ),
+        content: [
+          ...documents,
+          {
+            type: "text" as const,
+            text: buildQPrompt(
+              question,
+              insights,
+              accounts,
+              competitors,
+              featureRequests,
+              domain,
+              readAs,
+              conversation?.numbers,
+              scope,
+            ),
+          },
+        ],
       },
     ],
     /**

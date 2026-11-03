@@ -13,6 +13,7 @@ import { searchInsights } from "@/lib/insight-search";
 import { expandQuestion, readAsNote, rewriteQuestion } from "@/lib/synonyms";
 import { recordAskLog } from "@/lib/ask-log";
 import { recordConversationTurn } from "@/lib/ask-conversation";
+import { documentBlocks } from "@/lib/ask-documents";
 import {
   hasWebSearchTrigger,
   historyForModel,
@@ -163,6 +164,7 @@ export async function runQ(
     hubPool.length,
     isFollowUp ? { history, numbers } : conversation ? { history: [], numbers } : undefined,
     scope,
+    conversation ? await documentBlocks(conversation.id) : [],
   );
   const latencyMs = Date.now() - startedAt;
 

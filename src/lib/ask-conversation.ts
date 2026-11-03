@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isOwner } from "@/lib/people";
 import { logEvent, ACTIONS } from "@/lib/events";
+import type { AskDocumentView } from "@/lib/ask-documents";
 import { MAX_TURNS, parsePool, titleFromQuestion, type PoolSource } from "@/lib/ask-history";
 
 /** An error the route handlers can turn straight into a response. */
@@ -33,6 +34,8 @@ export interface ConversationView {
   /** citation [n] is pool[n - 1], for every turn of this conversation. */
   pool: PoolSource[];
   turns: ConversationTurn[];
+  /** Files attached as context; every turn of the chat reads them. */
+  documents: AskDocumentView[];
   createdAt: string;
   updatedAt: string;
   /** Only the person who started it can add to it; the hub owner reads. */
@@ -51,6 +54,7 @@ export async function getConversationFor(email: string, id: string): Promise<Con
   const row = await prisma.askConversation.findUnique({
     where: { id },
     include: {
+      documents: { orderBy: { createdAt: "asc" }, select: { id: true, name: true, kind: true, size: true } },
       turns: {
         orderBy: { turnIndex: "asc" },
         select: {
@@ -74,6 +78,7 @@ export async function getConversationFor(email: string, id: string): Promise<Con
     pendingQuestion: row.pendingQuestion,
     pool: parsePool(row.sourcePool),
     turns: row.turns.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })),
+    documents: row.documents,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     canWrite: mine,
