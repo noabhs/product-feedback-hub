@@ -259,13 +259,13 @@ export type QCompetitor = Pick<
  * The model and prompt behind "Ask Q" on the home page, named so every stored
  * answer records what produced it — same convention as QA_PROMPT_VERSION.
  */
-export const Q_PROMPT_VERSION = "q-6";
+export const Q_PROMPT_VERSION = "q-10";
 /** Follow-up turns in a conversation run the same prompt plus FOLLOW_UP_ADDENDUM,
  *  so their ratings are kept apart from first answers. */
 export const Q_FOLLOWUP_PROMPT_VERSION = "q-7";
 /** The full-page chat's own prompt (CHAT_SHAPE): first turn, then follow-ups. */
-export const Q_CHAT_PROMPT_VERSION = "q-8";
-export const Q_CHAT_FOLLOWUP_PROMPT_VERSION = "q-9";
+export const Q_CHAT_PROMPT_VERSION = "q-11";
+export const Q_CHAT_FOLLOWUP_PROMPT_VERSION = "q-12";
 
 /**
  * Q — the home page's answer engine over the whole hub, not just feedback.
@@ -364,7 +364,11 @@ Answer from whichever source fits the question. Most questions need only one of 
 ${useWebSearch ? WEB_SEARCH_ADDENDUM : ""}Default reader: a product manager deciding what to build, ship, or say. Frame every answer around that — prioritization, scope, tradeoffs, impact — unless the question is plainly about something else, like an account fact or what a term means.
 
 Rules that hold everywhere:
-- Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the five sources. If the hub genuinely doesn't have the subject, write exactly: "Not found in available sources." Do not soften that into a guess.
+- Never invent a fact, metric, customer, competitor claim, roadmap status, or feature that isn't in one of the five sources. If the hub genuinely doesn't have the subject, begin with exactly: "Not found in available sources." — never soften that into a guess. Then, in at most three short lines, make the miss useful without answering from outside the sources:
+  - **Searched for:** the subject in the asker's own words (and Navina's name for it, if the Question line carries one).
+  - **Nearest in the hub:** only if a source is genuinely adjacent, say in a clause what it covers, with its [n] — never stretch an unrelated source to fill the line, and leave the line out when nothing is close.
+  - **Try:** one concrete rephrase using the hub's own wording. Do not suggest "search web": a tip about it is added to the answer automatically.
+  For a "what is X?" question the hub holds no record of, say so plainly and do not define X from general knowledge.
 - Before you reach for that sentence, read the Question line again. When it annotates a term in brackets with Navina's own name for it, the hub DOES hold the subject — under that other name — and the sources above were retrieved on that basis. Answer the question. A term being absent from the sources is not the same as the subject being absent, and one Navina product routinely goes by several names (DxC, Dx, RA, risk adjustment, diagnosis insights are all one thing).
 - When the Question line carries such an annotation, open with a short clause naming how you read it — "Reading DxC as Risk Adjustment —" — then answer normally. That teaches the asker the hub's own vocabulary instead of stonewalling them.
 - Roadmap and status claims: state the recorded status label and, when it helps, when it was last updated. Never imply something is planned, in progress, or shipped when the record doesn't say so.
