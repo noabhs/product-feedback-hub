@@ -14,6 +14,7 @@ import {
   RHYTHM,
   RULES,
   RELEASE,
+  DELIVERABLES,
   type ArtKey,
   type Chip,
   type Group,
@@ -728,6 +729,26 @@ export default function Lifecycle() {
           </p>
           <div className="groups">
             <Groups items={[RELEASE]} />
+          </div>
+          <h2 className="sect">Release deliverables</h2>
+          <p className="sect-sub">Ready before general availability. They are part of the go-live gate checklist.</p>
+          <div className="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Deliverable</th>
+                  <th>Owner</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DELIVERABLES.map(([d, o]) => (
+                  <tr key={d}>
+                    <td>{d}</td>
+                    <td>{o}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
         <section id="view-rules" role="tabpanel" aria-labelledby="tab-rules" hidden={tab !== "rules"}>
