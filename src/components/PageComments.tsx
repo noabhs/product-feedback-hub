@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
-import { Check, MessageSquare, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Check, List, MessageSquare, MessageSquarePlus, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { MentionTextarea, loadPeople } from "@/components/insights/MentionTextarea";
 import { splitBody } from "@/lib/mentions";
-import type { Anchor } from "@/lib/page-comments";
+import { pageLabel, type Anchor } from "@/lib/page-comments";
 
 type PC = Anchor & {
   id: string;
@@ -225,10 +225,48 @@ function Entry({
 /** Remounted per page, so every page starts with clean state. */
 export function PageComments({ currentUser }: { currentUser: string | null }) {
   const pathname = usePathname() || "/";
-  return <PageCommentsInner key={pathname} pathname={pathname} currentUser={currentUser} />;
+  const router = useRouter();
+  const [panelOpen, setPanelOpen] = useState(false);
+  // A thread the panel asked to jump to; the page's own layer opens it once it has loaded.
+  const [focusId, setFocusId] = useState<string | null>(null);
+
+  const closePanel = useCallback(() => setPanelOpen(false), []);
+  const clearFocus = useCallback(() => setFocusId(null), []);
+
+  function jumpTo(c: PC) {
+    setFocusId(c.parentId ?? c.id);
+    if (c.path !== pathname) router.push(c.path);
+  }
+
+  return (
+    <>
+      <PageCommentsInner
+        key={pathname}
+        pathname={pathname}
+        currentUser={currentUser}
+        focusId={focusId}
+        onFocused={clearFocus}
+        onOpenPanel={() => setPanelOpen(true)}
+      />
+      {panelOpen && <AllCommentsPanel pathname={pathname} onClose={closePanel} onJump={jumpTo} />}
+    </>
+  );
 }
 
-function PageCommentsInner({ pathname, currentUser }: { pathname: string; currentUser: string | null }) {
+function PageCommentsInner({
+  pathname,
+  currentUser,
+  focusId,
+  onFocused,
+  onOpenPanel,
+}: {
+  pathname: string;
+  currentUser: string | null;
+  focusId: string | null;
+  onFocused: () => void;
+  onOpenPanel: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [comments, setComments] = useState<PC[]>([]);
   const [people, setPeople] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
@@ -315,6 +353,30 @@ function PageCommentsInner({ pathname, currentUser }: { pathname: string; curren
     });
     return () => cancelAnimationFrame(raf);
   }, [roots, tick]);
+
+  // Jump requested from the all-comments panel: open that thread and bring its pin into view.
+  useEffect(() => {
+    if (!focusId) return;
+    const root = roots.find((r) => r.id === focusId);
+    const p = pos[focusId];
+    if (!root || !p) return;
+    const t = setTimeout(() => {
+      setOpenId(focusId);
+      mainEl()?.scrollTo({ top: Math.max(0, p.y - 160), behavior: "smooth" });
+      onFocused();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [focusId, roots, pos, onFocused]);
+
+  // Close the little menu on any outside press.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as Element).closest?.("[data-comment-menu]")) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
 
   // Pick mode: swallow the next click on the page and turn it into an anchor.
   useEffect(() => {
@@ -473,12 +535,39 @@ function PageCommentsInner({ pathname, currentUser }: { pathname: string; curren
             {showResolved ? "Hide" : "Show"} resolved ({resolvedCount})
           </button>
         )}
+        {menuOpen && (
+          <div
+            data-comment-menu
+            className="w-52 rounded-lg border border-[rgba(50,43,95,0.12)] bg-white py-1 shadow-xl"
+          >
+            <button
+              type="button"
+              onClick={() => { setMenuOpen(false); setPicking(true); }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-brand-primary hover:bg-black/5"
+            >
+              <MessageSquarePlus className="w-4 h-4 opacity-60" /> Add new comment
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMenuOpen(false); onOpenPanel(); }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-brand-primary hover:bg-black/5"
+            >
+              <List className="w-4 h-4 opacity-60" /> See all comments
+            </button>
+          </div>
+        )}
         <button
           type="button"
-          onClick={() => { setPicking((p) => !p); setDraft(null); setOpenId(null); }}
-          aria-label={picking ? "Cancel commenting" : "Add a comment on this page"}
+          data-comment-menu
+          onClick={() => {
+            setDraft(null);
+            setOpenId(null);
+            if (picking) setPicking(false);
+            else setMenuOpen((m) => !m);
+          }}
+          aria-label={picking ? "Cancel commenting" : "Comments"}
           aria-pressed={picking}
-          title={picking ? "Cancel" : "Comment on this page"}
+          title={picking ? "Cancel" : "Comments"}
           className={`relative flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg hover:opacity-90 transition-opacity ${
             picking ? "bg-[#250359]" : "bg-brand-secondary-500"
           }`}
@@ -602,5 +691,123 @@ function Thread({
         </div>
       </div>
     </div>
+  );
+}
+
+// ---- Right-hand panel: every comment on every page ----------------------
+
+function AllCommentsPanel({
+  pathname,
+  onClose,
+  onJump,
+}: {
+  pathname: string;
+  onClose: () => void;
+  onJump: (c: PC) => void;
+}) {
+  const [all, setAll] = useState<PC[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [tab, setTab] = useState<"open" | "resolved">("open");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/page-comments?all=1")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => !cancelled && setAll(d.comments ?? []))
+      .catch(() => !cancelled && setFailed(true));
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  const roots = (all ?? []).filter((c) => !c.parentId);
+  const open = roots.filter((r) => !r.resolvedAt);
+  const resolved = roots.filter((r) => r.resolvedAt);
+  const shown = (tab === "open" ? open : resolved).slice().reverse(); // newest first
+  const replyCount = (id: string) => (all ?? []).filter((c) => c.parentId === id).length;
+
+  const groups = new Map<string, PC[]>();
+  for (const r of shown) groups.set(r.path, [...(groups.get(r.path) ?? []), r]);
+  // The page you're on first, then the rest in the order their newest thread appears.
+  const paths = [...groups.keys()].sort((a, b) => (a === pathname ? -1 : b === pathname ? 1 : 0));
+
+  return (
+    <aside
+      data-comment-ui
+      className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[400px] flex-col border-l border-[rgba(50,43,95,0.12)] bg-white shadow-xl"
+    >
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(50,43,95,0.08)]">
+        <p className="text-[14px] font-semibold text-brand-primary">All comments</p>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="w-8 h-8 flex items-center justify-center rounded-sm text-brand-primary opacity-50 hover:opacity-100 hover:bg-black/5"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex gap-1 px-5 pt-3">
+        {([["open", `Open (${open.length})`], ["resolved", `Resolved (${resolved.length})`]] as const).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`rounded-full px-3 py-1 text-[12px] font-medium ${
+              tab === k ? "bg-brand-secondary-500 text-white" : "text-brand-primary opacity-60 hover:opacity-100 hover:bg-black/5"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {failed ? (
+          <p className="text-[13px] text-red-700">Couldn&apos;t load comments.</p>
+        ) : all === null ? (
+          <p className="text-[13px] text-brand-primary opacity-40">Loading…</p>
+        ) : shown.length === 0 ? (
+          <p className="text-[13px] text-brand-primary opacity-40">
+            {tab === "open" ? "No open comments." : "No resolved comments."}
+          </p>
+        ) : (
+          paths.map((path) => (
+            <div key={path} className="mb-5">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-brand-primary opacity-45">
+                {pageLabel(path)}
+                {path === pathname && " · this page"}
+              </p>
+              <div className="space-y-1">
+                {groups.get(path)!.map((r) => {
+                  const n = replyCount(r.id);
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => onJump(r)}
+                      className="flex w-full gap-2.5 rounded-md p-2 text-left hover:bg-black/5"
+                    >
+                      <Avatar email={r.author} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5">
+                          <span className="truncate text-[13px] font-semibold text-brand-primary">{r.author.split("@")[0]}</span>
+                          <span className="shrink-0 text-[11px] text-brand-primary opacity-40">{fmtWhen(r.createdAt)}</span>
+                        </span>
+                        <span className="line-clamp-2 text-[13px] text-brand-primary opacity-80 break-words">{r.body}</span>
+                        {n > 0 && (
+                          <span className="text-[11px] text-brand-secondary-500">
+                            {n} {n === 1 ? "reply" : "replies"}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </aside>
   );
 }
