@@ -243,3 +243,4 @@
 }
 /* The artifact leaned on the browser's default bullets; the Hub's CSS reset removes them. */
 .lc ul.cell,.lc .sq ul,.lc .warnbox ul{list-style:disc}
+.lc .naming-cta{margin:0 0 8px}
