@@ -71,22 +71,22 @@ export function SyncNowControl() {
         onClick={start}
         disabled={disabled}
         title={hint}
-        className="w-full flex items-center gap-3 px-3 py-2 rail:justify-center rail:px-0 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-white/70 transition-all duration-150"
+        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-white/70 transition-all duration-150"
       >
         <RefreshCw className={`w-4 h-4 shrink-0 ${busy || running ? "animate-spin" : ""}`} />
-        <span className="flex-1 text-left rail:sr-only">{label}</span>
+        <span className="flex-1 text-left">{label}</span>
       </button>
       {running && status?.run?.sessionUrl && (
         <a
           href={status.run.sessionUrl}
           target="_blank"
           rel="noreferrer"
-          className="block px-3 pb-1 text-[11px] text-teal hover:underline rail:hidden"
+          className="block px-3 pb-1 text-[11px] text-teal hover:underline"
         >
           Watch the run
         </a>
       )}
-      {error && <p className="px-3 pb-1 text-[11px] text-red-300 rail:hidden">{error}</p>}
+      {error && <p className="px-3 pb-1 text-[11px] text-red-300">{error}</p>}
     </div>
   );
 }

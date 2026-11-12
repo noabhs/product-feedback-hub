@@ -40,14 +40,19 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         )}
 
         {isOwner(session?.user?.email) && (
-          <div className="px-3 pb-2 rail:px-1.5">
+          <div className="px-3 pb-2 rail:hidden">
             <SyncNowControl />
           </div>
         )}
 
+        {/* The footer's Sign out and Sync now are not in the rail. An icon-only Sign
+            out in the bottom corner looks like the expand button — a box with an
+            arrow pointing right — and signs you out when clicked. Sync now goes for
+            the same reason: of the rail's icons, only pages and the key dialog are
+            safe to click by mistake. */}
         {session?.user && (
-          <div className="px-3 py-4 rail:px-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-            <p className="px-3 text-[11px] text-white/40 truncate rail:hidden" title={session.user.email ?? ""}>
+          <div className="px-3 py-4 rail:hidden" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <p className="px-3 text-[11px] text-white/40 truncate" title={session.user.email ?? ""}>
               {session.user.email}
             </p>
             <form
@@ -58,11 +63,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             >
               <button
                 type="submit"
-                title="Sign out"
-                className="mt-1 w-full flex items-center gap-3 px-3 py-2 rail:justify-center rail:px-0 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+                className="mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
               >
                 <LogOut className="w-4 h-4 shrink-0" />
-                <span className="rail:sr-only">Sign out</span>
+                Sign out
               </button>
             </form>
           </div>
