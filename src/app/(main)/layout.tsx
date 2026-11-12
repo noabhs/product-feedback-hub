@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { LogOut } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { ApiKeyControl } from "@/components/ui/ApiKeyControl";
@@ -8,11 +9,14 @@ import { PageViewTracker } from "@/components/PageViewTracker";
 import { AppShell } from "@/components/AppShell";
 import { PageComments } from "@/components/PageComments";
 import { SidebarNav } from "@/components/SidebarNav";
+import { SIDEBAR_COOKIE } from "@/lib/sidebar-state";
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  const collapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";
   return (
     <AppShell
+      defaultCollapsed={collapsed}
       sidebar={
       <aside className="w-full h-full flex flex-col overflow-y-auto" style={{ background: "#250359" }}>
         <div className="px-5 py-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
