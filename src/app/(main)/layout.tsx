@@ -6,6 +6,7 @@ import { SyncNowControl } from "@/components/ui/SyncNowControl";
 import { isOwner } from "@/lib/people";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { AppShell } from "@/components/AppShell";
+import { PageComments } from "@/components/PageComments";
 import { SidebarNav } from "@/components/SidebarNav";
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
@@ -65,6 +66,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       }
     >
       <PageViewTracker />
+      <PageComments currentUser={session?.user?.email ?? null} />
       {children}
     </AppShell>
   );
