@@ -18,8 +18,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <AppShell
       defaultMode={defaultMode}
       sidebar={
-      <aside className="w-full h-full flex flex-col overflow-y-auto rail:[scrollbar-width:none]" style={{ background: "#250359" }}>
-        <div className="px-5 py-6 rail:px-2.5 rail:pt-4 rail:pb-12" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+      <aside className="w-full h-full flex flex-col overflow-y-auto rail:pb-9 rail:[scrollbar-width:none]" style={{ background: "#250359" }}>
+        <div className="px-5 py-6 rail:px-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
           <Link href="/home" aria-label="navina Product Insights Hub, home" className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-sm flex items-center justify-center shrink-0 bg-brand-secondary-500">
               <span className="text-white font-extrabold text-xs">N</span>

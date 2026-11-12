@@ -192,16 +192,17 @@ function SidebarFrame({
 
       <div className="h-full">{children}</div>
 
-      {/* On the logo's line when open; under the logo mark in the rail, where
-          the sidebar header leaves room for it. */}
+      {/* On the logo's line when open. In the rail it goes to the bottom corner,
+          which is where a collapsed sidebar's expand button is usually looked for —
+          and where a stray click used to land on Sign out. Centred on that spot. */}
       <button
         type="button"
         onClick={onToggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         aria-expanded={!collapsed}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className={`hidden md:flex absolute z-10 h-7 w-7 items-center justify-center rounded-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors ${
-          collapsed ? "left-2.5 top-[52px]" : "right-3 top-6"
+        className={`hidden md:flex absolute z-10 h-7 w-7 items-center justify-center rounded-sm text-white/60 hover:text-white transition-colors ${
+          collapsed ? "left-2.5 bottom-1.5 bg-[#250359] hover:bg-[#3a1d6e]" : "right-3 top-6 hover:bg-white/10"
         }`}
       >
         {collapsed ? <PanelLeftOpen className="w-[18px] h-[18px]" /> : <PanelLeftClose className="w-[18px] h-[18px]" />}
