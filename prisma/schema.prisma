@@ -568,3 +568,18 @@ model FeedbackSyncState {
   data      String
   updatedAt DateTime @updatedAt
 }
+
+/// Free-form comments on a whole page of the hub (not on one record), opened from
+/// the comment button on every page. `path` is the pathname without query, e.g.
+/// "/clients". No relation: a page is a route, not a row.
+model PageComment {
+  id        String   @id @default(cuid())
+  path      String
+  /// Email of the author; only they may edit or delete the comment.
+  author    String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([path])
+}
