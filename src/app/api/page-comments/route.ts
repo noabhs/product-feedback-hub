@@ -14,6 +14,12 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
+  // ?all=1: every comment on every page, for the "See all comments" panel.
+  if (req.nextUrl.searchParams.get("all")) {
+    const comments = await prisma.pageComment.findMany({ orderBy: { createdAt: "asc" }, take: 3000 });
+    return NextResponse.json({ comments });
+  }
+
   const path = cleanPagePath(req.nextUrl.searchParams.get("path"));
   if (!path) return NextResponse.json({ error: "Missing page path" }, { status: 400 });
 
