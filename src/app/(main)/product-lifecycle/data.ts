@@ -17,12 +17,26 @@ export type Detail = {
   fields: string[];
   auto: string[];
 };
-type Stage = Detail & { n: string; g: string; art: ArtKey; exit1: string; next: string };
-export type Gate = Detail & { n: string; art: ArtKey; sub: string; side: [string, string][] };
+type Stage = Detail & {
+  n: string;
+  g: string;
+  art: ArtKey;
+  exit1: string;
+  next: string;
+};
+export type Gate = Detail & {
+  n: string;
+  art: ArtKey;
+  sub: string;
+  side: [string, string][];
+};
 type Extra = Detail & { n: string; art: ArtKey; out: string };
 
 /** A step chip on a phase card: a plain step, a gate, or a workstream that runs alongside. */
-export type Chip = [label: string, id: string] | { gate: 1 | 2; id: string } | { t: string; par: true; id: string };
+export type Chip =
+  | [label: string, id: string]
+  | { gate: 1 | 2; id: string }
+  | { t: string; par: true; id: string };
 export type Phase = {
   id: string;
   n: string;
@@ -45,7 +59,12 @@ export type Group = {
   mission: string;
   rows: [string, string][];
 };
-export type Item = Detail & { id: string; tag: string; title: string; sum: string };
+export type Item = Detail & {
+  id: string;
+  tag: string;
+  title: string;
+  sum: string;
+};
 
 export const ART = {
   idea: '<svg viewBox="0 0 160 110" aria-hidden="true"><circle class="bb" cx="80" cy="52" r="42"/><path class="a float" d="M80 16c-17 0-30 13-30 29 0 11 6 18 12 24 3 3 4 6 4 10h28c0-4 1-7 4-10 6-6 12-13 12-24 0-16-13-29-30-29z"/><rect class="d" x="68" y="83" width="24" height="7" rx="3.5"/><rect class="d" x="72" y="93" width="16" height="6" rx="3"/><path class="sw" d="M68 44c2-7 7-10 12-10"/><circle class="a twinkle tb" cx="130" cy="26" r="5"/><circle class="a twinkle tb" cx="30" cy="38" r="4" style="animation-delay:-1s"/></svg>',
@@ -84,11 +103,16 @@ const STAGES: Stage[] = [
     c: "#8E4EC6",
     art: "idea",
     owner: "Submitter",
-    mission: "The backlog of problems worth solving. The brief is written, nothing is validated yet.",
+    mission:
+      "The backlog of problems worth solving. The brief is written, nothing is validated yet.",
     exit1: "Picked at the quarterly meeting",
     next: "Exploration",
     exit: ["Picked at the quarterly product candidates meeting"],
-    fields: ["Brief, Pains, Persona, Solution, Open Questions", "Product", "Team"],
+    fields: [
+      "Brief, Pains, Persona, Solution, Open Questions",
+      "Product",
+      "Team",
+    ],
     auto: [
       "Brief template",
       "Title dedup check",
@@ -107,7 +131,10 @@ const STAGES: Stage[] = [
     exit1: "Go decision logged",
     next: "PRD in progress",
     exit: ["Go (to PRD) or Cancel", "Decision logged as a comment"],
-    fields: ["To enter: HB/TF", 'To enter: Navina OKR, or "No OKR - exempt" with a one-line reason'],
+    fields: [
+      "To enter: HB/TF",
+      'To enter: Navina OKR, or "No OKR - exempt" with a one-line reason',
+    ],
     auto: ["Validator blocks entry if fields are empty"],
   },
   {
@@ -117,7 +144,8 @@ const STAGES: Stage[] = [
     art: "prd",
     owner: "PM with Design",
     dark: true,
-    mission: "Define what to build and for whom, enough to earn a roadmap slot.",
+    mission:
+      "Define what to build and for whom, enough to earn a roadmap slot.",
     exit1: "Draft PRD ready for the gate",
     next: "Roadmap gate",
     exit: [
@@ -134,11 +162,19 @@ const STAGES: Stage[] = [
     c: "#12A594",
     art: "hld",
     owner: "Eng lead",
-    mission: "Dev designs how it could be built. Starts only after the roadmap gate.",
+    mission:
+      "Dev designs how it could be built. Starts only after the roadmap gate.",
     exit1: "HLD, final PRD, refined estimate",
     next: "Ready for Dev",
-    exit: ["HLD linked", "Estimate refined, dependencies identified", "PRD finalized with agreed MVP scope"],
-    fields: ["To enter: Planned Quarter, Delivery type, Eng lead, rough size (all set at the gate)", "HLD link"],
+    exit: [
+      "HLD linked",
+      "Estimate refined, dependencies identified",
+      "PRD finalized with agreed MVP scope",
+    ],
+    fields: [
+      "To enter: Planned Quarter, Delivery type, Eng lead, rough size (all set at the gate)",
+      "HLD link",
+    ],
     auto: [
       "Gate validator blocks entry if any gate field is empty",
       "Draft initiative or epic created in the dev backlog, with HLD as its first work item",
@@ -152,7 +188,8 @@ const STAGES: Stage[] = [
     art: "ready",
     owner: "PM and Eng lead",
     dark: true,
-    mission: "Build-ready checkpoint: PRD final and HLD done. Waits for dev planning to be pulled in.",
+    mission:
+      "Build-ready checkpoint: PRD final and HLD done. Waits for dev planning to be pulled in.",
     exit1: "Pulled at dev planning",
     next: "In Development",
     exit: ["Pulled into In Development at dev planning"],
@@ -171,7 +208,10 @@ const STAGES: Stage[] = [
     mission: "Delivery is under way on the dev board.",
     exit1: "Epic reaches Rollout",
     next: "Gradual Rollout",
-    exit: ["First epic moves to In Progress (entry)", "Epic reaches Rollout (exit)"],
+    exit: [
+      "First epic moves to In Progress (entry)",
+      "Epic reaches Rollout (exit)",
+    ],
     fields: ["None new, Planned Quarter was set at the gate"],
     auto: ["Idea status follows dev status, no manual edits"],
   },
@@ -181,11 +221,24 @@ const STAGES: Stage[] = [
     c: "#E5702A",
     art: "rollout",
     owner: "Eng lead and squad",
-    mission: "The feature is released in stages (beta) and proves itself before going live.",
+    mission:
+      "The feature is released in stages (beta) and proves itself before going live.",
     exit1: "Go-live gate passed",
     next: "Go-live gate",
-    exit: ["Epic reaches Rollout", "Release tracked in REL", "Beta feedback reviewed", "Commercialization ready (PMM)"],
-    fields: ["None"],
+    exit: [
+      "Epic reaches Rollout",
+      "Release tracked in REL",
+      "Beta feedback reviewed",
+      "Commercialization ready (PMM)",
+      "Release deliverables ready: release ticket, support handoff, CS handoff, sales demo, knowledge base",
+    ],
+    fields: [
+      "Release ticket (PM)",
+      "Support handoff (Dev and PM)",
+      "CS handoff (PM and PMM)",
+      "Demo for sales (PM and PMM)",
+      "Knowledge base (PM and PMM)",
+    ],
     auto: ["Idea status follows epic status"],
   },
   {
@@ -213,7 +266,8 @@ export const GATE: Gate = {
   art: "timeline",
   sub: "No timeline, no HLD",
   owner: "Product Lead approves, PM and Eng lead propose",
-  mission: "The gate before HLD. Dev starts design work only on ideas that have a slot on the roadmap.",
+  mission:
+    "The gate before HLD. Dev starts design work only on ideas that have a slot on the roadmap.",
   flabel: "Required to pass",
   exit: [
     "Idea moves to HLD in progress",
@@ -234,8 +288,14 @@ export const GATE: Gate = {
   ],
   side: [
     ["Decided at", "Roadmap and dev planning, last 2 weeks of the quarter"],
-    ["Requires", "Planned Quarter, Delivery type, Eng lead, rough size and PRD basics"],
-    ["Creates", "A draft initiative or epic in the dev backlog, with HLD as its first work item"],
+    [
+      "Requires",
+      "Planned Quarter, Delivery type, Eng lead, rough size and PRD basics",
+    ],
+    [
+      "Creates",
+      "A draft initiative or epic in the dev backlog, with HLD as its first work item",
+    ],
     ["Blocks", "HLD from starting if any gate field is empty"],
   ],
 };
@@ -255,7 +315,7 @@ export const GOLIVE: Gate = {
     "Quality and safety sign-off",
     "KPIs instrumented, with a baseline for the PRD success metric",
     "Commercialization ready (PMM): positioning, enablement and customer communication",
-    "Support and delivery handoff done: handoff doc, docs and training",
+    "Release deliverables ready: release ticket, support handoff, CS handoff, sales demo and knowledge base",
     "Rollout plan agreed for the remaining clients",
   ],
   auto: [
@@ -264,7 +324,10 @@ export const GOLIVE: Gate = {
   ],
   side: [
     ["Decided by", "PM and Eng lead, with Quality sign-off"],
-    ["Requires", "Beta feedback reviewed, quality sign-off, KPIs instrumented, commercialization and handoff ready"],
+    [
+      "Requires",
+      "Beta feedback reviewed, quality sign-off, KPIs instrumented, commercialization and handoff ready",
+    ],
     ["Blocks", "Done (Live) until the checklist is complete"],
     ["Starts", "The monitoring loop after go-live"],
   ],
@@ -275,7 +338,8 @@ const MON: Extra = {
   art: "monitor",
   out: "Improvement ideas logged",
   owner: "PM, reviewed at the quarterly candidates meeting",
-  mission: "Live is not the end. We check KPIs, collect feedback and feed improvements back into the flow.",
+  mission:
+    "Live is not the end. We check KPIs, collect feedback and feed improvements back into the flow.",
   flabel: "What we check",
   exit: [
     "KPI decision recorded: Scale, Iterate, Sunset or Wait",
@@ -301,9 +365,13 @@ const COMM: Extra = {
   art: "megaphone",
   out: "Ready before go-live",
   owner: "PMM, with the PM",
-  mission: "Product marketing prepares the launch: positioning, enablement and customer communication. Runs alongside rollout.",
+  mission:
+    "Product marketing prepares the launch: positioning, enablement and customer communication. Runs alongside rollout.",
   flabel: "What PMM prepares",
-  exit: ["Commercialization ready before the go-live gate", "Beta clients informed"],
+  exit: [
+    "Commercialization ready before the go-live gate",
+    "Beta clients informed",
+  ],
   fields: [
     "Positioning and messaging",
     "Pricing and packaging, if changed",
@@ -388,7 +456,12 @@ export const PHASES: Phase[] = [
     note: "Commercialization runs alongside rollout and must be ready before go-live.",
     who: "Eng lead, PM and PMM",
     arr: true,
-    items: ["commercialization", "gradual-rollout", "go-live-gate", "done-live"],
+    items: [
+      "commercialization",
+      "gradual-rollout",
+      "go-live-gate",
+      "done-live",
+    ],
   },
   {
     id: "learn",
@@ -433,7 +506,10 @@ mk(
     owner: "Leadership",
     mission: "Where the business wants to go. The starting point of the cycle.",
     flabel: "Inputs",
-    exit: ["Set in the last month of the previous quarter", "Shared with the Product Leads"],
+    exit: [
+      "Set in the last month of the previous quarter",
+      "Shared with the Product Leads",
+    ],
     fields: ["Business goals", "KPI results and learnings from live work"],
     auto: ["None"],
   },
@@ -446,7 +522,8 @@ mk(
   {
     c: "#E93D82",
     owner: "Product Leads, with their PMs",
-    mission: "Business goals turned into product OKRs. Every idea links to one.",
+    mission:
+      "Business goals turned into product OKRs. Every idea links to one.",
     flabel: "What it takes",
     exit: [
       "Proposed 2 weeks before the quarter starts",
@@ -458,17 +535,39 @@ mk(
       "Navina OKR field options updated each quarter, with a quarter prefix",
       '"No OKR - exempt" option for express lane work',
     ],
-    auto: ["Quarter-start reminder to load the OKR options and re-tag open ideas"],
+    auto: [
+      "Quarter-start reminder to load the OKR options and re-tag open ideas",
+    ],
   },
   "Input",
   "Product OKRs",
   "Owner: Product Leads",
 );
-STAGES.forEach((s, i) => mk(SID[s.n], s, "Step " + (i + 1), s.n, "Owner: " + s.owner + " - To exit: " + s.exit1));
+STAGES.forEach((s, i) =>
+  mk(
+    SID[s.n],
+    s,
+    "Step " + (i + 1),
+    s.n,
+    "Owner: " + s.owner + " - To exit: " + s.exit1,
+  ),
+);
 mk("roadmap-gate", GATE, "Gate", "Roadmap gate", "Owner: " + GATE.owner);
 mk("go-live-gate", GOLIVE, "Gate", "Go-live gate", "Owner: " + GOLIVE.owner);
-mk("commercialization", COMM, "Workstream", "Commercialization (PMM)", "Owner: " + COMM.owner);
-mk("monitor", MON, "After live", "Monitor and improve", "Owner: PM - Output: " + MON.out);
+mk(
+  "commercialization",
+  COMM,
+  "Workstream",
+  "Commercialization (PMM)",
+  "Owner: " + COMM.owner,
+);
+mk(
+  "monitor",
+  MON,
+  "After live",
+  "Monitor and improve",
+  "Owner: PM - Output: " + MON.out,
+);
 PHASES.forEach((p) =>
   p.items.forEach((id) => {
     ORDER.push(id);
@@ -483,16 +582,29 @@ export const RHYTHM: Group[] = [
     dark: true,
     art: "target",
     when: "Before the quarter",
-    mission: "Leadership sets top-down goals. Management turns them into product OKRs, aligned with leadership.",
+    mission:
+      "Leadership sets top-down goals. Management turns them into product OKRs, aligned with leadership.",
     rows: [
-      ["Input", "Business goals, plus KPI results and learnings from live work"],
-      ["Top-down goals", "Leadership sets the business goals in the last month of the previous quarter"],
-      ["Product OKRs", "Product Leads, with their PMs, draft the product OKRs from those goals, 2 weeks before the quarter"],
+      [
+        "Input",
+        "Business goals, plus KPI results and learnings from live work",
+      ],
+      [
+        "Top-down goals",
+        "Leadership sets the business goals in the last month of the previous quarter",
+      ],
+      [
+        "Product OKRs",
+        "Product Leads, with their PMs, draft the product OKRs from those goals, 2 weeks before the quarter",
+      ],
       [
         "Management to leadership",
         "Product Leads review the draft product OKRs with leadership for alignment and sign-off before the quarter starts (proposed)",
       ],
-      ["Loading", "Product OKRs loaded into the OKR field before the first candidates meeting, each with a named owner"],
+      [
+        "Loading",
+        "Product OKRs loaded into the OKR field before the first candidates meeting, each with a named owner",
+      ],
       ["Rollover", "Open ideas are re-tagged at the first candidates meeting"],
     ],
   },
@@ -505,7 +617,10 @@ export const RHYTHM: Group[] = [
     rows: [
       ["Who", "Product Leads, PMs, Design"],
       ["Input", "New Idea backlog and Exploration, viewed by OKR"],
-      ["Decides", "Which ideas enter Exploration or PRD, capped by PM and design capacity"],
+      [
+        "Decides",
+        "Which ideas enter Exploration or PRD, capped by PM and design capacity",
+      ],
       [
         "Also",
         "Stale ideas are re-confirmed or Cancelled. KPI results of recently live work are reviewed and a decision is confirmed",
@@ -517,15 +632,22 @@ export const RHYTHM: Group[] = [
     c: "#30A46C",
     art: "board",
     when: "Last 2 weeks of the quarter",
-    mission: "Give ready ideas a timeline for the next quarter, then pull build-ready work into it.",
+    mission:
+      "Give ready ideas a timeline for the next quarter, then pull build-ready work into it.",
     rows: [
       ["Who", "Product Leads, PMs, Eng leads, Design"],
-      ["Input", "PRD-complete ideas and the Ready for Dev queue, viewed by OKR"],
+      [
+        "Input",
+        "PRD-complete ideas and the Ready for Dev queue, viewed by OKR",
+      ],
       [
         "Decides",
         "Which ideas get a roadmap timeline and start HLD, and which Ready for Dev items dev pulls into In Development",
       ],
-      ["Capacity", "Split between roadmap work and the express lane, set per quarter (proposed start: 70 / 20 / 10 buffer)"],
+      [
+        "Capacity",
+        "Split between roadmap work and the express lane, set per quarter (proposed start: 70 / 20 / 10 buffer)",
+      ],
       ["Output", "Planned Quarter set, draft dev item created"],
       [
         "Between sessions (proposed)",
@@ -541,9 +663,13 @@ export const RULES: Group[] = [
     c: "#E5702A",
     art: "bolt",
     when: "Express lane",
-    mission: "Urgent and maintenance work skips the roadmap gate, with limits so it cannot swallow the roadmap.",
+    mission:
+      "Urgent and maintenance work skips the roadmap gate, with limits so it cannot swallow the roadmap.",
     rows: [
-      ["Work types", "Bug or incident, KTLO, tech debt, client escalation (set in the Work type field)"],
+      [
+        "Work types",
+        "Bug or incident, KTLO, tech debt, client escalation (set in the Work type field)",
+      ],
       [
         "Path",
         "Created on the dev board, with an auto-created lightweight idea in PRODUCT. Skips Exploration, PRD and the roadmap gate",
@@ -552,7 +678,10 @@ export const RULES: Group[] = [
         "Still required",
         "Owner, Work type, one-line justification and a PRODUCT link. Quality sign-off still applies before go-live",
       ],
-      ["Capacity", "Proposed split per quarter: 70% roadmap, 20% express lane, 10% buffer. Calibrate after two quarters"],
+      [
+        "Capacity",
+        "Proposed split per quarter: 70% roadmap, 20% express lane, 10% buffer. Calibrate after two quarters",
+      ],
       [
         "Over the cap",
         "Product Lead and Eng lead decide what gives. A P1 incident starts immediately and is reviewed afterwards",
@@ -568,12 +697,22 @@ export const RULES: Group[] = [
     c: "#3E63DD",
     art: "kpi",
     when: "After go-live",
-    mission: "Every live feature ends the review with a decision, not just a number.",
+    mission:
+      "Every live feature ends the review with a decision, not just a number.",
     rows: [
-      ["When", "First review about 30 days after Done (Live), second about 90 days (proposed)"],
+      [
+        "When",
+        "First review about 30 days after Done (Live), second about 90 days (proposed)",
+      ],
       ["Scale", "KPI met: expand the rollout and close the idea"],
-      ["Iterate", "Partly met: create an improvement idea linked to the original and send it through the flow"],
-      ["Sunset", "Missed or unused: create a retirement task and log the learning"],
+      [
+        "Iterate",
+        "Partly met: create an improvement idea linked to the original and send it through the flow",
+      ],
+      [
+        "Sunset",
+        "Missed or unused: create a retirement task and log the learning",
+      ],
       ["Wait", "Not enough data: extend one review, once"],
       [
         "Who and where",
@@ -586,7 +725,8 @@ export const RULES: Group[] = [
     c: "#12A594",
     art: "swap",
     when: "Any time",
-    mission: "Plans change. Changes are made visibly, with a reason, and re-confirmed at the next quarterly planning.",
+    mission:
+      "Plans change. Changes are made visibly, with a reason, and re-confirmed at the next quarterly planning.",
     rows: [
       [
         "Quarter slips",
@@ -604,16 +744,28 @@ export const RULES: Group[] = [
         "Cancel after dev started",
         "Epics closed as Will not do, completed work and learnings recorded on the idea, capacity released at the next dev planning",
       ],
-      ["Size change after HLD", "Flagged automatically and the timeline is re-confirmed"],
+      [
+        "Size change after HLD",
+        "Flagged automatically and the timeline is re-confirmed",
+      ],
     ],
   },
+];
+/** The deliverables that must be ready before general availability: [deliverable, owner]. */
+export const DELIVERABLES: [string, string][] = [
+  ["Release ticket", "PM"],
+  ["Support handoff", "Dev and PM"],
+  ["CS handoff", "PM and PMM"],
+  ["Demo for sales", "PM and PMM"],
+  ["Knowledge base", "PM and PMM"],
 ];
 export const RELEASE: Group = {
   n: "Release management",
   c: "#E5702A",
   art: "rollout",
   when: "Release board (REL)",
-  mission: "How a built feature reaches clients safely, from first beta to general availability.",
+  mission:
+    "How a built feature reaches clients safely, from first beta to general availability.",
   rows: [
     [
       "Release plan",
@@ -631,12 +783,18 @@ export const RELEASE: Group = {
       "Go-live gate",
       "Sits between beta and general availability. PM and Eng lead decide, with Quality sign-off and PMM readiness",
     ],
-    ["Rollback", "Every release plan names how to roll back or switch the feature off, and who decides"],
     [
-      "Support handoff",
-      "Handoff doc, docs and training are ready before general availability. Delivery and Support own the feature from go-live",
+      "Rollback",
+      "Every release plan names how to roll back or switch the feature off, and who decides",
     ],
-    ["Communication", "PMM owns customer messaging and release notes. Beta clients are informed at each stage"],
+    [
+      "Release deliverables",
+      "Five deliverables are ready before general availability, each with an owner: release ticket (PM), support handoff (Dev and PM), CS handoff (PM and PMM), demo for sales (PM and PMM), knowledge base (PM and PMM). Delivery and Support own the feature from go-live",
+    ],
+    [
+      "Communication",
+      "PMM owns customer messaging and release notes. Beta clients are informed at each stage",
+    ],
     [
       "Closing",
       "General availability closes the release event, the idea moves to Done (Live) and the KPI review reminder starts",

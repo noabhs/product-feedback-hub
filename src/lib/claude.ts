@@ -831,7 +831,7 @@ const MAX_ENTRIES = 150;
  * the cached copy to expire — which is how a reworded prompt sat invisible
  * behind this morning's text.
  */
-export const BRIEF_VERSION = "b6";
+export const BRIEF_VERSION = "b7";
 const MAX_CONTENT = 240;
 
 function spread<T>(items: T[], max: number): T[] {
@@ -876,33 +876,47 @@ export async function summarizeWeek(
 The feedback below is everything logged in ${periodLabel}.
 
 This is a synthesis, not a transcript — the Hub itself already has every
-row, filterable by client. Cover both **product** takeaways (a suspecting-
-logic gap, a reporting limitation, an integration pattern) and **business**
-ones (renewal or churn risk, expansion or upsell signal, pricing pushback,
-contract value at stake) wherever the entries actually support one — don't
-force a business angle onto a purely technical bug, or vice versa.
+row, filterable by client. The brief is organized by **topic**, never by
+client: each bullet is a product insight or a business theme, and the
+clients are the evidence for it. Cover both **product** topics (a
+suspecting-logic gap, a reporting limitation, an integration pattern) and
+**business** topics (churn to a competitor type, renewal risk, expansion
+signal, pricing pushback, contract value at stake) wherever the entries
+actually support one — don't force a business angle onto a purely
+technical bug, or vice versa.
 
 Output is Markdown. Shape, in order:
 
 1. One paragraph, 2-4 sentences, starting with "**TL;DR:**" — the single
-   biggest story of the period. Say what happened and why it matters; if it
-   has both a product and a business angle, say both in the same paragraph.
-   If nothing rises above the rest, say that plainly instead of inflating a
-   minor item.
+   biggest story of the period, told as a theme rather than a list of
+   accounts. Say what happened and why it matters; if it has both a product
+   and a business angle, say both in the same paragraph. If nothing rises
+   above the rest, say that plainly instead of inflating a minor item.
 2. A blank line, then one flat bullet list ("- "), ranked most important
-   first, of up to 10 items. No sub-headings, no grouping by client or
-   theme, no nested bullets — one level, one list.
+   first, of up to 10 items. No sub-headings, no nested bullets — one level,
+   one list. Each bullet starts with a **bold topic phrase** naming the
+   insight or theme (e.g. "**Suspecting logic misses what coders add by
+   hand**"), then the evidence.
 
 Rules:
-- Each bullet is 1-2 sentences: the evidence, then what it means (for the
-  product, the account, or both). "X because Y" beats "X happened."
+- Never start a bullet with a client name, and never give one bullet per
+  client. When several clients show the same thing, that is one bullet that
+  names them as evidence ("Matter Health, Lifespark and Greater Good all…").
+  A client gets a bullet to itself only when what happened to it is the
+  topic, and even then the bold phrase names the topic, not the account.
+- Include account detail only where it carries the stakes: ARR, a renewal
+  date, a go-live date, a named competitor. Leave out the rest.
+- Each bullet is 1-2 sentences: the topic and its evidence, then what it
+  means (for the product, the business, or both). "X because Y" beats "X
+  happened."
 - Rank by stakes, not volume. One entry naming a real suspecting-model gap
   or a renewal at risk outranks five routine access requests. If fewer than
-  10 items clear that bar, list fewer — never pad to reach 10.
+  10 topics clear that bar, list fewer — never pad to reach 10.
 - Only claim what the entries support. No projections, no recommendations
   beyond what's implied, no invented client names or numbers.
-- Bold the key term or client name that sharpens a bullet — not every noun.
-  Over-bolding is as hard to scan as no bolding.
+- Bold the topic phrase that opens each bullet, and nothing else unless a
+  single figure or product name truly needs it. Over-bolding is as hard to
+  scan as no bolding.
 - No headings beyond the TL;DR label, no emoji, no preamble like "This
   period".
 - Refer to the timeframe as ${periodLabel} if you refer to it at all. Do not call

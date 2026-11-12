@@ -14,6 +14,7 @@ import {
   RHYTHM,
   RULES,
   RELEASE,
+  DELIVERABLES,
   type ArtKey,
   type Chip,
   type Group,
@@ -360,10 +361,6 @@ export default function Lifecycle() {
               </button>
             ))}
           </div>
-          <div className="spacer" />
-          <Link className="btn" href="/product-lifecycle/naming">
-            Ticket naming and renaming tool
-          </Link>
         </div>
       </header>
 
@@ -733,6 +730,26 @@ export default function Lifecycle() {
           <div className="groups">
             <Groups items={[RELEASE]} />
           </div>
+          <h2 className="sect">Release deliverables</h2>
+          <p className="sect-sub">Ready before general availability. They are part of the go-live gate checklist.</p>
+          <div className="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Deliverable</th>
+                  <th>Owner</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DELIVERABLES.map(([d, o]) => (
+                  <tr key={d}>
+                    <td>{d}</td>
+                    <td>{o}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
         <section id="view-rules" role="tabpanel" aria-labelledby="tab-rules" hidden={tab !== "rules"}>
           <div className="intro">
@@ -751,6 +768,16 @@ export default function Lifecycle() {
           </div>
           <div className="groups">
             <Groups items={RULES} />
+          </div>
+          <h2 className="sect">Ticket naming</h2>
+          <p className="sect-sub">
+            Every idea and dev ticket follows one naming convention, so a ticket reads clearly on its own. Review a Jira view against the
+            convention, approve the proposed names and apply them in Jira.
+          </p>
+          <div className="naming-cta">
+            <Link className="btn" href="/product-lifecycle/naming">
+              Ticket naming and renaming tool
+            </Link>
           </div>
         </section>
         <section id="view-ref" role="tabpanel" aria-labelledby="tab-ref" hidden={tab !== "ref"}>
