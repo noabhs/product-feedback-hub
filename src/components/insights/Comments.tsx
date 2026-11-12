@@ -23,7 +23,7 @@ function fmtWhen(iso: string): string {
 }
 
 /** What the thread hangs off: a feedback entry, or a logged question on the Asks log. */
-export type CommentScope = { kind: "insight" | "ask"; id: string };
+export type CommentScope = { kind: "insight" | "ask" | "page"; id: string };
 
 export function Comments({
   scope,
@@ -37,9 +37,15 @@ export function Comments({
   embedded?: boolean;
   onCountChange?: (count: number) => void;
 }) {
-  const isAsk = scope.kind === "ask";
-  const listUrl = isAsk ? `/api/ask-log/${scope.id}/comments` : `/api/insights/${scope.id}/comments`;
-  const itemBase = isAsk ? "/api/ask-comments" : "/api/comments";
+  // For a page, `id` is the pathname.
+  const listUrl =
+    scope.kind === "page"
+      ? `/api/page-comments?path=${encodeURIComponent(scope.id)}`
+      : scope.kind === "ask"
+        ? `/api/ask-log/${scope.id}/comments`
+        : `/api/insights/${scope.id}/comments`;
+  const itemBase =
+    scope.kind === "page" ? "/api/page-comments" : scope.kind === "ask" ? "/api/ask-comments" : "/api/comments";
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -77,7 +83,7 @@ export function Comments({
       const res = await fetch(listUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: draft }),
+        body: JSON.stringify(scope.kind === "page" ? { body: draft, path: scope.id } : { body: draft }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? "Couldn't post comment");
       const saved = await res.json();
