@@ -595,7 +595,7 @@ model ProductAreaOwner {
   id     String      @id
   areaId String
   area   ProductArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  /// pm | pm_manager | medical_manager | medical_lead | sponsor
+  /// pm | medical_manager | medical_lead | sponsor
   role   String
   name   String
   email  String?

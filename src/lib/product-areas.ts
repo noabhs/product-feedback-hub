@@ -8,12 +8,11 @@ import { prisma } from "@/lib/prisma";
  * notifications), and show "owned by" next to an area. Everything here is
  * read-only; the table is a snapshot refreshed by migration.
  */
-export const OWNER_ROLES = ["pm", "pm_manager", "medical_manager", "medical_lead", "sponsor"] as const;
+export const OWNER_ROLES = ["pm", "medical_manager", "medical_lead", "sponsor"] as const;
 export type OwnerRole = (typeof OWNER_ROLES)[number];
 
 export const OWNER_ROLE_LABELS: Record<OwnerRole, string> = {
   pm: "PM",
-  pm_manager: "PM's manager",
   medical_manager: "Medical manager",
   medical_lead: "Medical lead",
   sponsor: "Sponsor",
