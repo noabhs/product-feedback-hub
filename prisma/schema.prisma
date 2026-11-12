@@ -432,7 +432,7 @@ model AskConversation {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  turns AskLog[]
+  turns     AskLog[]
   documents AskDocument[]
 
   @@index([actor, updatedAt])
@@ -509,12 +509,12 @@ model PageContent {
 /// One run of the ticket naming review: a Jira view (or project) whose ideas were
 /// given proposed names, to be accepted or rejected one by one.
 model NamingReview {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   title     String
   viewUrl   String
   project   String
   createdBy String
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
   items     NamingItem[]
 
   @@index([createdAt])
@@ -524,17 +524,17 @@ model NamingReview {
 /// rejected | applied | failed. delivery and releases hold the linked Epics, Release
 /// Events and steps with the rename choice for each; see lib/naming/types.ts.
 model NamingItem {
-  id         String       @id @default(cuid())
-  reviewId   String
-  review     NamingReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  key        String
-  order      Int
-  current    String
-  proposed   String       @default("")
-  state      String       @default("pending")
-  data       Json
-  appliedAt  DateTime?
-  updatedAt  DateTime     @updatedAt
+  id        String       @id @default(cuid())
+  reviewId  String
+  review    NamingReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  key       String
+  order     Int
+  current   String
+  proposed  String       @default("")
+  state     String       @default("pending")
+  data      Json
+  appliedAt DateTime?
+  updatedAt DateTime     @updatedAt
 
   @@unique([reviewId, key])
   @@index([reviewId, order])
@@ -569,17 +569,36 @@ model FeedbackSyncState {
   updatedAt DateTime @updatedAt
 }
 
-/// Free-form comments on a whole page of the hub (not on one record), opened from
-/// the comment button on every page. `path` is the pathname without query, e.g.
-/// "/clients". No relation: a page is a route, not a row.
+/// Comments pinned to a spot on a page of the hub (not to a record). A root
+/// comment carries the anchor; replies (parentId set) hang off it. `path` is the
+/// pathname without query, e.g. "/clients".
+///
+/// The anchor is the element clicked, as a child-index path from <main>
+/// (`selector`), plus where inside it (`relX`/`relY`, 0..1). `snippet` is the start
+/// of that element's text, to notice when the page has changed under the pin; then
+/// the pin falls back to `absX` (fraction of page width) / `absY` (px from top).
 model PageComment {
-  id        String   @id @default(cuid())
-  path      String
+  id         String    @id @default(cuid())
+  path       String
   /// Email of the author; only they may edit or delete the comment.
-  author    String
-  body      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  author     String
+  body       String
+  parentId   String?
+  selector   String    @default("")
+  snippet    String    @default("")
+  relX       Float     @default(0)
+  relY       Float     @default(0)
+  absX       Float     @default(0)
+  absY       Float     @default(0)
+  /// Anyone signed in may resolve or reopen a thread.
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  parent  PageComment?  @relation("PageCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies PageComment[] @relation("PageCommentReplies")
 
   @@index([path])
+  @@index([parentId])
 }
