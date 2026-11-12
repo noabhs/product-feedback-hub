@@ -23,7 +23,7 @@ export function ApiKeyControl() {
     <>
       <button
         onClick={openModal}
-        className="w-full flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+        className="relative w-full flex items-center gap-3 px-3 py-2 rail:justify-center rail:px-0 rounded-sm text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
         title={
           apiKey
             ? "Using your personal Anthropic key"
@@ -33,9 +33,9 @@ export function ApiKeyControl() {
         }
       >
         <KeyRound className="w-4 h-4 shrink-0" />
-        <span className="flex-1 text-left">API key</span>
+        <span className="flex-1 text-left rail:sr-only">API key</span>
         <span
-          className={`w-1.5 h-1.5 rounded-full shrink-0 ${canUseAi ? "bg-teal" : "bg-white/25"}`}
+          className={`w-1.5 h-1.5 rounded-full shrink-0 rail:absolute rail:right-1 rail:top-1.5 ${canUseAi ? "bg-teal" : "bg-white/25"}`}
           aria-label={canUseAi ? "available" : "not configured"}
         />
       </button>

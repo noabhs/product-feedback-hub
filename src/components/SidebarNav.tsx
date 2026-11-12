@@ -13,6 +13,10 @@ import { Home, Search, BookOpen, Upload, BarChart3, Building2, Database, Lightbu
  * the tool itself — how it's doing, what's in it, and what you've asked for.
  * Each section collapses; only Insights starts open, and the section holding
  * the current page is always opened so you never land on a hidden link.
+ *
+ * In the folded-down rail (the `rail:` variant) every page is an icon, whether or
+ * not its section is open — a rail that dropped Learn and The hub would leave no
+ * way to reach them but unfolding — and each heading becomes a divider.
  */
 const NAV_GROUPS: { label: string | null; defaultOpen?: boolean; items: { href: string; label: string; icon: typeof Home }[] }[] = [
   {
@@ -63,36 +67,45 @@ export function SidebarNav() {
   );
 
   return (
-    <nav className="flex-1 px-3 py-4">
+    <nav className="flex-1 px-3 py-4 rail:px-1.5">
       {NAV_GROUPS.map((group, i) => {
         const isOpen = group.label ? open[group.label] : true;
         return (
-          <div key={group.label ?? group.items[0].href} className={i > 0 ? "mt-4" : ""}>
+          <div
+            key={group.label ?? group.items[0].href}
+            className={i > 0 ? "mt-4 rail:mt-2 rail:border-t rail:border-white/10 rail:pt-2" : ""}
+          >
             {group.label && (
               <button
                 type="button"
                 onClick={() => setOpen((o) => ({ ...o, [group.label!]: !o[group.label!] }))}
                 aria-expanded={isOpen}
-                className="w-full flex items-center justify-between px-3 py-1.5 mb-1 rounded-sm text-[11.5px] font-bold uppercase tracking-[0.08em] text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                className="w-full flex items-center justify-between px-3 py-1.5 mb-1 rail:hidden rounded-sm text-[11.5px] font-bold uppercase tracking-[0.08em] text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               >
                 {group.label}
                 <ChevronDown className={`w-4 h-4 transition-transform duration-150 ${isOpen ? "" : "-rotate-90"}`} />
               </button>
             )}
-            {isOpen && (
-              <div className="space-y-0.5">
-                {group.items.map(({ href, label, icon: Icon }) => (
+            {/* Always rendered: a closed section is `hidden`, except in the rail. */}
+            <div className={`space-y-0.5 ${isOpen ? "" : "hidden rail:block"}`}>
+              {group.items.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + "/");
+                return (
                   <Link
                     key={href}
                     href={href}
-                    className="flex items-center gap-3 px-3 py-2 rounded-sm text-[13.5px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150"
+                    title={label}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-3 px-3 py-2 rail:justify-center rail:px-0 rounded-sm text-[13.5px] font-medium whitespace-nowrap transition-all duration-150 ${
+                      active ? "bg-white/10 text-white" : "text-white/70 hover:text-white hover:bg-white/10"
+                    }`}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
-                    {label}
+                    <span className="rail:sr-only">{label}</span>
                   </Link>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
         );
       })}
