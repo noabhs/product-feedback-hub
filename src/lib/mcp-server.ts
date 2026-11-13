@@ -7,6 +7,8 @@ import { clientBrief } from "@/lib/briefs";
 import { AREA_LABELS, THEME_LABELS, COMPETITOR_TOPIC_LABELS, CONFIDENCE_LABELS } from "@/lib/labels";
 import { COMPETITOR_CATEGORIES } from "@/lib/competitor-categories";
 import { FEATURE_REQUEST_STATUSES } from "@/lib/feature-request-status";
+import { buildWeeklyRecap } from "@/lib/weekly-recap";
+import { recapMarkdown } from "@/lib/slack";
 
 /**
  * Read-only tools over the hub's data, for a person's own Claude. Raw rows,
@@ -241,6 +243,41 @@ export function createHubMcpServer(onCall: (tool: string) => void): McpServer {
         prisma.discoveryQuestion.count({ where }),
       ]);
       return { total, returned: rows.length, offset, questions: rows };
+    },
+  );
+
+  tool(
+    "get_weekly_brief",
+    "The finished weekly (or monthly) brief as Slack-ready text, exactly as the Hub posts it, with no tags. Read-only: it returns the brief the Sunday job already wrote and never calls the model. hasBrief is false when the job has not written it yet.",
+    { period: z.enum(["week", "month"]).default("week").describe("week (default) or month") },
+    async ({ period }) => {
+      const recap = await buildWeeklyRecap(new Date(), { narrative: "cached", period });
+      return {
+        period,
+        week: recap.week.label,
+        entries: recap.entries,
+        hasBrief: Boolean(recap.narrative),
+        markdown: recapMarkdown(recap),
+      };
+    },
+  );
+
+  tool(
+    "list_product_owners",
+    "Who owns each product area, from the Product & R&D Map sheet: PM, sponsor, medical manager and medical lead per area, with email where known. hubAreas are the productAreas keys the area answers for. The VP Product row is the fallback for business items with no product feedback. Use it to tag people on brief highlights.",
+    {},
+    async () => {
+      const areas = await prisma.productArea.findMany({
+        orderBy: { sortOrder: "asc" },
+        include: { owners: { orderBy: { role: "asc" } } },
+      });
+      return areas.map((a) => ({
+        area: a.name,
+        covers: a.covers,
+        hubAreas: a.hubAreas,
+        teams: a.teams,
+        owners: a.owners.map((o) => ({ role: o.role, name: o.name, email: o.email, scope: o.scope })),
+      }));
     },
   );
 

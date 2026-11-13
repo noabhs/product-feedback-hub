@@ -569,6 +569,43 @@ model FeedbackSyncState {
   updatedAt DateTime @updatedAt
 }
 
+/// A product domain and who owns it, from the "Product areas" tab of the
+/// Product & R&D Map sheet (snapshot 2026-11-12, not a live feed — a refresh
+/// means a new migration). The point is to answer "who do I tag on this item?".
+model ProductArea {
+  id        String   @id
+  name      String   @unique
+  covers    String?
+  /// Teams on the map, as the sheet names them ("POC Applications", "HB POP").
+  teams     String[]
+  notes     String?
+  /// Insight.productAreas keys this domain answers for (RISK_DX, QUALITY, ...).
+  /// Empty when no key fits; several domains can share a key (ANALYTICS).
+  hubAreas  String[]
+  sortOrder Int
+  updatedAt DateTime @default(now())
+
+  owners ProductAreaOwner[]
+}
+
+/// One person in one role on one area. Validated against OWNER_ROLES in
+/// src/lib/product-areas.ts. email is null when the sheet name could not be
+/// matched to a hub address with confidence — never guessed.
+model ProductAreaOwner {
+  id     String      @id
+  areaId String
+  area   ProductArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  /// pm | medical_manager | medical_lead | sponsor
+  role   String
+  name   String
+  email  String?
+  /// The bracketed qualifier in the sheet: "provider app", "DX product", "consult".
+  scope  String?
+
+  @@index([areaId])
+  @@index([email])
+}
+
 /// Comments pinned to a spot on a page of the hub (not to a record). A root
 /// comment carries the anchor; replies (parentId set) hang off it. `path` is the
 /// pathname without query, e.g. "/clients".
